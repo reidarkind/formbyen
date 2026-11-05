@@ -144,7 +144,7 @@ describe("runde 3", () => {
     expect(lagret.aktivDag?.ko[0]?.hvem.toLowerCase()).toContain("ekspedit");
     lagret = utfor(lagret, { slag: "svar", svar: lagret.aktivDag?.ko[0]?.fasit ?? "" }).lagret;
     expect(lagret.kurv["kloss-sylinder"]).toBe(1);
-    expect(lagret.aktivDag?.tid).toBe(forTid + 30);
+    expect(lagret.aktivDag?.tid).toBe(forTid);
     lagret = utfor(lagret, { slag: "handle" }).lagret;
     expect(lagret.aktivDag?.ko).toHaveLength(1);
     expect(lagret.aktivDag?.fase).toBe("handel");

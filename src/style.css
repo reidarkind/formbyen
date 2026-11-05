@@ -78,6 +78,11 @@ button:focus-visible {
   padding: max(12px, env(safe-area-inset-top)) 12px max(16px, env(safe-area-inset-bottom));
 }
 
+#app:has(.verden) {
+  max-width: none;
+  padding: 0;
+}
+
 .kort {
   background: var(--papir);
   border: 3px solid var(--kontur);
@@ -160,6 +165,19 @@ p { margin: 0 0 10px; line-height: 1.35; }
   margin-bottom: 8px;
 }
 
+.verden {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: max(8px, env(safe-area-inset-top)) 12px max(8px, env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+.verden .bykart, .verden .scene { max-height: 46dvh; overflow: auto; }
+.verden-bunn { margin-top: auto; position: sticky; bottom: 0; background: var(--himmel); padding-bottom: 8px; z-index: 3; }
+.delrad .har { opacity: 0.55; }
+
 .boble {
   display: flex;
   gap: 8px;
@@ -168,6 +186,17 @@ p { margin: 0 0 10px; line-height: 1.35; }
   border: 3px solid var(--kontur);
   border-radius: 12px;
   padding: 10px 12px;
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .verden { display: grid; grid-template-columns: minmax(150px, 36%) 1fr; align-content: start; }
+  .verden > .hud, .verden > .tidslinje, .verden > .stripe { grid-column: 1; }
+  .verden .bykart, .verden .scene, .verden .kort { grid-column: 2; grid-row: 1 / span 4; max-height: 70dvh; }
+  .verden-bunn { grid-column: 1 / -1; }
+}
+@media (max-width: 360px) {
+  .skilt { font-size: 10px; max-width: 64px; overflow: hidden; }
+  body { overflow-x: hidden; }
 }
 
 .boble svg, .figurer svg, .liste svg { width: 72px; height: auto; }

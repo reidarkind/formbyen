@@ -32,7 +32,7 @@ describe("verden", () => {
       },
     });
     const etter = utfor(lagret, { slag: "vent" }).lagret;
-    expect(etter.aktivDag?.tid).toBe(14 * 60);
+    expect(etter.aktivDag?.tid).toBe(13 * 60 + 30);
   });
 
   it("gir ingen vare når døra blir lest", () => {
@@ -45,7 +45,7 @@ describe("verden", () => {
     const oppgave = lagret.aktivDag?.ko[0];
     if (!oppgave) throw new Error("mangler døroppgave");
     const etter = utfor(lagret, { slag: "svar", svar: oppgave.fasit }).lagret;
-    expect(etter.mynter).toBe(mynter + 1);
+    expect(etter.mynter).toBe(mynter);
     expect(Object.values(etter.kurv).reduce((sum, n) => sum + (n ?? 0), 0)).toBe(0);
   });
 

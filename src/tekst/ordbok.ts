@@ -230,6 +230,46 @@ export function formNavn(id: string, spraak: Spraak): string {
   return FORM[id]?.[spraak] ?? nb;
 }
 
+const FLERTALL_NB: Record<string, string> = {
+  kule: "kulene",
+  kube: "kubene",
+  sylinder: "sylindrene",
+  kjegle: "kjeglene",
+  trekant: "trekantene",
+  sirkel: "sirklene",
+  kvadrat: "firkantene",
+  rektangel: "rektanglene",
+  femkant: "femkantene",
+  sekskant: "sekskantene",
+  halvsirkel: "halvsirklene",
+  oval: "ovalene",
+  pyramide: "pyramidene",
+  prisme: "prismene",
+};
+const FLERTALL_NN: Record<string, string> = {
+  kule: "kulene",
+  kube: "kubane",
+  sylinder: "sylindrane",
+  kjegle: "kjeglane",
+  trekant: "trekantane",
+  sirkel: "sirklane",
+  kvadrat: "firkantane",
+  rektangel: "rektangla",
+  femkant: "femkantane",
+  sekskant: "sekskantane",
+  halvsirkel: "halvsirklane",
+  oval: "ovalane",
+  pyramide: "pyramidane",
+  prisme: "prisma",
+};
+
+/** Bestemt flertall: «Finn alle kulene.» */
+export function formFlertall(id: string, spraak: Spraak): string {
+  if (spraak === "nn") return FLERTALL_NN[id] ?? formNavn(id, spraak);
+  if (spraak === "nb") return FLERTALL_NB[id] ?? formNavn(id, spraak);
+  return formNavn(id, spraak);
+}
+
 o("Slik er klokka", "Slik er klokka", "This is the time", "Así es la hora", "So ist die Uhr", "Esta é a hora", "Så är klockan", "Sådan er klokken", "Voici l'heure");
 o("Ferdig", "Ferdig", "Done", "Listo", "Fertig", "Pronto", "Klar", "Færdig", "Fini");
 o("Fra", "Frå", "From", "Desde", "Von", "De", "Från", "Fra", "De");
@@ -480,7 +520,7 @@ o("Her er byen din. Rønna står klar.", "Her er byen din. Rønna står klar.", 
 o("Du har handlet i dag.", "Du har handla i dag.", "You have shopped today.", "Ya has comprado hoy.", "Du hast heute eingekauft.", "Já fizeste compras hoje.", "Du har handlat i dag.", "Du har handlet i dag.", "Tu as déjà fait les courses.");
 o("Da har du alt til {bygg}!", "Då har du alt til {bygg}!", "You have everything for {bygg}!", "Ya tienes todo para {bygg}.", "Du hast alles für {bygg}!", "Já tens tudo para {bygg}!", "Nu har du allt till {bygg}!", "Nu har du alt til {bygg}!", "Tu as tout pour {bygg} !");
 o("Du fikk {vare}.", "Du fekk {vare}.", "You got a {vare}.", "Conseguiste un {vare}.", "Du hast {vare} bekommen.", "Recebeste um {vare}.", "Du fick {vare}.", "Du fik {vare}.", "Tu as reçu {vare}.");
-o("Butikken stenger en stund", "Butikken stenger ei stund", "The shop closes for a while", "La tienda cierra un rato", "Der Laden macht eine Pause", "A loja fecha um pouco", "Butiken stänger en stund", "Butikken lukker en stund", "La boutique ferme un moment");
+o("Butikken stenger en stund", "Butikken stengjer ei stund", "The shop closes for a while", "La tienda cierra un rato", "Der Laden macht eine Pause", "A loja fecha um pouco", "Butiken stänger en stund", "Butikken lukker en stund", "La boutique ferme un moment");
 o("Butikken åpner igjen", "Butikken opnar att", "The shop opens again", "La tienda abre otra vez", "Der Laden öffnet wieder", "A loja abre de novo", "Butiken öppnar igen", "Butikken åbner igen", "La boutique rouvre");
 o("Tannlegen", "Tannlækjaren", "Dentist", "Dentista", "Zahnarzt", "Dentista", "Tandläkaren", "Tandlægen", "Dentiste");
 o("Svømmehallen", "Symjehallen", "Pool", "Piscina", "Schwimmbad", "Piscina", "Simhallen", "Svømmehallen", "Piscine");
@@ -558,6 +598,64 @@ o("Familien er sulten.", "Familien er svolten.", "The family is hungry.", "La fa
 o("Middagen er over.", "Middagen er over.", "Dinner is over.", "La cena ya pasó.", "Das Essen ist vorbei.", "O jantar já passou.", "Middagen är över.", "Maden er overstået.", "Le dîner est passé.");
 o("Vi spiser.", "Vi et.", "We are eating.", "Comemos.", "Wir essen.", "Estamos a comer.", "Vi äter.", "Vi spiser.", "Nous mangeons.");
 o("time minus", "time minus", "hour minus", "hora menos", "Stunde minus", "hora menos", "timme minus", "time minus", "heure moins");
+o("Finn alle {navn}.", "Finn alle {navn}.", "Find all the {navn}.", "Encuentra todos los {navn}.", "Finde alle {navn}.", "Encontra todos os {navn}.", "Hitta alla {navn}.", "Find alle {navn}.", "Trouve tous les {navn}.");
+o("Kule = rund som en ball.", "Kule = rund som ein ball.", "A sphere is round like a ball.", "Esfera = redonda como una pelota.", "Kugel = rund wie ein Ball.", "Esfera = redonda como uma bola.", "Klot = runt som en boll.", "Kugle = rund som en bold.", "Sphère = ronde comme une balle.");
+o("Vent til {tid} · {grunn}", "Vent til {tid} · {grunn}", "Wait until {tid} · {grunn}", "Espera hasta {tid} · {grunn}", "Warte bis {tid} · {grunn}", "Espera até {tid} · {grunn}", "Vänta till {tid} · {grunn}", "Vent til {tid} · {grunn}", "Attends jusqu'à {tid} · {grunn}");
+o("Sett på {del}", "Set på {del}", "Put on {del}", "Pon {del}", "Setze {del}", "Põe {del}", "Sätt på {del}", "Sæt {del} på", "Pose {del}");
+o("{del} er klar.", "{del} er klar.", "{del} is ready.", "{del} está listo.", "{del} ist bereit.", "{del} está pronto.", "{del} är klar.", "{del} er klar.", "{del} est prêt.");
+o("{del} er klar. Gå til tomta.", "{del} er klar. Gå til tomta.", "{del} is ready. Go to the plot.", "{del} está listo. Ve al solar.", "{del} ist bereit. Geh zum Grundstück.", "{del} está pronto. Vai ao lote.", "{del} är klar. Gå till tomten.", "{del} er klar. Gå til grunden.", "{del} est prêt. Va au terrain.");
+o("{del} finnes i butikken. Gå til butikken.", "{del} finst i butikken. Gå til butikken.", "{del} is in the shop. Go to the shop.", "{del} está en la tienda. Ve a la tienda.", "{del} gibt es im Laden. Geh zum Laden.", "{del} está na loja. Vai à loja.", "{del} finns i butiken. Gå till butiken.", "{del} findes i butikken. Gå til butikken.", "{del} est à la boutique. Va à la boutique.");
+o("{navn} er nå.", "{navn} er no.", "{navn} is now.", "{navn} es ahora.", "{navn} ist jetzt.", "{navn} é agora.", "{navn} är nu.", "{navn} er nu.", "{navn} est maintenant.");
+o("{navn} venter! Gå hjem nå.", "{navn} ventar! Gå heim no.", "{navn} is waiting! Go home now.", "¡{navn} espera! Ve a casa ahora.", "{navn} wartet! Geh jetzt nach Hause.", "{navn} espera! Vai para casa agora.", "{navn} väntar! Gå hem nu.", "{navn} venter! Gå hjem nu.", "{navn} attend ! Rentre maintenant.");
+o("{navn} venter. Gå dit nå.", "{navn} ventar. Gå dit no.", "{navn} is waiting. Go there now.", "{navn} espera. Ve ahora.", "{navn} wartet. Geh jetzt hin.", "{navn} espera. Vai agora.", "{navn} väntar. Gå dit nu.", "{navn} venter. Gå derhen nu.", "{navn} attend. Vas-y maintenant.");
+o("{navn} starter kl. {tid}. Vi venter her.", "{navn} startar kl. {tid}. Vi ventar her.", "{navn} starts at {tid}. We wait here.", "{navn} empieza a las {tid}. Esperamos aquí.", "{navn} beginnt um {tid}. Wir warten hier.", "{navn} começa às {tid}. Esperamos aqui.", "{navn} börjar kl. {tid}. Vi väntar här.", "{navn} starter kl. {tid}. Vi venter her.", "{navn} commence à {tid}. Nous attendons ici.");
+o("Gå til {sted}. {navn} starter kl. {tid}.", "Gå til {sted}. {navn} startar kl. {tid}.", "Go to {sted}. {navn} starts at {tid}.", "Ve a {sted}. {navn} empieza a las {tid}.", "Geh zu {sted}. {navn} beginnt um {tid}.", "Vai a {sted}. {navn} começa às {tid}.", "Gå till {sted}. {navn} börjar kl. {tid}.", "Gå til {sted}. {navn} starter kl. {tid}.", "Va à {sted}. {navn} commence à {tid}.");
+o("Butikken åpner kl. {tid}.", "Butikken opnar kl. {tid}.", "The shop opens at {tid}.", "La tienda abre a las {tid}.", "Der Laden öffnet um {tid}.", "A loja abre às {tid}.", "Butiken öppnar kl. {tid}.", "Butikken åbner kl. {tid}.", "La boutique ouvre à {tid}.");
+o("butikken åpner", "butikken opnar", "the shop opens", "la tienda abre", "der Laden öffnet", "a loja abre", "butiken öppnar", "butikken åbner", "la boutique ouvre");
+o("Butikken er stengt. Åpner mandag kl. {tid}.", "Butikken er stengt. Opnar måndag kl. {tid}.", "The shop is closed. It opens Monday at {tid}.", "La tienda está cerrada. Abre el lunes a las {tid}.", "Der Laden hat zu. Er öffnet am Montag um {tid}.", "A loja está fechada. Abre na segunda às {tid}.", "Butiken är stängd. Öppnar måndag kl. {tid}.", "Butikken er lukket. Åbner mandag kl. {tid}.", "La boutique est fermée. Elle ouvre lundi à {tid}.");
+o("Butikken er stengt. Den åpner i morgen kl. {tid}.", "Butikken er stengt. Den opnar i morgon kl. {tid}.", "The shop is closed. It opens tomorrow at {tid}.", "La tienda está cerrada. Abre mañana a las {tid}.", "Der Laden hat zu. Er öffnet morgen um {tid}.", "A loja está fechada. Abre amanhã às {tid}.", "Butiken är stängd. Den öppnar i morgon kl. {tid}.", "Butikken er lukket. Den åbner i morgen kl. {tid}.", "La boutique est fermée. Elle ouvre demain à {tid}.");
+o("Stengt nå. Åpner mandag kl. 14:00.", "Stengt no. Opnar måndag kl. 14:00.", "Closed now. Opens Monday at 14:00.", "Cerrada ahora. Abre el lunes a las 14:00.", "Jetzt zu. Öffnet Montag um 14:00.", "Fechada agora. Abre na segunda às 14:00.", "Stängt nu. Öppnar måndag kl. 14:00.", "Lukket nu. Åbner mandag kl. 14:00.", "Fermé maintenant. Ouvre lundi à 14:00.");
+o("Stengt nå. Åpner i morgen kl. 14:00.", "Stengt no. Opnar i morgon kl. 14:00.", "Closed now. Opens tomorrow at 14:00.", "Cerrada ahora. Abre mañana a las 14:00.", "Jetzt zu. Öffnet morgen um 14:00.", "Fechada agora. Abre amanhã às 14:00.", "Stängt nu. Öppnar i morgon kl. 14:00.", "Lukket nu. Åbner i morgen kl. 14:00.", "Fermé maintenant. Ouvre demain à 14:00.");
+o("Snart leggetid.", "Snart leggetid.", "Bedtime soon.", "Pronto a dormir.", "Bald Schlafenszeit.", "Quase hora de deitar.", "Snart läggdags.", "Snart sengetid.", "Bientôt l'heure de dormir.");
+o("En time til leggetid.", "Ein time til leggetid.", "One hour until bedtime.", "Una hora para dormir.", "Eine Stunde bis zur Schlafenszeit.", "Uma hora até deitar.", "En timme till läggdags.", "En time til sengetid.", "Une heure avant de dormir.");
+o("Legg deg", "Legg deg", "Go to bed", "Acuéstate", "Leg dich hin", "Deita-te", "Lägg dig", "Læg dig", "Va te coucher");
+o("barnehagen", "barnehagen", "the kindergarten", "la guardería", "den Kindergarten", "o jardim", "förskolan", "børnehaven", "la maternelle");
+o("tomta", "tomta", "the plot", "el solar", "das Grundstück", "o lote", "tomten", "grunden", "le terrain");
+o("Barnehagen", "Barnehagen", "Kindergarten", "Guardería", "Kindergarten", "Jardim", "Förskola", "Børnehave", "Maternelle");
+o("{bygg} trenger {mengde}.", "{bygg} treng {mengde}.", "{bygg} needs {mengde}.", "{bygg} necesita {mengde}.", "{bygg} braucht {mengde}.", "{bygg} precisa de {mengde}.", "{bygg} behöver {mengde}.", "{bygg} har brug for {mengde}.", "{bygg} a besoin de {mengde}.");
+o("har", "har", "have", "tiene", "hat", "tem", "har", "har", "a");
+o(" – vi kom for sent", " – vi kom for seint", " – we were late", " – llegamos tarde", " – wir kamen zu spät", " – chegámos tarde", " – vi kom för sent", " – vi kom for sent", " – nous étions en retard");
+o("Stjerne: du rakk alt!", "Stjerne: du rakk alt!", "Star: you made it all!", "Estrella: ¡llegaste a todo!", "Stern: du hast alles geschafft!", "Estrela: chegaste a tudo!", "Stjärna: du hann allt!", "Stjerne: du nåede det hele!", "Étoile : tu as tout eu !");
+o("Ingen stjerne i dag.", "Inga stjerne i dag.", "No star today.", "Ninguna estrella hoy.", "Kein Stern heute.", "Nenhuma estrela hoje.", "Ingen stjärna i dag.", "Ingen stjerne i dag.", "Pas d'étoile aujourd'hui.");
+o("Ny form i dag:", "Ny form i dag:", "New shape today:", "Forma nueva hoy:", "Neue Form heute:", "Forma nova hoje:", "Ny form i dag:", "Ny form i dag:", "Nouvelle forme :");
+o("Gjør lekser", "Gjer lekser", "Do homework", "Haz los deberes", "Mach die Hausaufgaben", "Faz os deveres", "Gör läxorna", "Lav lektier", "Fais les devoirs");
+o("Gå tur med hunden", "Gå tur med hunden", "Walk the dog", "Pasea al perro", "Geh mit dem Hund", "Passeia o cão", "Gå ut med hunden", "Gå tur med hunden", "Promène le chien");
+o("Hent lillesøster", "Hent lillesyster", "Fetch little sister", "Busca a la hermana", "Hol die kleine Schwester", "Vai buscar a irmã", "Hämta lillasyster", "Hent lillesøster", "Va chercher la petite sœur");
+o("Feir bursdagen", "Feir bursdagen", "Celebrate the birthday", "Celebra el cumpleaños", "Feiere den Geburtstag", "Celebra o aniversário", "Fira födelsedagen", "Fejr fødselsdagen", "Fête l'anniversaire");
+o("Gå inn til tannlegen", "Gå inn til tannlækjaren", "Go in to the dentist", "Entra al dentista", "Geh zum Zahnarzt hinein", "Entra no dentista", "Gå in till tandläkaren", "Gå ind til tandlægen", "Entre chez le dentiste");
+o("Svøm", "Sym", "Swim", "Nada", "Schwimm", "Nada", "Simma", "Svøm", "Nage");
+o("Dans", "Dans", "Dance", "Baila", "Tanz", "Dança", "Dansa", "Dans", "Danse");
+o("Gå på ski", "Gå på ski", "Go skiing", "Esquía", "Fahr Ski", "Esquia", "Åk skidor", "Stå på ski", "Fais du ski");
+o("Gå på skøyter", "Gå på skøyter", "Go skating", "Patina", "Lauf Schlittschuh", "Patinar", "Åk skridskor", "Løb på skøjter", "Fais du patin");
+o("Dra på speider", "Dra på speidar", "Go to scouts", "Ve a los scouts", "Geh zum Pfadfinden", "Vai aos escuteiros", "Gå på scout", "Gå til spejder", "Va aux scouts");
+o("Spill sjakk", "Spel sjakk", "Play chess", "Juega al ajedrez", "Spiel Schach", "Joga xadrez", "Spela schack", "Spil skak", "Joue aux échecs");
+o("Spill fotball", "Spel fotball", "Play football", "Juega al fútbol", "Spiel Fußball", "Joga futebol", "Spela fotboll", "Spil fodbold", "Joue au foot");
+o("Spill håndball", "Spel handball", "Play handball", "Juega al balonmano", "Spiel Handball", "Joga andebol", "Spela handboll", "Spil håndbold", "Joue au hand");
+o("Turn", "Turn", "Do gymnastics", "Haz gimnasia", "Turne", "Faz ginástica", "Gymnastisera", "Lav gymnastik", "Fais de la gym");
+o("Spill i korpset", "Spel i korpset", "Play in the band", "Toca en la banda", "Spiel in der Kapelle", "Toca na banda", "Spela i korpset", "Spil i korpset", "Joue dans l'harmonie");
+o("Syng", "Syng", "Sing", "Canta", "Sing", "Canta", "Sjung", "Syng", "Chante");
+o("Øv", "Øv", "Practise", "Practica", "Übe", "Pratica", "Öva", "Øv", "Répète");
+o("Les", "Les", "Read", "Lee", "Lies", "Lê", "Läs", "Læs", "Lis");
+o("Besøk", "Besøk", "Visit", "Visita", "Besuche", "Visita", "Besök", "Besøg", "Rends visite");
+o("Gjør det", "Gjer det", "Do it", "Hazlo", "Mach es", "Faz isso", "Gör det", "Gør det", "Fais-le");
+o("Leksene tar {min} min. Når er du ferdig?", "Leksene tek {min} min. Når er du ferdig?", "Homework takes {min} min. When are you done?", "Los deberes tardan {min} min. ¿Cuándo terminas?", "Die Hausaufgaben dauern {min} Min. Wann bist du fertig?", "Os deveres levam {min} min. Quando acabas?", "Läxorna tar {min} min. När är du klar?", "Lektierne tager {min} min. Hvornår er du færdig?", "Les devoirs durent {min} min. Quand as-tu fini ?");
+o("Turen tar {min} min. Når er dere hjemme?", "Turen tek {min} min. Når er de heime?", "The walk takes {min} min. When are you home?", "El paseo tarda {min} min. ¿Cuándo estáis en casa?", "Der Spaziergang dauert {min} Min. Wann seid ihr zu Hause?", "O passeio leva {min} min. Quando estão em casa?", "Promenaden tar {min} min. När är ni hemma?", "Turen tager {min} min. Hvornår er I hjemme?", "La promenade dure {min} min. Quand êtes-vous à la maison ?");
+o("Hentingen tar {min} min. Når er dere hjemme?", "Hentinga tek {min} min. Når er de heime?", "The pickup takes {min} min. When are you home?", "La recogida tarda {min} min. ¿Cuándo estáis en casa?", "Das Abholen dauert {min} Min. Wann seid ihr zu Hause?", "A busca leva {min} min. Quando estão em casa?", "Hämtningen tar {min} min. När är ni hemma?", "Hentningen tager {min} min. Hvornår er I hjemme?", "La récupération dure {min} min. Quand êtes-vous à la maison ?");
+o("Timen hos tannlegen tar {min} min. Når er den ferdig?", "Timen hos tannlækjaren tek {min} min. Når er han ferdig?", "The dentist takes {min} min. When is it done?", "El dentista tarda {min} min. ¿Cuándo termina?", "Der Zahnarzt dauert {min} Min. Wann ist es vorbei?", "O dentista leva {min} min. Quando acaba?", "Tandläkaren tar {min} min. När är den klar?", "Tandlægen tager {min} min. Hvornår er den færdig?", "Le dentiste dure {min} min. Quand est-ce fini ?");
+o("Svømmingen tar {min} min. Når er dere ferdig?", "Symjinga tek {min} min. Når er de ferdige?", "Swimming takes {min} min. When are you done?", "La natación tarda {min} min. ¿Cuándo termináis?", "Das Schwimmen dauert {min} Min. Wann seid ihr fertig?", "A natação leva {min} min. Quando acabam?", "Simningen tar {min} min. När är ni klara?", "Svømningen tager {min} min. Hvornår er I færdige?", "La natation dure {min} min. Quand avez-vous fini ?");
+o("Bursdagen varer {min} min. Når er den ferdig?", "Fødselsdagen varer {min} min. Når er han ferdig?", "The party lasts {min} min. When is it done?", "La fiesta dura {min} min. ¿Cuándo termina?", "Der Geburtstag dauert {min} Min. Wann ist er vorbei?", "A festa dura {min} min. Quando acaba?", "Födelsedagen varar {min} min. När är den klar?", "Fødselsdagen varer {min} min. Hvornår er den færdig?", "L'anniversaire dure {min} min. Quand est-ce fini ?");
+o("Middagen tar {min} min. Når er dere ferdige?", "Middagen tek {min} min. Når er de ferdige?", "Dinner takes {min} min. When are you done?", "La cena tarda {min} min. ¿Cuándo termináis?", "Das Essen dauert {min} Min. Wann seid ihr fertig?", "O jantar leva {min} min. Quando acabam?", "Middagen tar {min} min. När är ni klara?", "Maden tager {min} min. Hvornår er I færdige?", "Le dîner dure {min} min. Quand avez-vous fini ?");
+o("{navn} tar {min} min. Når er du ferdig?", "{navn} tek {min} min. Når er du ferdig?", "{navn} takes {min} min. When are you done?", "{navn} tarda {min} min. ¿Cuándo terminas?", "{navn} dauert {min} Min. Wann bist du fertig?", "{navn} leva {min} min. Quando acabas?", "{navn} tar {min} min. När är du klar?", "{navn} tager {min} min. Hvornår er du færdig?", "{navn} dure {min} min. Quand as-tu fini ?");
 o("time pluss", "time pluss", "hour plus", "hora más", "Stunde plus", "hora mais", "timme plus", "time plus", "heure plus");
 
 fyllSteg(o);

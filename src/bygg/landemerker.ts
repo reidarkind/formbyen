@@ -6,6 +6,7 @@ export const LANDMERKE = {
   torg: { x: 3, y: 6 },
   tannlege: { x: 0, y: 6 },
   svommehall: { x: 7, y: 6 },
+  barnehage: { x: 1, y: 7 },
 } as const;
 
 export function erLandemerke(x: number, y: number): boolean {

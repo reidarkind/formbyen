@@ -143,7 +143,7 @@ export function tegnKart(by: ByTilstand, tid: number, leggetid = 20 * 60, valg: 
 }
 
 function skiltHtml(by: ByTilstand, ramme: { x0: number; y0: number; x1: number; y1: number }, kolonner: number, rader: number): string {
-  const navn: Record<string, string> = { butikk: "Butikk", torg: "Torget", tannlege: "Tannlege", svommehall: "Svømmehall" };
+  const navn: Record<string, string> = { butikk: "Butikk", torg: "Torget", tannlege: "Tannlege", svommehall: "Svømmehall", barnehage: "Barnehage" };
   const merker: string[] = [];
   for (const [sted, punkt] of Object.entries(LANDMERKE)) {
     if (!innen(punkt.x, punkt.y, ramme)) continue;

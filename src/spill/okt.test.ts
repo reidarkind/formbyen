@@ -74,9 +74,10 @@ describe("en ettermiddag", () => {
     if (!dag) throw new Error("mangler dag");
     const middag = dag.plan.avtaler.find((avtale) => avtale.slag === "middag");
     if (!middag) throw new Error("mangler middag");
-    lagret = { ...start, aktivDag: { ...dag, tid: middag.start, sted: "butikk" } };
-    const etter = utfor(lagret, { slag: "vent" });
-    expect(etter.melding ?? etter.lagret.aktivDag?.melding ?? "").toMatch(/spiste|åt|begynt/);
+    lagret = { ...start, aktivDag: { ...dag, tid: middag.start + middag.varighet + 15, sted: "butikk" } };
+    const etter = utfor(lagret, { slag: "ga", sted: "hjemme" });
+    expect(etter.melding ?? "").toMatch(/spiste|åt/);
+    expect(etter.melding ?? "").not.toMatch(/likevel/);
     expect(etter.lagret.by.bygg[0]?.ferdig).toBe(true);
   });
 });

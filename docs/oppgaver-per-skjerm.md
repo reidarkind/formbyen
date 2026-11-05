@@ -10,12 +10,12 @@ Hver skjerm skal kunne forklares med én linje: hva barnet skal gjøre, og hva s
 | Bykartet | Velge hvor jeg går | Stedet som pulserer, eller den gule knappen |
 | Butikken | Kjøpe neste del på handlelista | Kjøp [del] |
 | Oppgave | Svare på spørsmålet | Ett av svarene, eller Ferdig |
-| Byggeplassen | Sette delen på bygget | Sett på [del] |
-| Avtalested | Møte opp i tide | Møt opp, eller Vent til [tid] |
-| Hjemme | Spise, bygge eller legge meg | Den gule knappen |
-| Torget | Være på torget til avtalen | Møt opp eller gå videre |
+| Byggeplassen | Sette delen på bygget når den er i kurven | Sett på [del], eller gå videre hvis en avtale kommer først |
+| Avtalested | Gjøre aktiviteten | Verbets knapp, for eksempel Svøm eller Gå inn til tannlegen |
+| Hjemme | Lekser, hund, bursdag, middag eller leggetid | Den gule knappen, med verb |
+| Torget | Være på torget til avtalen | Aktivitetens verb, eller gå videre |
 | Kurven | Se hva jeg har | Lukk |
-| Kveld | Se hva jeg fikk til | God natt |
+| Kveld | Se hver avtale med hake eller kryss, og hvorfor stjernen ble gitt | God natt |
 | Pause | Legge fra meg spillet | Fortsett, eller Avslutt dagen og så Ja, avslutt |
 
 ## Etter et svar

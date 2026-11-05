@@ -88,7 +88,8 @@ function somSted(sted: string): StedId {
     sted === "svommehall" ||
     sted === "byggeplass" ||
     sted === "aktivitet" ||
-    sted === "hjemme"
+    sted === "hjemme" ||
+    sted === "barnehage"
   ) {
     return sted;
   }
@@ -241,6 +242,8 @@ function byggPlan(inn: PlanInn, tilfeldig: Tilfeldig): Dagsplan | null {
     let startTid = fast.start;
     if (!passerMinutt(startTid, lovlige)) startTid = startTid - (startTid % 30);
     if (!ledig(avtaler, startTid, meta.varighet) || startTid + meta.varighet > leggetid) continue;
+    if (!rekkerHjemFor(meta, startTid, leggetid, inn.nivaa)) continue;
+    if (forMangeHjemme(avtaler, meta)) continue;
     avtaler.push(avtaleFra(meta, startTid));
   }
 
@@ -261,6 +264,8 @@ function byggPlan(inn: PlanInn, tilfeldig: Tilfeldig): Dagsplan | null {
     const startTid = trekk(tilfeldig, tider);
     if (!ledig(avtaler, startTid, varighet)) continue;
     if (avtaler.some((avtale) => avtale.aktivitet === meta.id)) continue;
+    if (!rekkerHjemFor(meta, startTid, leggetid, inn.nivaa)) continue;
+    if (forMangeHjemme(avtaler, meta)) continue;
     avtaler.push(avtaleFra(meta, startTid));
   }
 
@@ -318,9 +323,24 @@ const PAA_TORGET = new Set(["dans", "speider", "sjakk", "ski", "skoyter"]);
 export function stedForAktivitet(id: string, krever: string | null): string {
   if (id === "tannlege") return "tannlege";
   if (id === "svomming") return "svommehall";
+  if (id === "lillesoster") return "barnehage";
   if (krever) return krever;
   if (PAA_TORGET.has(id)) return "torg";
   return "hjemme";
+}
+
+function rekkerHjemFor(meta: Aktivitet, startTid: number, leggetid: number, nivaa: Nivaa): boolean {
+  const sted = stedForAktivitet(meta.id, meta.krever);
+  if (sted === "hjemme") return startTid + meta.varighet <= leggetid;
+  const gang = gangMinutter(somSted(sted), "hjemme", nivaa);
+  return startTid + meta.varighet + gang <= leggetid;
+}
+
+function forMangeHjemme(avtaler: Avtale[], meta: Aktivitet): boolean {
+  const sted = stedForAktivitet(meta.id, meta.krever);
+  if (sted !== "hjemme") return false;
+  const hjemme = avtaler.filter((avtale) => avtale.sted === "hjemme" && avtale.slag !== "middag" && avtale.varighet > 0);
+  return hjemme.length >= 2;
 }
 
 function avtaleFra(meta: Aktivitet, start: number): Avtale {

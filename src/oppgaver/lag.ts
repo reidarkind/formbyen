@@ -3,7 +3,7 @@ import { PLANKER, VEKT_KG } from "../bygg/katalog";
 import { heltall, stokk, trekk, type Tilfeldig } from "../felles/tilfeldig";
 import { ALLE_2D, ALLE_3D, GRUNNFORMER, form2d, form3d, type Form2dId, type Form3dId } from "../former/definisjoner";
 import { ferdighetApent, tillatteMinutter } from "../tilpasning/mestring";
-import { formNavn, mal, navnVare } from "../tekst/ordbok";
+import { formFlertall, formNavn, mal, navnVare } from "../tekst/ordbok";
 import { arstidTekst, manedTekst } from "../tekst/spraak";
 import { timeNavn } from "../tid/ord";
 import { klokke, normaliser, tidTilDigital24, tidTilOrd } from "../tid/tid";
@@ -442,7 +442,14 @@ function blandLike(ctx: OppgaveKontekst, maal: string, andre: readonly string[])
 }
 
 function lagFinn(mal: Mal, ctx: OppgaveKontekst): Oppgave {
-  const prompt = (navn: string) => si(ctx.spraak, "Finn alle som er {navn}, som denne.", "Finn alle som er {navn}, som denne.", { navn });
+  const prompt = (id: string) => {
+    const navn = formFlertall(id, ctx.spraak);
+    const setning = si(ctx.spraak, "Finn alle {navn}.", "Finn alle {navn}.", { navn });
+    if (id === "kule" && !(ctx.kjente3d ?? []).includes("kule")) {
+      return `${setning} ${si(ctx.spraak, "Kule = rund som en ball.", "Kule = rund som ein ball.")}`;
+    }
+    return setning;
+  };
   if (mal.ferdighet === "former-3d") {
     const former = ["kule", "kube", "sylinder", "kjegle"] as const;
     const start = variant(mal.id) % former.length;
@@ -452,7 +459,7 @@ function lagFinn(mal: Mal, ctx: OppgaveKontekst): Oppgave {
     const maal = onsket ?? ukjent ?? rotert.find((id) => `form3d:${id}` !== ctx.unngaNokkel) ?? rotert[0] ?? "kule";
     const blandet = blandLike(ctx, maal, former.filter((id) => id !== maal));
     const vare = maal === "kule" ? "kloss-kule" : maal === "kube" ? "kloss-kube" : maal === "sylinder" ? "kloss-sylinder" : "kloss-kjegle";
-    const oppgave = basis(mal, ctx, prompt(formNavn(maal, ctx.spraak)), `form3d:${maal}`, blandet.fasit, vare);
+    const oppgave = basis(mal, ctx, prompt(maal), `form3d:${maal}`, blandet.fasit, vare);
     oppgave.form = maal;
     oppgave.form3d = maal;
     oppgave.varer = blandet.figurer;
@@ -462,7 +469,7 @@ function lagFinn(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const onsket = ctx.maalForm && liste.includes(ctx.maalForm as Form2dId) ? (ctx.maalForm as Form2dId) : undefined;
   const maal = onsket ?? (formUnnga(ctx, liste) as Form2dId);
   const blandet = blandLike(ctx, maal, liste.filter((id) => id !== maal));
-  const oppgave = basis(mal, ctx, prompt(formNavn(maal, ctx.spraak)), `form:${maal}`, blandet.fasit, vareForForm(maal));
+  const oppgave = basis(mal, ctx, prompt(maal), `form:${maal}`, blandet.fasit, vareForForm(maal));
   oppgave.form = maal;
   oppgave.varer = blandet.figurer;
   return oppgave;

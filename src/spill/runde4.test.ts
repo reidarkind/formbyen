@@ -165,9 +165,11 @@ describe("runde 4", () => {
 function spillDagen(lagret: Lagret): Lagret {
   let forrige = "";
   let likt = 0;
-  for (let vakt = 0; vakt < 48 && lagret.aktivDag; vakt++) {
+  for (let vakt = 0; vakt < 200 && lagret.aktivDag; vakt++) {
     const dag = lagret.aktivDag;
-    const nokkel = `${dag.tid}:${dag.sted}:${dag.fase}:${lagret.by.bygg.length}:${lagret.by.bygg.filter((bygg) => bygg.ferdig).length}`;
+    const fremdrift = lagret.by.bygg.reduce((sum, bygg) => sum + bygg.steg, 0);
+    const kurv = Object.values(lagret.kurv).reduce((sum, n) => sum + (n ?? 0), 0);
+    const nokkel = `${dag.tid}:${dag.sted}:${dag.fase}:${lagret.by.bygg.length}:${fremdrift}:${kurv}`;
     likt = nokkel === forrige ? likt + 1 : 0;
     forrige = nokkel;
     if (likt > 2) break;
@@ -208,6 +210,11 @@ function byggEtt(lagret: Lagret, id: ByggId, instans: string | null): Lagret {
   if (!instans) {
     const tomt = ledigeTomter(lagret.by, id)[0];
     if (!tomt) return lagret;
+    if (lagret.aktivDag.sted !== "byggeplass") {
+      const gikk = utfor(lagret, { slag: "ga", sted: "byggeplass" }).lagret;
+      if (!gikk.aktivDag) return gikk;
+      lagret = gikk;
+    }
     return utfor(lagret, { slag: "velg-bygg", bygg: id, x: tomt.x, y: tomt.y }).lagret;
   }
   const valgt = utfor(lagret, { slag: "velg", instans });

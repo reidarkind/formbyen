@@ -24,6 +24,6 @@ Ark fra toppfeltet: kurven, dagens plan, pause. Byplanen åpnes fra kartet.
 - Ark har lukkeknapp, bortsett fra oppgaven, som lukkes av svaret.
 - Barnet er inne til det trykker «← Byen» eller «Gå til …». Kjøp, svar, bygg og avtaler skjer inne. Scenen lukkes ikke av seg selv.
 - Gåing vises alltid på kartet. Knappen nederst er en snarvei til samme tur.
-- Ett gult trykk om gangen. Etter fullført handleliste: «Gå til tomta».
-- På byggeplassen er den gule knappen «Sett på [del]». Teksten sier «Trykk på [del].»
+- Ett gult trykk om gangen. Knappen og hjelperen kommer fra samme neste steg. Hjelperen sier hvorfor, ikke en annen ordre.
+- «Sett på [del]» er gul bare når neste steg er å bygge. Ellers viser scenen delen, og den gule knappen er turen som haster.
 - Den gamle byskjermen, den gamle byggeskjermen og det frie tårnuret er ikke en del av denne veien.

@@ -141,7 +141,7 @@ export type VareId =
   | "pynt-benk"
   | "pynt-lykt";
 
-export type StedId = "hjemme" | "butikk" | "torg" | "byggeplass" | "aktivitet" | "tannlege" | "svommehall";
+export type StedId = "hjemme" | "butikk" | "torg" | "byggeplass" | "aktivitet" | "tannlege" | "svommehall" | "barnehage";
 export type Omrade = "dalen" | "bekken" | "asen" | "havna";
 export type Hylle = "form" | "kloss" | "mal" | "vekt";
 
@@ -255,12 +255,19 @@ export interface Foto {
   svg: string;
 }
 
+export interface KveldsAvtale {
+  aktivitet: string;
+  start: number;
+  gjort: boolean;
+}
+
 export interface DagbokInnslag {
   dato: Dato;
   stjerne: boolean;
   bygget: string[];
   former: string[];
   klokker: number[];
+  avtaler?: KveldsAvtale[];
 }
 
 export type Fase = "ute" | "dor" | "handel" | "forklaring" | "aktivitet";
@@ -275,6 +282,8 @@ export interface AktivDag {
   forklaring: string | null;
   besokt: string[];
   forSent: string[];
+  /** Avtaler som har startet, og som fortsatt kan møtes frem til slutt. */
+  sent?: string[];
   handlet: boolean;
   dorLest: boolean;
   byggetIDag: string[];
