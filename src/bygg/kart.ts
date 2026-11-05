@@ -83,6 +83,7 @@ export function kanPlassere(by: ByTilstand, id: ByggId, x: number, y: number, un
       const cx = x + dx;
       const cy = y + dy;
       if (!innenfor(by, cx, cy)) return false;
+      if (!def.vann && erSti(cx, cy)) return false;
       if (opptatt(by, cx, cy, unntatt)) return false;
       if (erVann(cx, cy + 1) || erVann(cx, cy - 1) || erVann(cx + 1, cy) || erVann(cx - 1, cy)) motVann = true;
       if (omradeFor(cx, cy) === "havna") motHavn = true;
@@ -93,7 +94,20 @@ export function kanPlassere(by: ByTilstand, id: ByggId, x: number, y: number, un
   return true;
 }
 
-export function ledigeTomter(by: ByTilstand, id: ByggId): { x: number; y: number; areal: number }[] {
+const DALEN = { x0: 0, y0: 0, x1: 8, y1: 8 };
+
+export function utsnittForPunkt(x: number, y: number): { x0: number; y0: number; x1: number; y1: number } {
+  if (x >= 8 && y >= 8) return { x0: 8, y0: 8, x1: 12, y1: 12 };
+  if (x >= 8) return { x0: 8, y0: 0, x1: 12, y1: 8 };
+  if (y >= 8) return { x0: 0, y0: 8, x1: 8, y1: 12 };
+  return { ...DALEN };
+}
+
+function innenRamme(ramme: { x0: number; y0: number; x1: number; y1: number }, x: number, y: number, bredde: number, dybde: number): boolean {
+  return x >= ramme.x0 && y >= ramme.y0 && x + bredde <= ramme.x1 && y + dybde <= ramme.y1;
+}
+
+function alleTomter(by: ByTilstand, id: ByggId): { x: number; y: number; areal: number }[] {
   const def = byggDef(id);
   const funnet: { x: number; y: number; areal: number }[] = [];
   for (let y = 0; y < 12; y++) {
@@ -111,6 +125,40 @@ export function ledigeTomter(by: ByTilstand, id: ByggId): { x: number; y: number
     return Math.abs(a.x - hx) + Math.abs(a.y - hy) - (Math.abs(b.x - hx) + Math.abs(b.y - hy));
   });
   return funnet;
+}
+
+const REKKEFOLGE: ByggId[] = ["bronn", "gjerde", "vedskjul", "lekeplass", "hytte", "hus", "villa", "borg", "slott"];
+
+/** Neste bygg barnet skal jobbe med, samme rekkefølge som handlelisten. */
+export function nesteByggId(by: ByTilstand): ByggId | null {
+  const uferdig = by.bygg.find((bygg) => !bygg.ferdig && !bygg.uthus);
+  if (uferdig) return uferdig.bygg;
+  const kan = byggSomKanStartes(by);
+  return REKKEFOLGE.find((id) => kan.includes(id)) ?? kan[0] ?? null;
+}
+
+/** Bydelen som tegnes. Et uferdig bygg vinner. Ellers bydelen der neste bygg får plass. */
+export function kartUtsnitt(by: ByTilstand): { x0: number; y0: number; x1: number; y1: number } {
+  if (by.nivaa <= 2) return { ...DALEN };
+  const uferdig = by.bygg.find((bygg) => !bygg.ferdig && !bygg.uthus);
+  if (uferdig) return utsnittForPunkt(uferdig.x, uferdig.y);
+  const hjem = by.bygg.find((bygg) => byggDef(bygg.bygg).hjem && !bygg.uthus);
+  const hjemme = utsnittForPunkt(hjem?.x ?? 2, hjem?.y ?? 4);
+  const maal = nesteByggId(by);
+  if (!maal) return hjemme;
+  const def = byggDef(maal);
+  const tomter = alleTomter(by, maal);
+  const passer = (ramme: { x0: number; y0: number; x1: number; y1: number }, tomt: { x: number; y: number }) =>
+    innenRamme(ramme, tomt.x, tomt.y, def.bredde, def.dybde);
+  if (tomter.some((tomt) => passer(hjemme, tomt))) return hjemme;
+  const forste = tomter.find((tomt) => passer(utsnittForPunkt(tomt.x, tomt.y), tomt));
+  return forste ? utsnittForPunkt(forste.x, forste.y) : hjemme;
+}
+
+export function ledigeTomter(by: ByTilstand, id: ByggId): { x: number; y: number; areal: number }[] {
+  const def = byggDef(id);
+  const ramme = kartUtsnitt(by);
+  return alleTomter(by, id).filter((tomt) => innenRamme(ramme, tomt.x, tomt.y, def.bredde, def.dybde));
 }
 
 function vedSidenAv(by: ByTilstand, x: number, y: number, w: number, d: number): boolean {
@@ -158,7 +206,7 @@ export function kravOppfylt(by: ByTilstand): boolean {
   if (by.nivaa === 1) return antall >= 3;
   if (by.nivaa === 2) return antall >= 6 && by.monsterFullfort >= 1;
   if (by.nivaa === 3) return antall >= 10 && by.besteKlokkePaRad >= 3;
-  if (by.nivaa === 4) return antall >= 15 && by.kjente3d.length >= 4;
+  if (by.nivaa === 4) return antall >= 15 && by.kjente3d.length >= 3;
   if (by.nivaa === 5) return antall >= 21 && by.dagerAlleAvtaler >= 5;
   return by.bygg.some((bygg) => bygg.bygg === "slott" && bygg.ferdig);
 }

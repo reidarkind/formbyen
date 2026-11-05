@@ -63,6 +63,27 @@ describe("dagsplan", () => {
     expect(forste.avtaler.some((avtale) => avtale.start % 60 === 15)).toBe(false);
   });
 
+  it("gir tid til å gå mellom to steder", () => {
+    let dato = STARTDATO;
+    for (let i = 0; i < 40; i++) {
+      const plan = lagDagsplan(grunn({ fro: 700 + i, dato, nivaa: "forste" }));
+      const opptatt = plan.avtaler.filter((avtale) => avtale.varighet > 0);
+      for (let j = 1; j < opptatt.length; j++) {
+        const fra = opptatt[j - 1];
+        const til = opptatt[j];
+        if (!fra || !til || fra.sted === til.sted) continue;
+        expect(til.start - (fra.start + fra.varighet)).toBeGreaterThanOrEqual(30);
+      }
+      if (plan.sfo !== null) {
+        for (const avtale of opptatt) {
+          const overlap = avtale.start < plan.sfo + 60 && plan.sfo < avtale.start + avtale.varighet;
+          expect(overlap).toBe(false);
+        }
+      }
+      dato = nesteDato(dato);
+    }
+  });
+
   it("legger ikke en aktivitet i den første timen etter skolen", () => {
     let dato = STARTDATO;
     for (let i = 0; i < 30; i++) {

@@ -20,6 +20,8 @@ export interface OppgaveKontekst {
   unngaNokkel: string;
   type?: OppgaveType;
   hylle?: Hylle;
+  maalForm?: string;
+  kjente3d?: string[];
   tidsromPa?: boolean;
   ukedagNavn?: (dag: string) => string;
 }
@@ -222,19 +224,19 @@ function lagLes(mal: Mal, ctx: OppgaveKontekst): Oppgave {
     const feil = ctx.tilfeldig() < 0.5;
     oppgave.maalKlokke = feil ? normaliser(tid + 60) : tid;
     oppgave.fasit = feil ? "nei" : "ja";
-    oppgave.valg = [
+    oppgave.valg = stokk(ctx.tilfeldig, [
       { id: "ja", ja: true, tekst: si(ctx.spraak, "Ja", "Ja") },
       { id: "nei", ja: false, tekst: si(ctx.spraak, "Nei", "Nei") },
-    ];
+    ]);
     oppgave.nokkel = `klokke:${oppgave.maalKlokke}`;
   }
   if (v === 5) {
     const annen = normaliser(tid + 60);
-    oppgave.valg = [
+    oppgave.valg = stokk(ctx.tilfeldig, [
       { id: "a", klokke: tid, tekst: `${tidTilOrd(tid, ctx.spraak)} · ${tidTilDigital24(tid)}` },
       { id: "b", klokke: annen, tekst: `${tidTilOrd(annen, ctx.spraak)} · ${tidTilDigital24(annen)}` },
       { id: "c", klokke: annen, tekst: `${tidTilOrd(tid, ctx.spraak)} · ${tidTilDigital24(annen)}` },
-    ];
+    ]);
     oppgave.fasit = "c";
     oppgave.maalKlokke = tid;
   }
@@ -271,9 +273,10 @@ function lagKoble(mal: Mal, ctx: OppgaveKontekst): Oppgave {
 function lagRekker(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const v = variant(mal.id);
   const naa = ctx.plan?.start ?? klokke(14, 0);
-  const frist = ctx.plan?.avtaler[0]?.start ?? klokke(16, 30);
+  const avtale = ctx.plan?.avtaler.find((rad) => rad.varighet > 0);
   const handling = v % 2 === 0 ? 30 : 15;
-  const rekker = normaliser(naa + handling) <= frist || (frist >= naa && naa + handling <= frist);
+  const frist = v % 3 === 0 ? normaliser(naa - 30) : (avtale?.start ?? klokke(16, 30));
+  const rekker = naa + handling <= frist;
   const oppgave = basis(
     mal,
     ctx,
@@ -286,10 +289,10 @@ function lagRekker(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   );
   oppgave.maalKlokke = naa;
   oppgave.tall = frist;
-  oppgave.valg = [
+  oppgave.valg = stokk(ctx.tilfeldig, [
     { id: "ja", ja: true, tekst: si(ctx.spraak, "Ja", "Ja") },
     { id: "nei", ja: false, tekst: si(ctx.spraak, "Nei", "Nei") },
-  ];
+  ]);
   return oppgave;
 }
 
@@ -335,10 +338,10 @@ function lagApen(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   );
   oppgave.maalKlokke = naa;
   oppgave.tall = butikk.apner;
-  oppgave.valg = [
+  oppgave.valg = stokk(ctx.tilfeldig, [
     { id: "ja", ja: true, tekst: si(ctx.spraak, "Åpen", "Open") },
     { id: "nei", ja: false, tekst: si(ctx.spraak, "Stengt", "Stengt") },
-  ];
+  ]);
   return oppgave;
 }
 
@@ -421,48 +424,47 @@ function formerFor(ctx: OppgaveKontekst): Form2dId[] {
   return [...ALLE_2D];
 }
 
-function lagFinn(mal: Mal, ctx: OppgaveKontekst): Oppgave {
-  if (mal.ferdighet === "former-3d") {
-    const former = ["kule", "kube", "sylinder", "kjegle"] as const;
-    const start = variant(mal.id) % former.length;
-    const rotert = [...former.slice(start), ...former.slice(0, start)];
-    const maal = rotert.find((id) => `form3d:${id}` !== ctx.unngaNokkel) ?? rotert[0] ?? "kule";
-    const andre = former.filter((id) => id !== maal);
-    const figurer = [
-      { id: "f0", form: maal },
-      { id: "f1", form: maal },
-      { id: "f2", form: andre[0] ?? "kube" },
-      { id: "f3", form: andre[1] ?? "kjegle" },
-    ];
-    const vare = maal === "kule" ? "kloss-kule" : maal === "kube" ? "kloss-kube" : maal === "sylinder" ? "kloss-sylinder" : "kloss-kjegle";
-    const oppgave = basis(mal, ctx, si(ctx.spraak, "Trykk på alle som har samme form.", "Trykk på alle som har same form."), `form3d:${maal}`, "f0,f1", vare);
-    oppgave.form = maal;
-    oppgave.form3d = maal;
-    oppgave.varer = figurer;
-    return oppgave;
+function blandLike(ctx: OppgaveKontekst, maal: string, andre: readonly string[]): { figurer: { id: string; form: string }[]; fasit: string } {
+  const riktige = 2 + Math.floor(ctx.tilfeldig() * 2);
+  const valgt = Array.from({ length: riktige }, () => maal);
+  const distrakt = stokk(ctx.tilfeldig, andre.filter((form) => form !== maal));
+  while (valgt.length < 5 && distrakt.length > 0) {
+    const neste = distrakt.shift();
+    if (neste && !valgt.includes(neste)) valgt.push(neste);
   }
-  const liste = formerFor(ctx);
-  const maal = formUnnga(ctx, liste) as Form2dId;
-  const figurer: { id: string; form: string }[] = [];
-  for (let i = 0; i < 4; i++) {
-    const form = i < 2 ? maal : (formUnnga(ctx, liste.filter((kandidat) => kandidat !== maal)) as Form2dId);
-    figurer.push({ id: `f${i}`, form });
-  }
+  const figurer = stokk(ctx.tilfeldig, valgt).map((form, indeks) => ({ id: `f${indeks}`, form }));
   const fasit = figurer
     .filter((figur) => figur.form === maal)
     .map((figur) => figur.id)
     .sort()
     .join(",");
-  const oppgave = basis(
-    mal,
-    ctx,
-    si(ctx.spraak, "Trykk på alle som har samme form.", "Trykk på alle som har same form."),
-    `form:${maal}`,
-    fasit,
-    vareForForm(maal),
-  );
+  return { figurer, fasit };
+}
+
+function lagFinn(mal: Mal, ctx: OppgaveKontekst): Oppgave {
+  const prompt = (navn: string) => si(ctx.spraak, "Finn alle som er {navn}, som denne.", "Finn alle som er {navn}, som denne.", { navn });
+  if (mal.ferdighet === "former-3d") {
+    const former = ["kule", "kube", "sylinder", "kjegle"] as const;
+    const start = variant(mal.id) % former.length;
+    const rotert = [...former.slice(start), ...former.slice(0, start)];
+    const onsket = ctx.maalForm && (former as readonly string[]).includes(ctx.maalForm) ? ctx.maalForm : undefined;
+    const ukjent = former.find((id) => !(ctx.kjente3d ?? []).includes(id));
+    const maal = onsket ?? ukjent ?? rotert.find((id) => `form3d:${id}` !== ctx.unngaNokkel) ?? rotert[0] ?? "kule";
+    const blandet = blandLike(ctx, maal, former.filter((id) => id !== maal));
+    const vare = maal === "kule" ? "kloss-kule" : maal === "kube" ? "kloss-kube" : maal === "sylinder" ? "kloss-sylinder" : "kloss-kjegle";
+    const oppgave = basis(mal, ctx, prompt(formNavn(maal, ctx.spraak)), `form3d:${maal}`, blandet.fasit, vare);
+    oppgave.form = maal;
+    oppgave.form3d = maal;
+    oppgave.varer = blandet.figurer;
+    return oppgave;
+  }
+  const liste = formerFor(ctx);
+  const onsket = ctx.maalForm && liste.includes(ctx.maalForm as Form2dId) ? (ctx.maalForm as Form2dId) : undefined;
+  const maal = onsket ?? (formUnnga(ctx, liste) as Form2dId);
+  const blandet = blandLike(ctx, maal, liste.filter((id) => id !== maal));
+  const oppgave = basis(mal, ctx, prompt(formNavn(maal, ctx.spraak)), `form:${maal}`, blandet.fasit, vareForForm(maal));
   oppgave.form = maal;
-  oppgave.varer = figurer;
+  oppgave.varer = blandet.figurer;
   return oppgave;
 }
 
@@ -486,7 +488,7 @@ function lagOdd(mal: Mal, ctx: OppgaveKontekst): Oppgave {
     vareForForm(ut),
   );
   oppgave.varer = figurer;
-  oppgave.valg = figurer.map((figur) => ({ id: figur.id, form: figur.form }));
+  oppgave.valg = stokk(ctx.tilfeldig, figurer.map((figur) => ({ id: figur.id, form: figur.form })));
   oppgave.form = ut;
   return oppgave;
 }
@@ -723,7 +725,10 @@ function lagAreal(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   );
   oppgave.ruter = tomter;
   oppgave.tall = trenger;
-  oppgave.valg = tomter.map((tomt) => ({ id: tomt.id, tall: tomt.ruter, tekst: `${tomt.id} · ${tomt.ruter}` }));
+  oppgave.valg = stokk(
+    ctx.tilfeldig,
+    tomter.map((tomt) => ({ id: tomt.id, tall: tomt.ruter, tekst: tomt.id })),
+  );
   return oppgave;
 }
 
@@ -808,8 +813,14 @@ export function likOppgave(oppgave: Oppgave, ctx: OppgaveKontekst): Oppgave {
   return lagFraMal(mal, ctx);
 }
 
+const ROM = ["kule", "kube", "sylinder", "kjegle"];
+
 export function trekkOppgave(ctx: OppgaveKontekst): Oppgave {
-  const alle = MALER.filter((mal) => malPassert(mal, ctx) && (ctx.type ? mal.type === ctx.type : true));
+  let alle = MALER.filter((mal) => malPassert(mal, ctx) && (ctx.type ? mal.type === ctx.type : true));
+  if (ctx.maalForm && ROM.includes(ctx.maalForm)) {
+    const tredimensjonal = alle.filter((mal) => mal.ferdighet === "former-3d");
+    if (tredimensjonal.length) alle = tredimensjonal;
+  }
   const ledige = alle.filter((mal) => !ctx.unngaMal.includes(mal.id));
   const pool = ledige.length ? ledige : alle;
   const vilHaOverraskelse = ctx.tilfeldig() < 1 / 8;

@@ -1,6 +1,6 @@
 import type { ByggId, ByTilstand } from "../typer";
 import { byggDef } from "../bygg/katalog";
-import { celle, ruteNavn } from "../bygg/kart";
+import { celle, kartUtsnitt, ruteNavn } from "../bygg/kart";
 import { LANDMERKE } from "../bygg/landemerker";
 import { FARGER, himmelFarge } from "./stil";
 import { himmel } from "../tid/tid";
@@ -20,17 +20,6 @@ export interface KartValg {
   puls?: string | null;
   aktivitet?: string | null;
   tomter?: { x: number; y: number }[];
-}
-
-function utsnitt(by: ByTilstand): { x0: number; y0: number; x1: number; y1: number } {
-  if (by.nivaa <= 2) return { x0: 0, y0: 0, x1: 8, y1: 8 };
-  const hjem = by.bygg.find((bygg) => byggDef(bygg.bygg).hjem && !bygg.uthus);
-  const x = hjem?.x ?? 0;
-  const y = hjem?.y ?? 0;
-  if (x >= 8 && y >= 8) return { x0: 8, y0: 8, x1: 12, y1: 12 };
-  if (x >= 8) return { x0: 8, y0: 0, x1: 12, y1: 8 };
-  if (y >= 8) return { x0: 0, y0: 8, x1: 8, y1: 12 };
-  return { x0: 0, y0: 0, x1: 8, y1: 8 };
 }
 
 function innen(x: number, y: number, ramme: { x0: number; y0: number; x1: number; y1: number }): boolean {
@@ -69,6 +58,15 @@ function landemerke(sted: string): string {
     <path d="M6 30 Q14 24 22 30 T38 30" fill="none" stroke="${FARGER.kontur}" stroke-width="2"/>`;
 }
 
+function figurVedSiden(by: ByTilstand, x: number, y: number, ramme: { x0: number; y0: number; x1: number; y1: number }): { x: number; y: number } {
+  const bygg = by.bygg.find((rad) => rad.x === x && rad.y === y);
+  if (!bygg) return { x, y };
+  const def = byggDef(bygg.bygg);
+  if (innen(x + def.bredde, y, ramme)) return { x: x + def.bredde, y };
+  if (innen(x, y + def.dybde, ramme)) return { x, y: y + def.dybde };
+  return { x, y };
+}
+
 function figurGruppe(x: number, y: number, fra: { x: number; y: number } | null, ramme: { x0: number; y0: number }): string {
   const tx = (x - ramme.x0) * RUTE + 2;
   const ty = (y - ramme.y0) * RUTE;
@@ -84,7 +82,7 @@ function figurGruppe(x: number, y: number, fra: { x: number; y: number } | null,
 }
 
 export function tegnKart(by: ByTilstand, tid: number, leggetid = 20 * 60, valg: KartValg = {}): string {
-  const ramme = utsnitt(by);
+  const ramme = kartUtsnitt(by);
   const kolonner = ramme.x1 - ramme.x0;
   const rader = ramme.y1 - ramme.y0;
   const kveld = tid >= 18 * 60 && tid < leggetid;
@@ -116,27 +114,50 @@ export function tegnKart(by: ByTilstand, tid: number, leggetid = 20 * 60, valg: 
   }
   for (const plassert of by.bygg) {
     if (!innen(plassert.x, plassert.y, ramme)) continue;
-    const px = (plassert.x - ramme.x0) * RUTE + 2;
-    const py = (plassert.y - ramme.y0) * RUTE + 1;
+    const def = byggDef(plassert.bygg);
+    const px = (plassert.x - ramme.x0) * RUTE + 4;
+    const py = (plassert.y - ramme.y0) * RUTE + 4;
+    const sx = (def.bredde * RUTE - 8) / 100;
+    const sy = (def.dybde * RUTE - 8) / 120;
     const merke = merkeFor(by, plassert.instans, valg);
     const klasse = valg.puls === merke ? "puls" : "";
-    const synlig = plassert.ferdig ? byggDef(plassert.bygg).oppskrift.length : plassert.steg;
+    const synlig = plassert.ferdig ? def.oppskrift.length : plassert.steg;
     flater.push(
-      `<g data-sted="${merke}" class="${klasse}" transform="translate(${px} ${py}) scale(0.4)">${fasadeInnhold(plassert.bygg, synlig, kveld && plassert.ferdig)}</g>`,
+      `<g data-sted="${merke}" class="${klasse}" transform="translate(${px} ${py}) scale(${sx} ${sy})">${fasadeInnhold(plassert.bygg, synlig, kveld && plassert.ferdig)}</g>`,
     );
   }
   if (valg.figur && innen(valg.figur.x, valg.figur.y, ramme)) {
-    flater.push(figurGruppe(valg.figur.x, valg.figur.y, valg.garFra && innen(valg.garFra.x, valg.garFra.y, ramme) ? valg.garFra : null, ramme));
+    const vedSiden = figurVedSiden(by, valg.figur.x, valg.figur.y, ramme);
+    flater.push(figurGruppe(vedSiden.x, vedSiden.y, valg.garFra && innen(valg.garFra.x, valg.garFra.y, ramme) ? valg.garFra : null, ramme));
   }
   const bokstaver = Array.from({ length: kolonner }, (_, i) => `<span>${ruteNavn(ramme.x0 + i, 0).slice(0, 1)}</span>`).join("");
   const tall = Array.from({ length: rader }, (_, i) => `<span>${ramme.y0 + i + 1}</span>`).join("");
   const himmelF = himmelFarge(himmel(tid));
+  const skilt = skiltHtml(by, ramme, kolonner, rader);
   const svg = svgDokument(
     `<rect width="100%" height="100%" fill="${himmelF}"/>${flater.join("")}`,
     kolonner * RUTE,
     rader * RUTE,
   );
-  return `<div class="brett"><div class="akse-x"><span></span>${bokstaver}</div><div class="akse-rad"><div class="akse-y">${tall}</div>${svg}</div></div>`;
+  return `<div class="brett"><div class="akse-x"><span></span>${bokstaver}</div><div class="akse-rad"><div class="akse-y">${tall}</div><div class="kartflate">${svg}${skilt}</div></div></div>`;
+}
+
+function skiltHtml(by: ByTilstand, ramme: { x0: number; y0: number; x1: number; y1: number }, kolonner: number, rader: number): string {
+  const navn: Record<string, string> = { butikk: "Butikk", torg: "Torget", tannlege: "Tannlege", svommehall: "Svømmehall" };
+  const merker: string[] = [];
+  for (const [sted, punkt] of Object.entries(LANDMERKE)) {
+    if (!innen(punkt.x, punkt.y, ramme)) continue;
+    const left = ((punkt.x - ramme.x0 + 0.5) / kolonner) * 100;
+    const top = ((punkt.y - ramme.y0 + 0.92) / rader) * 100;
+    merker.push(`<span class="skilt" style="left:${left.toFixed(1)}%;top:${top.toFixed(1)}%">${navn[sted] ?? sted}</span>`);
+  }
+  const hjem = by.bygg.find((bygg) => byggDef(bygg.bygg).hjem && !bygg.uthus);
+  if (hjem && innen(hjem.x, hjem.y, ramme)) {
+    const left = ((hjem.x - ramme.x0 + 0.5) / kolonner) * 100;
+    const top = ((hjem.y - ramme.y0 + 0.92) / rader) * 100;
+    merker.push(`<span class="skilt" style="left:${left.toFixed(1)}%;top:${top.toFixed(1)}%">Hjem</span>`);
+  }
+  return merker.join("");
 }
 
 export function tegnFremdrift(id: ByggId, steg: number, _maks: number): string {

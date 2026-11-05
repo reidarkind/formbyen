@@ -1,18 +1,14 @@
 import type { ByggId, Lagret, VareId } from "../typer";
-import { byggSomKanStartes } from "./kart";
+import { nesteByggId } from "./kart";
 import { byggDef } from "./katalog";
-
-const REKKEFOLGE: ByggId[] = ["bronn", "gjerde", "vedskjul", "lekeplass", "hytte", "hus", "villa", "borg", "slott"];
 
 export function maalBygg(lagret: Lagret): { id: ByggId; steg: number } | null {
   const valgt = lagret.by.bygg.find((bygg) => bygg.instans === lagret.aktivDag?.valgtInstans && !bygg.ferdig);
   if (valgt) return { id: valgt.bygg, steg: valgt.steg };
-  const uferdig = lagret.by.bygg.find((bygg) => !bygg.ferdig && !bygg.uthus);
-  if (uferdig) return { id: uferdig.bygg, steg: uferdig.steg };
-  const kan = byggSomKanStartes(lagret.by);
-  const neste = REKKEFOLGE.find((id) => kan.includes(id)) ?? kan[0];
-  if (!neste) return null;
-  return { id: neste, steg: 0 };
+  const id = nesteByggId(lagret.by);
+  if (!id) return null;
+  const plassert = lagret.by.bygg.find((bygg) => bygg.bygg === id && !bygg.ferdig);
+  return { id, steg: plassert?.steg ?? 0 };
 }
 
 /** Delene som gjenstår når kurven er trukket fra oppskriften. */

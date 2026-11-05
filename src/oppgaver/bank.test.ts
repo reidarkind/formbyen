@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { froTilfeldig } from "../felles/tilfeldig";
 import { OPPGAVE_TYPER, type Oppgave } from "../typer";
 import { forklaring } from "./forklaring";
-import { trekkOppgave, trekkType, type OppgaveKontekst } from "./lag";
+import { lagFraMal, trekkOppgave, trekkType, type OppgaveKontekst } from "./lag";
 import { malerFor } from "./maler";
 import { sjekkSvar } from "./sjekk";
 
@@ -71,6 +71,23 @@ describe("oppgavebank", () => {
         expect(sjekkSvar(oppgave, "helt-feil")).toBe(false);
       }
     }
+  });
+
+  it("stokker plassen til riktig svar", () => {
+    const oddPlass = new Set<number>();
+    const arealPlass = new Set<number>();
+    for (let i = 0; i < 40; i++) {
+      const odd = trekkType("hvem-passer-ikke", ctx(200 + i * 17));
+      oddPlass.add(odd.valg.findIndex((valg) => valg.id === odd.fasit));
+      const areal = trekkType("areal", ctx(400 + i * 17));
+      arealPlass.add(areal.valg.findIndex((valg) => valg.id === areal.fasit));
+    }
+    const ja = malerFor("rekker-jeg").find((mal) => mal.id === "rekker-1");
+    const nei = malerFor("rekker-jeg").find((mal) => mal.id === "rekker-3");
+    expect(ja && lagFraMal(ja, ctx(1)).fasit).toBe("ja");
+    expect(nei && lagFraMal(nei, ctx(1)).fasit).toBe("nei");
+    expect(oddPlass.size).toBeGreaterThan(1);
+    expect(arealPlass.has(0)).toBe(true);
   });
 
   it("gir omtrent én overraskelse av åtte og forklarer halv-tre-fella", () => {

@@ -1,4 +1,4 @@
-import { maalBygg, manglendeDeler } from "../bygg/handleliste";
+import { manglendeDeler } from "../bygg/handleliste";
 import { ferdigeBygg, kanPlassere, nesteHjem, omraderForNivaa } from "../bygg/kart";
 import { byggDef } from "../bygg/katalog";
 import { lagDagsplan, nesteDato, utvidRytme } from "../dag/plan";
@@ -10,9 +10,9 @@ import { registrerSvar } from "../tilpasning/mestring";
 import { erApen, leggTil, tidTilDigital24, tidTilOrd } from "../tid/tid";
 import { visNavn } from "../dag/aktiviteter";
 import { tegnKart } from "../grafikk/bygg-svg";
-import { mal, navnBygg, navnVare } from "../tekst/ordbok";
+import { mal, navnVare } from "../tekst/ordbok";
 import { ukedagTekst } from "../tekst/spraak";
-import type { AktivDag, ByggId, Ferdighet, Hylle, Lagret, Nivaa, Oppgave, Spraak, StedId, VareId } from "../typer";
+import type { AktivDag, ByggId, Ferdighet, Hylle, Lagret, Nivaa, Oppgave, StedId, VareId } from "../typer";
 import { gangMinutter, ventMaalTid } from "./anbefaling";
 
 export type Handling =
@@ -166,6 +166,30 @@ export function hylleForNivaa(nivaa: Nivaa, indeks: number): Hylle {
   return hyller[indeks % hyller.length] ?? "form";
 }
 
+function tidssteg(lagret: Lagret): number {
+  if (lagret.innstillinger.nivaa === "forste") return 30;
+  if (lagret.innstillinger.nivaa === "andre") return 15;
+  return 5;
+}
+
+const ROMFORMER = ["kule", "kube", "sylinder", "kjegle"];
+
+function formForVare(vare: string): string | undefined {
+  if (vare.startsWith("kloss-")) return vare.slice("kloss-".length);
+  if (vare.startsWith("vindu-")) return vare.slice("vindu-".length);
+  if (vare.startsWith("tak")) return "trekant";
+  if (vare.startsWith("dor")) return "rektangel";
+  if (vare === "planke") return "rektangel";
+  return undefined;
+}
+
+function maalFormFor(lagret: Lagret, vare: string): string | undefined {
+  const egen = formForVare(vare);
+  if (!egen || !ROMFORMER.includes(egen)) return egen;
+  if (!lagret.by.kjente3d.includes(egen)) return egen;
+  return ROMFORMER.find((form) => !lagret.by.kjente3d.includes(form)) ?? egen;
+}
+
 function giVare(lagret: Lagret, vare: VareId, antall = 1): Lagret {
   const har = lagret.kurv[vare] ?? 0;
   return { ...lagret, kurv: { ...lagret.kurv, [vare]: har + antall }, mynter: lagret.mynter + 1 };
@@ -276,8 +300,9 @@ function gaa(lagret: Lagret, sted: StedId): { lagret: Lagret; melding: string | 
   const dag = lagret.aktivDag;
   if (!dag) return { lagret, melding: null };
   if (dag.sted === sted) return { lagret, melding: null };
-  const tid = leggTil(dag.tid, gangMinutter(dag.sted, sted));
-  let neste = merkTid({ ...lagret, aktivDag: { ...dag, sted, fase: "ute", ko: [], aktiv: 0, forklaring: null } }, tid);
+  const tid = leggTil(dag.tid, gangMinutter(dag.sted, sted, lagret.innstillinger.nivaa));
+  const fase = sted === "butikk" ? "handel" : "aktivitet";
+  let neste = merkTid({ ...lagret, aktivDag: { ...dag, sted, fase, ko: [], aktiv: 0, forklaring: null } }, tid);
   if (tid >= dag.plan.leggetid) return avslutt(neste);
   const tekst = neste.aktivDag?.melding ?? null;
   if (tekst && neste.aktivDag) neste = { ...neste, aktivDag: { ...neste.aktivDag, melding: null } };
@@ -318,12 +343,17 @@ function handle(lagret: Lagret): { lagret: Lagret; melding: string | null } {
   if (!vare) {
     return { lagret, melding: si(lagret, "Handlelisten er tom.", "Handlelista er tom.") };
   }
-  const romform = vare.startsWith("kloss") || lagret.fro % 3 === 0;
-  const klokke = !romform && lagret.fro % 2 === 1;
+  const kloss = vare.startsWith("kloss");
+  const monster = !kloss && lagret.by.monsterFullfort < 1 && lagret.fro % 2 === 0;
+  const manglerRom = ROMFORMER.find((form) => !lagret.by.kjente3d.includes(form));
+  const laerRom = Boolean(manglerRom) && !kloss && !monster && lagret.fro % 3 === 1;
+  const hylle = kloss ? "kloss" : monster || laerRom || lagret.fro % 3 === 0 ? undefined : hylleForNivaa(lagret.innstillinger.nivaa, lagret.fro);
   const trukket = trekkOppgave({
     ...kontekst(lagret),
-    hylle: romform ? "kloss" : undefined,
-    type: romform ? "finn-formen" : klokke ? "les-klokka" : "finn-formen",
+    hylle,
+    type: monster ? "monster" : laerRom ? "finn-formen" : undefined,
+    maalForm: laerRom && manglerRom ? manglerRom : maalFormFor(lagret, vare),
+    kjente3d: lagret.by.kjente3d,
   });
   const oppgave: Oppgave = { ...trukket, hvem: si(lagret, "ekspeditøren", "ekspeditøren"), vare };
   return {
@@ -350,15 +380,13 @@ function svar(lagret: Lagret, gitt: string): { lagret: Lagret; melding: string |
   const erAktivitet = dag.fase === "aktivitet" || oppgave.nokkel.startsWith("avtale:");
   if (erDor) {
     const dagEtter = neste.aktivDag ?? dag;
-    const medDor = { ...neste, mynter: neste.mynter + 1, aktivDag: { ...dagEtter, dorLest: true, fase: "ute" as const, ko: [], forklaring: null, feil: 0 } };
+    const medDor = { ...neste, mynter: neste.mynter + 1, aktivDag: { ...dagEtter, dorLest: true, fase: "handel" as const, ko: [], forklaring: null, feil: 0 } };
     return { lagret: medDor, melding: apningTekst(medDor) };
   }
-  let fikkEkstra = false;
+  let gittVare = oppgave.vare;
   if (!erAktivitet) {
-    const manglet = manglendeDeler(neste)[0];
-    const vare = manglet ?? oppgave.vare;
-    fikkEkstra = !manglet;
-    neste = noter(giVare(neste, vare), oppgave);
+    gittVare = manglendeDeler(neste)[0] ?? oppgave.vare;
+    neste = noter(giVare(neste, gittVare), oppgave);
   } else {
     neste = noter(neste, oppgave);
   }
@@ -368,11 +396,12 @@ function svar(lagret: Lagret, gitt: string): { lagret: Lagret; melding: string |
     const avtaleId = oppgave.nokkel.startsWith("avtale:") ? oppgave.nokkel.slice("avtale:".length) : "";
     const aktuell = dag.plan.avtaler.find((rad) => rad.id === avtaleId);
     const startTid = erAktivitet && aktuell ? Math.max(dag.tid, aktuell.start) : dag.tid;
-    const tid = leggTil(startTid, erAktivitet ? (aktuell?.varighet ?? 0) : 5);
+    const tid = leggTil(startTid, erAktivitet ? (aktuell?.varighet ?? 0) : tidssteg(neste));
+    const faseEtter = erAktivitet ? "aktivitet" : "handel";
     let etter = merkTid(
       {
         ...neste,
-        aktivDag: { ...dagEtter, tid: dag.tid, fase: "ute", ko: [], handlet: dag.handlet, forklaring: null, feil: 0 },
+        aktivDag: { ...dagEtter, tid: dag.tid, fase: faseEtter, ko: [], handlet: dag.handlet, forklaring: null, feil: 0 },
       },
       tid,
     );
@@ -394,41 +423,16 @@ function svar(lagret: Lagret, gitt: string): { lagret: Lagret; melding: string |
       };
     }
     if (tid >= dag.plan.leggetid) return avslutt(etter);
-    if (!erAktivitet && manglendeDeler(etter).length === 0) {
-      const maal = maalBygg(etter);
-      return {
-        lagret: etter,
-        melding: si(etter, "Da har du alt til {bygg}!", "Då har du alt til {bygg}!", {
-          bygg: maal ? byggISetning(maal.id, etter.innstillinger.spraak) : si(etter, "bygget", "bygget"),
-        }),
-      };
+    if (erAktivitet && aktuell) {
+      return { lagret: etter, melding: si(etter, "Riktig!", "Riktig!") };
     }
-    if (!erAktivitet && fikkEkstra) {
-      return {
-        lagret: etter,
-        melding: si(etter, "Du fikk {vare}.", "Du fekk {vare}.", { vare: navnVare(oppgave.vare, etter.innstillinger.spraak) }),
-      };
-    }
-    return { lagret: etter, melding: null };
+    const vareNavn = navnVare(gittVare, etter.innstillinger.spraak);
+    return { lagret: etter, melding: si(etter, "Riktig! Du får {vare}.", "Riktig! Du får {vare}.", { vare: vareNavn }) };
   }
   return {
     lagret: { ...neste, aktivDag: { ...dagEtter, aktiv, forklaring: null, feil: 0, fase: dag.fase === "forklaring" ? "handel" : dag.fase } },
     melding: null,
   };
-}
-
-function byggISetning(id: string, spraak: Spraak): string {
-  const ledd: Record<string, [string, string]> = {
-    bronn: ["brønnen", "brønnen"],
-    gjerde: ["gjerdet", "gjerdet"],
-    vedskjul: ["vedskjulet", "vedskjulet"],
-    hytte: ["hytta", "hytta"],
-    hus: ["huset", "huset"],
-    ronne: ["rønna", "rønna"],
-    slott: ["slottet", "slottet"],
-  };
-  const par = ledd[id] ?? ["bygget", "bygget"];
-  return navnBygg(id, spraak, par[0], par[1]);
 }
 
 function hoppOver(lagret: Lagret): { lagret: Lagret; melding: string | null } {
@@ -442,11 +446,8 @@ function hoppOver(lagret: Lagret): { lagret: Lagret; melding: string | null } {
   const aktiv = dag.aktiv + 1;
   if (aktiv >= dag.ko.length) {
     const erAvtale = oppgave.nokkel.startsWith("avtale:");
-    const vare = !erAvtale ? manglendeDeler(lagret)[0] : undefined;
-    const medVare = vare ? giVare(lagret, vare) : lagret;
-    const dagMed = medVare.aktivDag ?? dag;
-    const tid = leggTil(dag.tid, erAvtale ? 0 : 5);
-    const neste = merkTid({ ...medVare, aktivDag: { ...dagMed, fase: "ute", ko: [], forklaring: null, feil: 0 } }, tid);
+    const tid = leggTil(dag.tid, erAvtale ? 0 : tidssteg(lagret));
+    const neste = merkTid({ ...lagret, aktivDag: { ...dag, fase: erAvtale ? "aktivitet" : "handel", ko: [], forklaring: null, feil: 0 } }, tid);
     return { lagret: neste, melding: si(lagret, "Vi øver mer på den senere.", "Vi øver meir på den seinare.") };
   }
   return {
@@ -513,7 +514,7 @@ function steg(lagret: Lagret): { lagret: Lagret; melding: string | null } {
     ukerytme = utvidRytme(ukerytme, ferdigeBygg(by), lagret.fro);
     album = [...album, { nivaa, svg: tegnKart(by, dag.tid, dag.plan.leggetid) }];
   }
-  const tid = leggTil(dag.tid, 15);
+  const tid = leggTil(dag.tid, tidssteg(lagret) === 5 ? 15 : tidssteg(lagret));
   const byggetIDag = ferdig ? [...dag.byggetIDag, plassert.bygg] : dag.byggetIDag;
   let neste = merkTid({ ...uten, by, ukerytme, album, aktivDag: { ...dag, byggetIDag, sted: "byggeplass" } }, tid);
   if (tid >= dag.plan.leggetid) return avslutt(neste);

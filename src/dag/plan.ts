@@ -1,5 +1,6 @@
 import { froTilfeldig, heltall, trekk, type Tilfeldig } from "../felles/tilfeldig";
-import type { ByggId, Dagsplan, Dato, FastAvtale, Nivaa, Spraak, Ukedag, Avtale, Arstid } from "../typer";
+import { gangMinutter } from "../spill/anbefaling";
+import type { ByggId, Dagsplan, Dato, FastAvtale, Nivaa, Spraak, StedId, Ukedag, Avtale, Arstid } from "../typer";
 import { apneAktiviteter, SKOLEFAG, type Aktivitet } from "./aktiviteter";
 
 export const STARTDATO: Dato = { aar: 2026, maned: 8, dag: 17 };
@@ -77,6 +78,33 @@ function passerMinutt(verdi: number, lovlige: readonly number[]): boolean {
 function velgTid(tilfeldig: Tilfeldig, kandidater: number[], lovlige: readonly number[]): number {
   const bruk = kandidater.filter((verdi) => passerMinutt(verdi, lovlige));
   return trekk(tilfeldig, bruk.length ? bruk : kandidater.filter((verdi) => verdi % 30 === 0));
+}
+
+function somSted(sted: string): StedId {
+  if (
+    sted === "butikk" ||
+    sted === "torg" ||
+    sted === "tannlege" ||
+    sted === "svommehall" ||
+    sted === "byggeplass" ||
+    sted === "aktivitet" ||
+    sted === "hjemme"
+  ) {
+    return sted;
+  }
+  return "aktivitet";
+}
+
+function rekkerGange(avtaler: Avtale[], nivaa: Nivaa): boolean {
+  const opptatt = avtaler.filter((avtale) => avtale.varighet > 0).sort((a, b) => a.start - b.start);
+  for (let i = 1; i < opptatt.length; i++) {
+    const fra = opptatt[i - 1];
+    const til = opptatt[i];
+    if (!fra || !til || fra.sted === til.sted) continue;
+    const gap = til.start - (fra.start + fra.varighet);
+    if (gap < gangMinutter(somSted(fra.sted), somSted(til.sted), nivaa)) return false;
+  }
+  return true;
 }
 
 function overlapper(avtaler: Avtale[]): boolean {
@@ -223,7 +251,7 @@ function byggPlan(inn: PlanInn, tilfeldig: Tilfeldig): Dagsplan | null {
     vakt += 1;
     const meta = trekk(tilfeldig, hjemmevalg.length ? hjemmevalg : apne);
     const varighet = meta.varighet;
-    const tidlig = sfo ?? start + 90;
+    const tidlig = sfo !== null ? sfo + 60 : start + 90;
     const sen = leggetid - varighet;
     if (sen <= tidlig) break;
     const tider = Array.from({ length: Math.floor((sen - tidlig) / 15) + 1 }, (_, i) => tidlig + i * 15).filter(
@@ -237,7 +265,7 @@ function byggPlan(inn: PlanInn, tilfeldig: Tilfeldig): Dagsplan | null {
   }
 
   if (tilfeldig() < 0.4 && avtaler.length < 4) {
-    const tidlig = sfo ?? start + 90;
+    const tidlig = sfo !== null ? sfo + 60 : start + 90;
     const startTid = velgTid(tilfeldig, [tidlig, tidlig + 30, tidlig + 60], lovlige);
     const id = tilfeldig() < 0.5 ? "nabo" : "levering";
     if (startTid + 30 < leggetid) {
@@ -257,6 +285,13 @@ function byggPlan(inn: PlanInn, tilfeldig: Tilfeldig): Dagsplan | null {
   const antall = avtaler.filter((avtale) => avtale.varighet > 0).length;
   if (antall < 2 || antall > 4) return null;
   if (overlapper(avtaler)) return null;
+  if (!rekkerGange(avtaler, inn.nivaa)) return null;
+  if (
+    sfo !== null &&
+    avtaler.some((avtale) => avtale.varighet > 0 && avtale.start < sfo + 60 && sfo < avtale.start + avtale.varighet)
+  ) {
+    return null;
+  }
 
   const utkast = {
     dato: inn.dato,
@@ -303,7 +338,7 @@ function avtaleFra(meta: Aktivitet, start: number): Avtale {
 
 export function lagDagsplan(inn: PlanInn): Dagsplan {
   const tilfeldig = froTilfeldig(inn.fro);
-  for (let forsok = 0; forsok < 50; forsok++) {
+  for (let forsok = 0; forsok < 80; forsok++) {
     const plan = byggPlan(inn, tilfeldig);
     if (plan) return plan;
   }

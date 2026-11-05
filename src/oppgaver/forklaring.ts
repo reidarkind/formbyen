@@ -12,6 +12,12 @@ export function forklaring(oppgave: Oppgave, svar: string, spraak: Spraak): stri
   if (oppgave.maalKlokke !== undefined && svarKlokke !== undefined && erHalvFelle(oppgave.maalKlokke, svarKlokke)) {
     return halvveisTekst(oppgave.maalKlokke, spraak);
   }
+  if (oppgave.type === "apningstider") {
+    const apen = oppgave.fasit === "ja";
+    return apen
+      ? si(spraak, "Butikken er åpen. Den stenger {tid}.", "Butikken er open. Den stengjer {tid}.", { tid: tidTilDigital24(oppgave.tall ?? 0) })
+      : si(spraak, "Butikken er stengt. Den åpner {tid}.", "Butikken er stengt. Den opnar {tid}.", { tid: tidTilDigital24(oppgave.maalKlokke ?? 0) });
+  }
   if (oppgave.maalKlokke !== undefined && oppgave.type !== "rekker-jeg" && oppgave.type !== "hvor-lenge") {
     return si(spraak, "Klokka er {ord}. Digitalt er det {digital}.", "Klokka er {ord}. Digitalt er det {digital}.", {
       ord: tidTilOrd(oppgave.maalKlokke, spraak),
