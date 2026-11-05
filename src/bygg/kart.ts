@@ -130,7 +130,12 @@ function alleTomter(by: ByTilstand, id: ByggId): { x: number; y: number; areal: 
 const REKKEFOLGE: ByggId[] = ["bronn", "gjerde", "vedskjul", "lekeplass", "hytte", "hus", "villa", "borg", "slott"];
 
 /** Neste bygg barnet skal jobbe med, samme rekkefølge som handlelisten. */
+export function byenErFerdig(by: ByTilstand): boolean {
+  return by.bygg.some((bygg) => bygg.bygg === "slott" && bygg.ferdig);
+}
+
 export function nesteByggId(by: ByTilstand): ByggId | null {
+  if (byenErFerdig(by)) return null;
   const uferdig = by.bygg.find((bygg) => !bygg.ferdig && !bygg.uthus);
   if (uferdig) return uferdig.bygg;
   const kan = byggSomKanStartes(by);

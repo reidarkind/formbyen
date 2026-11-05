@@ -26,6 +26,8 @@ export function sporsmalViser(oppgave: Oppgave): Representasjon {
 export function svarViser(oppgave: Oppgave): Representasjon {
   if (oppgave.type === "still-klokka") return "analog";
   const tekst = oppgave.valg.map((valg) => valg.tekst ?? "").join(" ");
+  if (oppgave.prompt.startsWith("Hvilken klokke") || oppgave.prompt.startsWith("Kva for klokke")) return "analog";
+  if (tekst.includes("·")) return "ord";
   if (oppgave.type === "les-klokka" || oppgave.type === "koble") return erDigital(tekst) ? "digital" : "ord";
   const harKlokke = oppgave.valg.some((valg) => valg.klokke !== undefined);
   if (harKlokke && !erDigital(tekst)) return "analog";

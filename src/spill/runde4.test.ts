@@ -147,12 +147,23 @@ describe("runde 4", () => {
     "når slottet på %s",
     (nivaa) => {
       let lagret = { ...standardLagret(), dato: STARTDATO, innstillinger: { ...standardLagret().innstillinger, nivaa } };
+      let brukte = 0;
       for (let dag = 0; dag < 80 && !lagret.by.bygg.some((bygg) => bygg.bygg === "slott" && bygg.ferdig); dag++) {
+        brukte++;
         lagret = utfor(lagret, { slag: "start" }).lagret;
         lagret = spillDagen(lagret);
         if (lagret.aktivDag) lagret = utfor(lagret, { slag: "avslutt" }).lagret;
       }
       const ferdige = lagret.by.bygg.filter((bygg) => bygg.ferdig).length;
+      if (nivaa === "forste") {
+        expect(brukte).toBeGreaterThanOrEqual(25);
+        expect(brukte).toBeLessThanOrEqual(35);
+      }
+      if (nivaa === "andre") {
+        expect(brukte).toBeGreaterThanOrEqual(20);
+        expect(brukte).toBeLessThanOrEqual(25);
+      }
+      if (nivaa === "utfordrende") expect(brukte).toBeGreaterThan(35);
       expect(
         lagret.by.bygg.some((bygg) => bygg.bygg === "slott" && bygg.ferdig),
         `nivå ${lagret.by.nivaa}, ferdige ${ferdige}, mønster ${lagret.by.monsterFullfort}, klokke ${lagret.by.besteKlokkePaRad}, former ${lagret.by.kjente3d.join(",")}, stjerner ${lagret.by.dagerAlleAvtaler}, kan ${byggSomKanStartes(lagret.by).join(",")}`,
@@ -198,6 +209,10 @@ function spillDagen(lagret: Lagret): Lagret {
     }
     if (valg.slag === "legg") {
       lagret = utfor(lagret, { slag: "avslutt" }).lagret;
+      continue;
+    }
+    if (valg.slag === "klokke") {
+      lagret = utfor(lagret, { slag: "klokke" }).lagret;
       continue;
     }
     break;

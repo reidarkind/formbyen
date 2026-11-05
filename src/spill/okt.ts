@@ -1,10 +1,10 @@
-import { manglendeDeler } from "../bygg/handleliste";
+import { maalBygg, manglendeDeler } from "../bygg/handleliste";
 import { ferdigeBygg, kanPlassere, nesteHjem, omraderForNivaa } from "../bygg/kart";
 import { byggDef } from "../bygg/katalog";
 import { lagDagsplan, nesteDato, utvidRytme } from "../dag/plan";
 import { froTilfeldig, stokk } from "../felles/tilfeldig";
 import { forklaring } from "../oppgaver/forklaring";
-import { likOppgave, trekkOppgave, type OppgaveKontekst } from "../oppgaver/lag";
+import { trekkOppgave, type OppgaveKontekst } from "../oppgaver/lag";
 import { sjekkSvar } from "../oppgaver/sjekk";
 import { registrerSvar } from "../tilpasning/mestring";
 import { erApen, leggTil, tidTilDigital24, tidTilOrd } from "../tid/tid";
@@ -31,6 +31,7 @@ export type Handling =
   | { slag: "flytt"; instans: string; x: number; y: number }
   | { slag: "mot" }
   | { slag: "spis" }
+  | { slag: "klokke" }
   | { slag: "avslutt" };
 
 const KLOKKE: Ferdighet[] = ["hele-timer", "halv", "kvart", "fem-minutter", "digital-24", "tidsrom", "periode", "ukedager", "maneder"];
@@ -94,12 +95,14 @@ function merkTid(lagret: Lagret, tid: number): Lagret {
       forSent.push(avtale.id);
       const indeks = sent.indexOf(avtale.id);
       if (indeks >= 0) sent.splice(indeks, 1);
-      if (avtale.slag === "middag" && dag.sted === "hjemme") {
-        melding = si(lagret, "Vi spiste klokka {a}, nå er den {b}.", "Vi åt klokka {a}, no er den {b}.", {
-          a: tidTilOrd(avtale.start, lagret.innstillinger.spraak),
-          b: tidTilOrd(tid, lagret.innstillinger.spraak),
-        });
-      }
+      const tapt = visNavn(avtale.aktivitet ?? avtale.navn, lagret.innstillinger.spraak);
+      melding =
+        avtale.slag === "middag" && dag.sted === "hjemme"
+          ? si(lagret, "Vi spiste klokka {a}, nå er den {b}.", "Vi åt klokka {a}, no er den {b}.", {
+              a: tidTilOrd(avtale.start, lagret.innstillinger.spraak),
+              b: tidTilOrd(tid, lagret.innstillinger.spraak),
+            })
+          : si(lagret, "Vi rakk ikke {navn} i dag.", "Vi rakk ikkje {navn} i dag.", { navn: tapt });
       continue;
     }
     const der =
@@ -123,10 +126,11 @@ export function apningTekst(lagret: Lagret): string {
     return si(lagret, "Stengt nå. Åpner kl. {tid}", "Stengt no. Opnar kl. {tid}", { tid: tidTilDigital24(butikk.stengtTil) });
   }
   if (dag.tid >= butikk.stenger) {
+    const apning = dag.plan.nesteApning !== undefined ? tidTilDigital24(dag.plan.nesteApning) : tidTilDigital24(14 * 60);
     if (dag.plan.ukedag === "lordag" || dag.plan.ukedag === "sondag") {
-      return si(lagret, "Stengt nå. Åpner mandag kl. 14:00.", "Stengt no. Opnar måndag kl. 14:00.");
+      return si(lagret, "Stengt nå. Åpner mandag kl. {tid}.", "Stengt no. Opnar måndag kl. {tid}.", { tid: apning });
     }
-    return si(lagret, "Stengt nå. Åpner i morgen kl. 14:00.", "Stengt no. Opnar i morgon kl. 14:00.");
+    return si(lagret, "Stengt nå. Åpner i morgen kl. {tid}.", "Stengt no. Opnar i morgon kl. {tid}.", { tid: apning });
   }
   return si(lagret, "Butikken er åpen.", "Butikken er open.");
 }
@@ -208,7 +212,7 @@ function noter(lagret: Lagret, oppgave: Oppgave): Lagret {
   const dag = lagret.aktivDag;
   if (!dag) return lagret;
   const former = [...dag.formerIDag];
-  if (oppgave.form && !former.includes(oppgave.form)) former.push(oppgave.form);
+  if (oppgave.form && !/^\d+$/.test(oppgave.form) && !former.includes(oppgave.form)) former.push(oppgave.form);
   if (oppgave.form3d && !former.includes(oppgave.form3d)) former.push(oppgave.form3d);
   const klokker = [...dag.klokkerIDag];
   if (oppgave.maalKlokke !== undefined && !klokker.includes(oppgave.maalKlokke)) klokker.push(oppgave.maalKlokke);
@@ -240,12 +244,15 @@ export function utfor(lagret: Lagret, handling: Handling): { lagret: Lagret; mel
   if (handling.slag === "flytt") return flytt(lagret, handling.instans, handling.x, handling.y);
   if (handling.slag === "mot") return mot(lagret);
   if (handling.slag === "spis") return spis(lagret);
+  if (handling.slag === "klokke") {
+    return { lagret: { ...lagret, aktivDag: { ...lagret.aktivDag, klokkeLekt: true } }, melding: null };
+  }
   return avslutt(lagret);
 }
 
 function startDag(lagret: Lagret): { lagret: Lagret; melding: string | null } {
   if (lagret.aktivDag) return { lagret, melding: null };
-  const plan = lagDagsplan({
+  const inn = {
     fro: lagret.fro,
     dato: lagret.dato,
     nivaa: lagret.innstillinger.nivaa,
@@ -255,7 +262,12 @@ function startDag(lagret: Lagret): { lagret: Lagret; melding: string | null } {
     fasteAvtaler: lagret.innstillinger.fasteAvtaler,
     siste: lagret.sistePlaner,
     bursdager: lagret.bursdager,
-  });
+  };
+  const plan = lagDagsplan(inn);
+  const iMorgen = lagDagsplan({ ...inn, fro: lagret.fro + 1, dato: nesteDato(lagret.dato) });
+  plan.nesteApning = iMorgen.butikk.stengtHele
+    ? lagDagsplan({ ...inn, fro: lagret.fro + 2, dato: nesteDato(nesteDato(lagret.dato)) }).butikk.apner
+    : iMorgen.butikk.apner;
   const dag: AktivDag = {
     plan,
     tid: startTidFor(plan, lagret.innstillinger.nivaa),
@@ -294,8 +306,8 @@ function gaa(lagret: Lagret, sted: StedId): { lagret: Lagret; melding: string | 
   if (dag.sted === sted) return { lagret, melding: null };
   const tid = leggTil(dag.tid, gangMinutter(dag.sted, sted, lagret.innstillinger.nivaa));
   const fase = sted === "butikk" ? "handel" : "aktivitet";
-  let neste = merkTid({ ...lagret, aktivDag: { ...dag, sted, fase, ko: [], aktiv: 0, forklaring: null } }, tid);
-  if (tid >= dag.plan.leggetid) return avslutt(neste);
+  const fremme = Math.min(tid, dag.plan.leggetid);
+  let neste = merkTid({ ...lagret, aktivDag: { ...dag, sted, fase, ko: [], aktiv: 0, forklaring: null } }, fremme);
   const tekst = neste.aktivDag?.melding ?? null;
   if (tekst && neste.aktivDag) neste = { ...neste, aktivDag: { ...neste.aktivDag, melding: null } };
   return { lagret: neste, melding: tekst };
@@ -312,7 +324,7 @@ function vent(lagret: Lagret, tid?: number): { lagret: Lagret; melding: string |
     const apner = dag.tid < butikk.apner ? butikk.apner : butikk.stengtTil !== undefined && dag.tid < butikk.stengtTil ? butikk.stengtTil : null;
     if (apner !== null && apner > dag.tid && (nesteTid === dag.tid || apner < nesteTid)) nesteTid = apner;
   }
-  if (nesteTid >= dag.plan.leggetid) return avslutt(merkTid(lagret, dag.plan.leggetid));
+  if (nesteTid > dag.plan.leggetid) nesteTid = dag.plan.leggetid;
   if (nesteTid === dag.tid) return { lagret, melding: null };
   const neste = merkTid(lagret, nesteTid);
   const tekst = neste.aktivDag?.melding ?? null;
@@ -343,14 +355,19 @@ function handle(lagret: Lagret): { lagret: Lagret; melding: string | null } {
     return { lagret, melding: si(lagret, "Handlelisten er tom.", "Handlelista er tom.") };
   }
   const kloss = vare.startsWith("kloss");
-  const monster = !kloss && lagret.by.monsterFullfort < 1 && lagret.fro % 2 === 0;
+  const nivaaBygg = maalBygg(lagret);
+  const kreverKlokke = nivaaBygg !== null && byggDef(nivaaBygg.id).nivaa >= 3;
+  const klokkeTyper = ["les-klokka", "still-klokka", "koble", "hvor-lenge", "rekker-jeg", "apningstider"] as const;
+  const vilKlokke = kreverKlokke || lagret.fro % 5 < 2;
+  const monster = !kreverKlokke && !kloss && lagret.by.monsterFullfort < 1 && lagret.fro % 2 === 0;
   const manglerRom = ROMFORMER.find((form) => !lagret.by.kjente3d.includes(form));
-  const laerRom = Boolean(manglerRom) && !kloss && !monster && lagret.fro % 3 === 1;
-  const hylle = kloss ? "kloss" : monster || laerRom || lagret.fro % 3 === 0 ? undefined : hylleForNivaa(lagret.innstillinger.nivaa, lagret.fro);
+  const laerRom = !vilKlokke && Boolean(manglerRom) && !kloss && !monster && lagret.fro % 3 === 1;
+  const hylle =
+    monster || laerRom || vilKlokke || lagret.fro % 3 === 0 ? undefined : kloss ? "kloss" : hylleForNivaa(lagret.innstillinger.nivaa, lagret.fro);
   const trukket = trekkOppgave({
     ...kontekst(lagret),
     hylle,
-    type: monster ? "monster" : laerRom ? "finn-formen" : undefined,
+    type: vilKlokke ? klokkeTyper[lagret.fro % klokkeTyper.length] : monster ? "monster" : laerRom ? "finn-formen" : undefined,
     maalForm: laerRom && manglerRom ? manglerRom : maalFormFor(lagret, vare),
     kjente3d: lagret.by.kjente3d,
   });
@@ -370,7 +387,7 @@ function svar(lagret: Lagret, gitt: string): { lagret: Lagret; melding: string |
   let neste = erDor ? lagret : oppdaterMestring(lagret, oppgave, riktig);
   if (!riktig) {
     const feil = (dag.feil ?? 0) + 1;
-    const tekst = forklaring(oppgave, gitt, lagret.innstillinger.spraak);
+    const tekst = forklaring(oppgave, gitt, lagret.innstillinger.spraak, feil);
     return {
       lagret: { ...neste, aktivDag: { ...dag, forklaring: tekst, fase: "forklaring", feil, melding: null } },
       melding: null,
@@ -386,6 +403,10 @@ function svar(lagret: Lagret, gitt: string): { lagret: Lagret; melding: string |
   if (!erAktivitet) {
     gittVare = manglendeDeler(neste)[0] ?? oppgave.vare;
     neste = noter(giVare(neste, gittVare), oppgave);
+    const maal = maalBygg(neste);
+    if (maal && byggDef(maal.id).nivaa >= 3 && neste.aktivDag) {
+      neste = { ...neste, aktivDag: { ...neste.aktivDag, kjopIDag: (neste.aktivDag.kjopIDag ?? 0) + 1 } };
+    }
   } else {
     neste = noter(neste, oppgave);
   }
@@ -394,8 +415,8 @@ function svar(lagret: Lagret, gitt: string): { lagret: Lagret; melding: string |
   if (aktiv >= dag.ko.length) {
     const avtaleId = oppgave.nokkel.startsWith("avtale:") ? oppgave.nokkel.slice("avtale:".length) : "";
     const aktuell = dag.plan.avtaler.find((rad) => rad.id === avtaleId);
-    const startTid = erAktivitet && aktuell ? Math.max(dag.tid, aktuell.start) : dag.tid;
-    const tid = erAktivitet ? leggTil(startTid, aktuell?.varighet ?? 0) : dag.tid;
+    const sluttAvtale = erAktivitet && aktuell ? aktuell.start + aktuell.varighet : dag.tid;
+    const tid = Math.min(sluttAvtale, dag.plan.leggetid);
     const faseEtter = erAktivitet ? "aktivitet" : "handel";
     let etter = merkTid(
       {
@@ -405,7 +426,7 @@ function svar(lagret: Lagret, gitt: string): { lagret: Lagret; melding: string |
       tid,
     );
     if (erAktivitet && aktuell && etter.aktivDag) {
-      const rakk = dag.tid <= aktuell.start + aktuell.varighet;
+      const rakk = dag.tid < aktuell.start + aktuell.varighet;
       const sent = (etter.aktivDag.sent ?? []).filter((rad) => rad !== aktuell.id);
       etter = {
         ...etter,
@@ -414,11 +435,11 @@ function svar(lagret: Lagret, gitt: string): { lagret: Lagret; melding: string |
           besokt: rakk ? [...etter.aktivDag.besokt, aktuell.id] : etter.aktivDag.besokt,
           forSent: rakk ? etter.aktivDag.forSent.filter((rad) => rad !== aktuell.id) : etter.aktivDag.forSent,
           sent,
+          sted: aktuell.aktivitet === "lillesoster" ? "hjemme" : etter.aktivDag.sted,
           melding: null,
         },
       };
     }
-    if (tid >= dag.plan.leggetid) return avslutt(etter);
     if (erAktivitet && aktuell) {
       return { lagret: etter, melding: si(etter, "Riktig!", "Riktig!") };
     }
@@ -457,19 +478,15 @@ function fortsett(lagret: Lagret): { lagret: Lagret; melding: string | null } {
   const oppgave = aktivOppgave(lagret);
   if (!dag || !oppgave) return { lagret, melding: null };
   if ((dag.feil ?? 0) >= 2) return hoppOver(lagret);
-  if (oppgave.nokkel.startsWith("avtale:") || dag.fase === "aktivitet") {
-    const ko = dag.ko.map((rad, indeks) => (indeks === dag.aktiv ? { ...rad, valg: [...rad.valg].reverse() } : rad));
-    return { lagret: { ...lagret, aktivDag: { ...dag, ko, forklaring: null, fase: "aktivitet" } }, melding: null };
-  }
-  if (oppgave.type === "apningstider") {
-    return { lagret: { ...lagret, aktivDag: { ...dag, forklaring: null, fase: "dor" } }, melding: null };
-  }
-  const ny = likOppgave(oppgave, kontekst(lagret));
-  const ko = dag.ko.map((rad, indeks) => (indeks === dag.aktiv ? ny : rad));
-  return {
-    lagret: huskOppgave({ ...lagret, aktivDag: { ...dag, ko, forklaring: null, fase: "handel" } }, ny),
-    melding: null,
+  const bland = froTilfeldig(lagret.fro + (dag.feil ?? 1) * 17 + dag.tid);
+  const omstokket: Oppgave = {
+    ...oppgave,
+    valg: stokk(bland, oppgave.valg),
+    varer: oppgave.varer ? stokk(bland, oppgave.varer) : oppgave.varer,
   };
+  const fase = dag.fase === "forklaring" ? (oppgave.type === "apningstider" ? "dor" : oppgave.nokkel.startsWith("avtale:") ? "aktivitet" : "handel") : dag.fase;
+  const ko = dag.ko.map((rad, indeks) => (indeks === dag.aktiv ? omstokket : rad));
+  return { lagret: { ...lagret, aktivDag: { ...dag, ko, forklaring: null, fase } }, melding: null };
 }
 
 function velgBygg(lagret: Lagret, bygg: ByggId, x: number, y: number): { lagret: Lagret; melding: string | null } {
@@ -510,10 +527,9 @@ function steg(lagret: Lagret): { lagret: Lagret; melding: string | null } {
     ukerytme = utvidRytme(ukerytme, ferdigeBygg(by), lagret.fro);
     album = [...album, { nivaa, svg: tegnKart(by, dag.tid, dag.plan.leggetid) }];
   }
-  const tid = dag.tid;
+  const tid = Math.min(dag.tid, dag.plan.leggetid);
   const byggetIDag = ferdig ? [...dag.byggetIDag, plassert.bygg] : dag.byggetIDag;
   let neste = merkTid({ ...uten, by, ukerytme, album, aktivDag: { ...dag, byggetIDag, sted: "byggeplass" } }, tid);
-  if (tid >= dag.plan.leggetid) return avslutt(neste);
   return { lagret: neste, melding: ferdig ? si(neste, "Bygget er ferdig!", "Bygget er ferdig!") : null };
 }
 
@@ -575,10 +591,9 @@ function spis(lagret: Lagret): { lagret: Lagret; melding: string | null } {
   if (dag.tid < middag.start - 15 || dag.tid > middag.start + middag.varighet) {
     return { lagret, melding: si(lagret, "Middagen er over.", "Middagen er over.") };
   }
-  const tid = leggTil(dag.tid, 30);
+  const tid = Math.min(middag.start + middag.varighet, dag.plan.leggetid);
   const med = { ...lagret, aktivDag: { ...dag, besokt: [...dag.besokt, middag.id] } };
   const neste = merkTid(med, tid);
-  if (tid >= dag.plan.leggetid) return avslutt(neste);
   return { lagret: neste, melding: si(lagret, "Vi spiser.", "Vi et.") };
 }
 
@@ -589,7 +604,7 @@ function mot(lagret: Lagret): { lagret: Lagret; melding: string | null } {
   if (!avtale || avtale.slag === "middag") return { lagret, melding: si(lagret, "Det er ingen avtale nå.", "Det er inga avtale no.") };
   const ferdig = avtale.start + avtale.varighet;
   const spraak = lagret.innstillinger.spraak;
-  const valg = stokk(froTilfeldig(lagret.fro + dag.tid), [
+  const valg = stokk(froTilfeldig(lagret.fro * 17 + dag.tid), [
     { id: "rett", klokke: ferdig, tekst: tidTilOrd(ferdig, spraak) },
     { id: "tidlig", klokke: avtale.start, tekst: tidTilOrd(avtale.start, spraak) },
     { id: "sent", klokke: leggTil(ferdig, 60), tekst: tidTilOrd(leggTil(ferdig, 60), spraak) },
@@ -639,6 +654,7 @@ function avslutt(lagret: Lagret): { lagret: Lagret; melding: string | null } {
               aktivitet: avtale.aktivitet ?? avtale.navn,
               start: avtale.start,
               gjort: dag.besokt.includes(avtale.id),
+              ikke: !dag.besokt.includes(avtale.id) && dag.tid < avtale.start,
             })),
         },
       ],

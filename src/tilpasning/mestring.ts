@@ -136,8 +136,14 @@ export function tillatteMinutter(
   nivaa: Nivaa,
   mestring: Partial<Record<Ferdighet, FerdighetsTilstand>>,
 ): number[] {
-  const fem = ferdighetApent("fem-minutter", nivaa, mestring) && (nivaa === "utfordrende" || nivaa === "blandet" || hentFerdighet(mestring, "fem-minutter").trinn >= 1 || hentFerdighet(mestring, "kvart").riktige >= 6);
-  if (fem) return [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
+  if (nivaa === "utfordrende") return [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
+  if (nivaa === "andre") {
+    const kvartAndre = ferdighetApent("kvart", nivaa, mestring);
+    if (kvartAndre) return [0, 15, 30, 45];
+    const halvAndre = ferdighetApent("halv", nivaa, mestring);
+    if (halvAndre) return [0, 30];
+    return [0];
+  }
   const kvart = ferdighetApent("kvart", nivaa, mestring);
   if (kvart) return [0, 15, 30, 45];
   const halv = ferdighetApent("halv", nivaa, mestring);

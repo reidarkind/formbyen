@@ -24,6 +24,7 @@ export interface OppgaveKontekst {
   kjente3d?: string[];
   tidsromPa?: boolean;
   ukedagNavn?: (dag: string) => string;
+  blandetValgt?: boolean;
 }
 
 const HYLLE: Record<Hylle, OppgaveType[]> = {
@@ -104,10 +105,14 @@ function tidUnnga(ctx: OppgaveKontekst, lovlige: number[]): number {
 }
 
 function klokkeValg(riktig: number, tilfeldig: Tilfeldig, som: "ord" | "digital", spraak: Spraak): { valg: Valg[]; fasit: string } {
-  const kandidater = [60, -60, 30, -30, 5, -5]
-    .map((delta) => normaliser(riktig + delta))
+  const time = Math.floor(riktig / 60) % 12;
+  const minutt = riktig % 60;
+  const byttet = normaliser((minutt === 0 ? 12 : Math.round(minutt / 5)) * 60 + (time % 12) * 5);
+  const kandidater = [riktig + 60, riktig - 60, riktig + 30, riktig - 30, riktig + 15, riktig - 15, byttet]
+    .map((verdi) => normaliser(verdi))
     .filter((verdi, indeks, liste) => verdi !== riktig && liste.indexOf(verdi) === indeks);
-  const tider = stokk(tilfeldig, [riktig, ...kandidater.slice(0, 2)]);
+  const feil = stokk(tilfeldig, kandidater).slice(0, 2);
+  const tider = stokk(tilfeldig, [riktig, ...feil]);
   const valg = tider.map((tid) => ({
     id: `k${tid}`,
     klokke: tid,
@@ -117,10 +122,10 @@ function klokkeValg(riktig: number, tilfeldig: Tilfeldig, som: "ord" | "digital"
 }
 
 function tallValg(riktig: number, tilfeldig: Tilfeldig): { valg: Valg[]; fasit: string } {
-  const andre = [riktig + 1, Math.max(0, riktig - 1), riktig + 2].filter(
-    (tall, indeks, liste) => tall !== riktig && liste.indexOf(tall) === indeks,
+  const andre = [riktig + 2, riktig + 3, Math.max(0, riktig - 2)].filter(
+    (tall, indeks, liste) => tall !== riktig && tall >= 0 && liste.indexOf(tall) === indeks,
   );
-  while (andre.length < 2) andre.push(riktig + andre.length + 3);
+  while (andre.length < 2) andre.push(riktig + andre.length + 4);
   const tallene = stokk(tilfeldig, [riktig, andre[0] ?? 0, andre[1] ?? 1]);
   return {
     valg: tallene.map((tall) => ({ id: `t${tall}`, tall, tekst: String(tall) })),
@@ -177,7 +182,7 @@ function lagStill(mal: Mal, ctx: OppgaveKontekst): Oppgave {
     ["Vis {ord}. Den er halvveis til {neste}.", "Vis {ord}. Den er halvveis til {neste}."],
     ["Vis {ord}.", "Vis {ord}."],
     ["Vis {ord}.", "Vis {ord}."],
-    ["Skriv tiden digitalt: {digital}.", "Skriv tida digitalt: {digital}."],
+    ["Still klokka til {ord}.", "Still klokka til {ord}."],
     ["{hvem} sier {ord}. Still klokka.", "{hvem} seier {ord}. Still klokka."],
     ["Tårnuret har stoppet. Still det til {ord}.", "Tårnuret har stoppa. Still det til {ord}."],
     ["Lappen sier {ord}. Still klokka.", "Lappen seier {ord}. Still klokka."],
@@ -201,7 +206,7 @@ function lagLes(mal: Mal, ctx: OppgaveKontekst): Oppgave {
     ["Hvilken klokke viser tiden?", "Kva for klokke viser tida?"],
     ["Stemmer det at klokka er {ord}?", "Stemmer det at klokka er {ord}?"],
     ["Hvilken merkelapp er feil?", "Kva for merkelapp er feil?"],
-    ["Hva er {ord}?", "Kva er {ord}?"],
+    ["Hva viser klokka?", "Kva viser klokka?"],
     ["Hva er klokka om en halvtime?", "Kva er klokka om ein halvtime?"],
     ["Hva er klokka om en time?", "Kva er klokka om ein time?"],
     ["Når stenger butikken?", "Når stengjer butikken?"],
@@ -248,6 +253,20 @@ function lagLes(mal: Mal, ctx: OppgaveKontekst): Oppgave {
     oppgave.maalKlokke = tid;
     oppgave.nokkel = `klokke:${senere}`;
   }
+  if (v === 9 || v === 10) {
+    const fraPlan = v === 9 ? ctx.plan?.butikk.stenger : ctx.plan?.avtaler.find((rad) => rad.slag === "middag")?.start;
+    const planTid = fraPlan ?? (v === 9 ? klokke(17, 0) : klokke(16, 30));
+    const pakkePlan = klokkeValg(planTid, ctx.tilfeldig, "ord", ctx.spraak);
+    oppgave.valg = pakkePlan.valg;
+    oppgave.fasit = pakkePlan.fasit;
+    oppgave.maalKlokke = planTid;
+    oppgave.nokkel = `klokke:${planTid}`;
+    oppgave.prompt = si(
+      ctx.spraak,
+      v === 9 ? "Når stenger butikken?" : "Når er middagen?",
+      v === 9 ? "Når stengjer butikken?" : "Når er middagen?",
+    );
+  }
   return oppgave;
 }
 
@@ -280,8 +299,9 @@ function lagRekker(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const oppgave = basis(
     mal,
     ctx,
-    si(ctx.spraak, "Du bruker {min} minutter. Rekker du fristen?", "Du brukar {min} minutt. Rekk du fristen?", {
+    si(ctx.spraak, "Du bruker {min} minutter. Rekker du det før kl. {tid}?", "Du brukar {min} minutt. Rekk du det før kl. {tid}?", {
       min: String(handling),
+      tid: tidTilDigital24(frist),
     }),
     `klokke:${frist}`,
     rekker ? "ja" : "nei",
@@ -331,7 +351,9 @@ function lagApen(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const oppgave = basis(
     mal,
     ctx,
-    si(ctx.spraak, "Er butikken åpen nå?", "Er butikken open no?"),
+    si(ctx.spraak, "Er butikken åpen nå? Klokka er {naa}.", "Er butikken open no? Klokka er {naa}.", {
+      naa: tidTilOrd(naa, ctx.spraak),
+    }),
     `klokke:${naa}`,
     apen ? "ja" : "nei",
     "dor-rektangel",
@@ -354,7 +376,9 @@ function lagUke(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const oppgave = basis(
     mal,
     ctx,
-    si(ctx.spraak, "Hvilken dag er avtalen?", "Kva for dag er avtala?"),
+    si(ctx.spraak, "Hvilken dag er {navn}?", "Kva for dag er {navn}?", {
+      navn: ctx.plan?.avtaler.find((rad) => rad.varighet > 0)?.navn ?? "avtalen",
+    }),
     `dag:${riktig}`,
     riktig,
     "pynt-flagg",
@@ -386,7 +410,7 @@ function lagKalender(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   if (justert.ferdighet === "maneder" && v !== 4) {
     const indeks = (ctx.plan?.dato.maned ?? 8) - 1;
     const riktig = maneder[indeks] ?? "august";
-    const andre = [maneder[(indeks + 1) % 12] ?? "mai", maneder[(indeks + 3) % 12] ?? "juni"];
+    const andre = [maneder[(indeks + 11) % 12] ?? "mai", maneder[(indeks + 2) % 12] ?? "juni"];
     const valg = stokk(ctx.tilfeldig, [riktig, ...andre]).map((navn) => ({ id: navn, tekst: manedTekst(ctx.spraak, navn) }));
     const oppgave = basis(
       mal,
@@ -445,7 +469,8 @@ function lagFinn(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const prompt = (id: string) => {
     const navn = formFlertall(id, ctx.spraak);
     const setning = si(ctx.spraak, "Finn alle {navn}.", "Finn alle {navn}.", { navn });
-    if (id === "kule" && !(ctx.kjente3d ?? []).includes("kule")) {
+    const forsok = ctx.mestring["former-3d"]?.forsok ?? 0;
+    if (id === "kule" && forsok < 2 && !(ctx.kjente3d ?? []).includes("kule")) {
       return `${setning} ${si(ctx.spraak, "Kule = rund som en ball.", "Kule = rund som ein ball.")}`;
     }
     return setning;
@@ -489,13 +514,13 @@ function lagOdd(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const oppgave = basis(
     mal,
     ctx,
-    si(ctx.spraak, "Hvem passer ikke inn?", "Kven passar ikkje inn?"),
+    si(ctx.spraak, "Hvilken form er ulik de andre?", "Kva for form er ulik dei andre?"),
     `form:${ut}`,
     "d",
     vareForForm(ut),
   );
   oppgave.varer = figurer;
-  oppgave.valg = stokk(ctx.tilfeldig, figurer.map((figur) => ({ id: figur.id, form: figur.form })));
+  oppgave.valg = stokk(ctx.tilfeldig, figurer.map((figur) => ({ id: figur.id, form: figur.form, tekst: formNavn(figur.form, ctx.spraak) })));
   oppgave.form = ut;
   return oppgave;
 }
@@ -617,8 +642,9 @@ function lagMonster(mal: Mal, ctx: OppgaveKontekst): Oppgave {
 function lagStempel(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const id = formUnnga(ctx, ALLE_3D) as Form3dId;
   const stempel = form3d(id).stempel;
-  const andre = ALLE_2D.filter((form) => form !== stempel).slice(0, 2);
-  const valg = stokk(ctx.tilfeldig, [stempel, ...andre]).map((form) => ({ id: form, form }));
+  const flater = id === "pyramide" ? (["kvadrat", "trekant"] as Form2dId[]) : [stempel];
+  const andre = ALLE_2D.filter((form) => !flater.includes(form)).slice(0, 2);
+  const valg = stokk(ctx.tilfeldig, [...new Set([...flater, ...andre])]).map((form) => ({ id: form, form, tekst: formNavn(form, ctx.spraak) }));
   const oppgave = basis(
     mal,
     ctx,
@@ -723,8 +749,9 @@ function lagAreal(mal: Mal, ctx: OppgaveKontekst): Oppgave {
     ctx,
     si(
       ctx.spraak,
-      storst ? "Hvilken tomt er størst?" : "Hvilken tomt har akkurat nok plass?",
-      storst ? "Kva for tomt er størst?" : "Kva for tomt har akkurat nok plass?",
+      storst ? "Hvilken tomt er størst?" : "Du trenger {n} ruter. Hvilken tomt har akkurat nok plass?",
+      storst ? "Kva for tomt er størst?" : "Du treng {n} ruter. Kva for tomt har akkurat nok plass?",
+      { n: String(trenger) },
     ),
     `areal:${trenger}`,
     storst ? "C3" : "B2",
@@ -768,8 +795,9 @@ function lagVekt(mal: Mal, ctx: OppgaveKontekst): Oppgave {
     ctx,
     si(
       ctx.spraak,
-      "Hvor mange småsekker veier like mye som den store?",
-      "Kor mange småsekkar veg like mykje som den store?",
+      "Den store veier {stor} kilo. Hver liten veier {liten} kilo. Hvor mange småsekker veier like mye?",
+      "Den store veg {stor} kilo. Kvar liten veg {liten} kilo. Kor mange småsekkar veg like mykje?",
+      { stor: String(stor), liten: String(liten) },
     ),
     `vekt:${stor}`,
     pakke.fasit,
@@ -823,6 +851,11 @@ export function likOppgave(oppgave: Oppgave, ctx: OppgaveKontekst): Oppgave {
 const ROM = ["kule", "kube", "sylinder", "kjegle"];
 
 export function trekkOppgave(ctx: OppgaveKontekst): Oppgave {
+  if (ctx.nivaa === "blandet" && !ctx.blandetValgt) {
+    const rull = ctx.tilfeldig();
+    const nivaa = rull < 1 / 3 ? "forste" : rull < 2 / 3 ? "andre" : "utfordrende";
+    return trekkOppgave({ ...ctx, nivaa, blandetValgt: true });
+  }
   let alle = MALER.filter((mal) => malPassert(mal, ctx) && (ctx.type ? mal.type === ctx.type : true));
   if (ctx.maalForm && ROM.includes(ctx.maalForm)) {
     const tredimensjonal = alle.filter((mal) => mal.ferdighet === "former-3d");
@@ -830,6 +863,7 @@ export function trekkOppgave(ctx: OppgaveKontekst): Oppgave {
   }
   const ledige = alle.filter((mal) => !ctx.unngaMal.includes(mal.id));
   const pool = ledige.length ? ledige : alle;
+  if (pool.length === 0) return trekkOppgave({ ...ctx, type: undefined, hylle: undefined, maalForm: undefined, blandetValgt: true });
   const vilHaOverraskelse = ctx.tilfeldig() < 1 / 8;
   const overraskelse = pool.filter((mal) => mal.overraskelse);
   const vanlige = pool.filter((mal) => !mal.overraskelse);

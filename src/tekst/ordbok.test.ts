@@ -68,7 +68,8 @@ describe("oppgaver på landets klokkespråk", () => {
       unngaMal: [],
       unngaNokkel: "",
     });
-    expect(oppgave.prompt).toBe("O que é duas e meia?");
+    expect(oppgave.prompt).toBe("O que mostra o relógio?");
+    expect(oppgave.prompt.toLowerCase()).not.toContain("duas e meia");
     expect(oppgave.valg.every((valg) => !valg.tekst.toLowerCase().includes("halv"))).toBe(true);
   });
 

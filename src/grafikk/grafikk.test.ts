@@ -6,7 +6,7 @@ import { kvadratPunkter, regulær, retteVinkler, sideLengder } from "./geometri"
 import { tegnBygg, tegnKart } from "./bygg-svg";
 import { urskive, viserPunkter, viserRetning } from "./klokke";
 import { erIPalett } from "./stil";
-import { fargerI, harForbudt } from "./svg";
+import { fargerI, harForbudt, svgDokument } from "./svg";
 import { timeviserVinkel, minuttviserVinkel } from "../tid/tid";
 import { standardLagret } from "../lagring/lagring";
 
@@ -17,6 +17,17 @@ function sjekksum(tekst: string): string {
 }
 
 describe("grafikk", () => {
+  it("gir hver svg bredde og høyde", () => {
+    const ikon = svgDokument("<circle/>", 24, 24, 0, 0, "ikon-m");
+    expect(ikon).toContain('width="24"');
+    expect(ikon).toContain('height="24"');
+    expect(ikon).toContain('class="ikon-m"');
+    for (const kort of galleriKort()) {
+      expect(kort.svg, kort.tittel).toMatch(/<svg\b[^>]*\swidth="\d+"/);
+      expect(kort.svg, kort.tittel).toMatch(/<svg\b[^>]*\sheight="\d+"/);
+    }
+  });
+
   it("holder seg til paletten og har verken gradient, filter eller tekst", () => {
     for (const kort of galleriKort()) {
       expect(harForbudt(kort.svg), kort.tittel).toBe(false);
@@ -59,7 +70,7 @@ describe("grafikk", () => {
     const referanser = galleriKort().filter((kort) => kort.referanse);
     const samlet = referanser.map((kort) => `${kort.tittel}:${sjekksum(kort.svg)}`).join("|");
     expect(samlet).toBe(
-      "Rønne:ade5f9aa|Byggmester:54a99c9d|Urskive:b0c00b54|Ikon:dea35705",
+      "Rønne:dcc82c11|Byggmester:876f2de4|Urskive:fb53b72d|Ikon:8ebcac2c",
     );
     expect(tegnKart(standardLagret().by, 12 * 60).includes("svg")).toBe(true);
   });

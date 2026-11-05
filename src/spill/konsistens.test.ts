@@ -63,18 +63,27 @@ function sjekkSteg(lagret: Lagret, steg: NesteSteg): string | null {
       return "venter på butikken etter stengetid";
     }
   }
-  if (steg.handling.slag === "gaa" && steg.handling.sted === "butikk") {
+  if (steg.handling.slag === "gaa" && steg.handling.sted === "butikk" && dag.dorLest) {
     const ankomst = dag.tid + gangMinutter(dag.sted, "butikk", nivaa);
     if (!erApen(ankomst, dag.plan.butikk)) return `butikken er stengt ved ankomst ${ankomst}`;
   }
-  if (steg.handling.slag === "handle" && !erApen(dag.tid, dag.plan.butikk)) return "handler når butikken er stengt";
+  if (steg.handling.slag === "handle" && dag.dorLest && !erApen(dag.tid, dag.plan.butikk)) return "handler når butikken er stengt";
+  if (steg.handling.slag === "vent") {
+    const klokke = steg.knapp.match(/\d{2}:\d{2}/)?.[0];
+    if (klokke && !steg.grunn.includes(klokke) && !steg.grunn.toLowerCase().includes("venter her")) {
+      return `tiden ${klokke} står på knappen, men ikke i teksten: ${steg.grunn}`;
+    }
+  }
   if (steg.handling.slag === "mot") {
     const avtale = avtaleHer(lagret);
     if (!avtale) return "mot uten avtale";
     const knapp = aktivitetKnapp(avtale.aktivitet ?? avtale.navn, lagret.innstillinger.spraak);
     if (steg.knapp !== knapp) return `knapp ${steg.knapp} er ikke ${knapp}`;
-    const navn = visNavn(avtale.aktivitet ?? avtale.navn, lagret.innstillinger.spraak);
-    if (!steg.grunn.includes(navn)) return `teksten nevner ikke ${navn}`;
+    const navn = visNavn(avtale.aktivitet ?? avtale.navn, lagret.innstillinger.spraak).toLowerCase();
+    const grunn = steg.grunn.toLowerCase();
+    const deler = navn.split(" ").filter((del) => del.length > 3);
+    const nevnt = deler.some((del) => grunn.includes(del.slice(0, Math.min(6, del.length))));
+    if (deler.length > 0 && !nevnt) return `teksten nevner ikke ${navn}`;
   }
   return null;
 }
@@ -90,6 +99,7 @@ function gjorAnbefalt(lagret: Lagret, steg: NesteSteg): Lagret {
   if (valg.slag === "vent") return utfor(lagret, { slag: "vent", tid: valg.tid }).lagret;
   if (valg.slag === "bygg") return byggEtt(lagret, valg.bygg, valg.instans);
   if (valg.slag === "handle" || valg.slag === "mot" || valg.slag === "spis") return utfor(lagret, { slag: valg.slag }).lagret;
+  if (valg.slag === "klokke") return utfor(lagret, { slag: "klokke" }).lagret;
   if (valg.slag === "legg" || valg.slag === "se") return utfor(lagret, { slag: "avslutt" }).lagret;
   return lagret;
 }
@@ -97,11 +107,18 @@ function gjorAnbefalt(lagret: Lagret, steg: NesteSteg): Lagret {
 function gjorTilfeldig(lagret: Lagret, steg: number): Lagret {
   const dag = lagret.aktivDag;
   if (!dag) return lagret;
-  const steder: StedId[] = ["hjemme", "butikk", "torg", "tannlege", "svommehall", "barnehage"];
-  const sted = steder[steg % steder.length] ?? "hjemme";
-  if (steg % 5 === 0) return utfor(lagret, { slag: "avslutt" }).lagret;
+  if (dag.sted === "hjemme" && dag.tid >= dag.plan.leggetid - 15) return utfor(lagret, { slag: "avslutt" }).lagret;
+  const steder: StedId[] = ["hjemme", "butikk", "torg", "barnehage", "tannlege", "svommehall"];
+  const lovlige = steder.filter((sted) => dag.tid + gangMinutter(dag.sted, sted, lagret.innstillinger.nivaa) < dag.plan.leggetid);
+  const sted = lovlige[steg % Math.max(1, lovlige.length)] ?? "hjemme";
   if (dag.sted === "butikk" && steg % 2 === 0) return utfor(lagret, { slag: "handle" }).lagret;
-  if (sted === dag.sted) return utfor(lagret, { slag: "vent", tid: dag.tid + 15 }).lagret;
+  if (sted === dag.sted) {
+    const rute = lagret.innstillinger.nivaa === "forste" ? 30 : lagret.innstillinger.nivaa === "andre" ? 15 : 5;
+    const tak = Math.floor((dag.plan.leggetid - 15) / rute) * rute;
+    const maal = Math.min(dag.tid + rute, tak);
+    if (maal <= dag.tid) return utfor(lagret, { slag: "avslutt" }).lagret;
+    return utfor(lagret, { slag: "vent", tid: maal }).lagret;
+  }
   return utfor(lagret, { slag: "ga", sted }).lagret;
 }
 
@@ -164,9 +181,9 @@ function muligeVedStart(plan: Dagsplan, nivaa: Nivaa, tidStart: number): string[
   return gjort;
 }
 
-function spill(lagret: Lagret, strategi: "a" | "b" | "c"): { lagret: Lagret; brudd: string } {
+function spill(lagret: Lagret, strategi: "a" | "b" | "c"): { lagret: Lagret; brudd: string; spor: string[] } {
   const dag = lagret.aktivDag;
-  if (!dag) return { lagret, brudd: "" };
+  if (!dag) return { lagret, brudd: "", spor: [] };
   const mulige = strategi === "a" ? muligeVedStart(dag.plan, lagret.innstillinger.nivaa, dag.tid) : [];
   const planAvtaler = dag.plan.avtaler.filter((avtale) => avtale.varighet > 0);
   let forrige = "";
@@ -179,7 +196,7 @@ function spill(lagret: Lagret, strategi: "a" | "b" | "c"): { lagret: Lagret; bru
     const nokkel = `${naa.tid}:${naa.sted}:${naa.fase}:${naa.ko.length}:${fremdrift}:${kurv}`;
     likt = nokkel === forrige ? likt + 1 : 0;
     forrige = nokkel;
-    if (likt > 3) break;
+    if (likt > 3) return { lagret, brudd: `fastlåst ${nokkel}`, spor };
     if (naa.ko.length > 0) {
       lagret = svarEn(lagret, strategi, steg);
       continue;
@@ -187,13 +204,13 @@ function spill(lagret: Lagret, strategi: "a" | "b" | "c"): { lagret: Lagret; bru
     const rad = nesteSteg(lagret);
     spor.push(`${naa.tid}@${naa.sted}:${rad.handling.slag}:${rad.knapp}`);
     const feil = sjekkSteg(lagret, rad);
-    if (feil) return { lagret, brudd: feil };
+    if (feil) return { lagret, brudd: feil, spor };
     if (strategi === "b" || (strategi === "c" && steg % 3 === 0)) lagret = gjorTilfeldig(lagret, steg);
     else lagret = gjorAnbefalt(lagret, rad);
   }
-  if (lagret.aktivDag) lagret = utfor(lagret, { slag: "avslutt" }).lagret;
+  if (lagret.aktivDag) return { lagret, brudd: "dagen sluttet ikke med Legg deg", spor };
   const sist = lagret.dagbok.at(-1);
-  if (!sist?.avtaler || sist.avtaler.length !== planAvtaler.length) return { lagret, brudd: "kvelden viser ikke alle avtaler" };
+  if (!sist?.avtaler || sist.avtaler.length !== planAvtaler.length) return { lagret, brudd: "kvelden viser ikke alle avtaler", spor };
   if (strategi === "a") {
     const gjort = new Set(sist.avtaler.filter((avtale) => avtale.gjort).map((avtale) => avtale.aktivitet + ":" + avtale.start));
     for (const id of mulige) {
@@ -202,11 +219,11 @@ function spill(lagret: Lagret, strategi: "a" | "b" | "c"): { lagret: Lagret; bru
       const nokkel = `${avtale.aktivitet ?? avtale.navn}:${avtale.start}`;
       if (!gjort.has(nokkel)) {
         const planTekst = planAvtaler.map((avtale) => `${avtale.aktivitet ?? avtale.navn}@${avtale.start}/${avtale.sted}`).join(",");
-        return { lagret, brudd: `mistet ${nokkel} start=${dag.tid} [${planTekst}] ${spor.join(" | ")}` };
+        return { lagret, brudd: `mistet ${nokkel} start=${dag.tid} [${planTekst}] ${spor.join(" | ")}`, spor };
       }
     }
   }
-  return { lagret, brudd: "" };
+  return { lagret, brudd: "", spor };
 }
 
 describe("konsistens", () => {
@@ -220,6 +237,12 @@ describe("konsistens", () => {
           innstillinger: { ...standardLagret().innstillinger, nivaa },
         };
         for (let dag = 0; dag < 300; dag++) {
+          if (nivaa === "andre" && dag % 2 === 0) {
+            lagret = {
+              ...lagret,
+              mestring: { kvart: { trinn: 1, riktigePaRad: 0, feilPaRad: 0, riktige: 8, forsok: 8 } },
+            };
+          }
           lagret = utfor(lagret, { slag: "start" }).lagret;
           const etter = spill(lagret, strategi);
           expect(etter.brudd, `${nivaa} ${strategi} dag ${dag}`).toBe("");

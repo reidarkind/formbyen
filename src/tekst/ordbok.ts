@@ -188,6 +188,106 @@ export function navnVare(id: string, spraak: Spraak): string {
   return VARE[id]?.[spraak] ?? nb;
 }
 
+const BESTEMT_NB: Record<string, string> = {
+  planke: "Planken",
+  "vegg-tre": "Treveggen",
+  "vegg-mur": "Murveggen",
+  "vegg-stein": "Steinkanten",
+  "tak-rodt": "Det røde taket",
+  "tak-blatt": "Det blå taket",
+  "dor-rektangel": "Døra",
+  "dor-bue": "Den buede døra",
+  "vindu-kvadrat": "Kvadratvinduet",
+  "vindu-rektangel": "Rektangelvinduet",
+  "vindu-sirkel": "Sirkelvinduet",
+  "vindu-halvsirkel": "Halvsirkelvinduet",
+  "vindu-sekskant": "Sekskantvinduet",
+  "vindu-femkant": "Femkantvinduet",
+  "kloss-kube": "Kuben",
+  "kloss-sylinder": "Sylinderen",
+  "kloss-kule": "Kula",
+  "kloss-kjegle": "Kjeglen",
+  "kloss-pyramide": "Pyramiden",
+  "kloss-prisme": "Prismet",
+};
+const BESTEMT_NN: Record<string, string> = {
+  planke: "Planken",
+  "vegg-tre": "Treveggen",
+  "vegg-mur": "Murveggen",
+  "vegg-stein": "Steinkanten",
+  "tak-rodt": "Det raude taket",
+  "tak-blatt": "Det blå taket",
+  "dor-rektangel": "Døra",
+  "dor-bue": "Den boga døra",
+  "vindu-kvadrat": "Kvadratvindauget",
+  "vindu-rektangel": "Rektangelvindauget",
+  "vindu-sirkel": "Sirkelvindauget",
+  "vindu-halvsirkel": "Halvsirkelvindauget",
+  "vindu-sekskant": "Sekskantvindauget",
+  "vindu-femkant": "Femkantvindauget",
+  "kloss-kube": "Kuben",
+  "kloss-sylinder": "Sylinderen",
+  "kloss-kule": "Kula",
+  "kloss-kjegle": "Kjeglen",
+  "kloss-pyramide": "Pyramiden",
+  "kloss-prisme": "Prismet",
+};
+const FLERTALL_VARE_NB: Record<string, string> = {
+  planke: "planker",
+  "vegg-tre": "trevegger",
+  "vegg-mur": "murvegger",
+  "vegg-stein": "steinkanter",
+  "tak-rodt": "røde tak",
+  "tak-blatt": "blå tak",
+  "dor-rektangel": "dører",
+  "dor-bue": "buede dører",
+  "vindu-kvadrat": "kvadratvinduer",
+  "vindu-rektangel": "rektangelvinduer",
+  "vindu-sirkel": "sirkelvinduer",
+  "vindu-halvsirkel": "halvsirkelvinduer",
+  "vindu-sekskant": "sekskantvinduer",
+  "vindu-femkant": "femkantvinduer",
+  "kloss-kube": "kuber",
+  "kloss-sylinder": "sylindere",
+  "kloss-kule": "kuler",
+  "kloss-kjegle": "kjegler",
+  "kloss-pyramide": "pyramider",
+  "kloss-prisme": "prismer",
+};
+const FLERTALL_VARE_NN: Record<string, string> = {
+  planke: "plankar",
+  "vegg-tre": "treveggar",
+  "vegg-mur": "murveggar",
+  "vegg-stein": "steinkantar",
+  "tak-rodt": "raude tak",
+  "tak-blatt": "blå tak",
+  "dor-rektangel": "dører",
+  "dor-bue": "boga dører",
+  "vindu-kvadrat": "kvadratvindauge",
+  "vindu-rektangel": "rektangelvindauge",
+  "vindu-sirkel": "sirkelvindauge",
+  "vindu-halvsirkel": "halvsirkelvindauge",
+  "vindu-sekskant": "sekskantvindauge",
+  "vindu-femkant": "femkantvindauge",
+  "kloss-kube": "kubar",
+  "kloss-sylinder": "sylindrar",
+  "kloss-kule": "kuler",
+  "kloss-kjegle": "kjeglar",
+  "kloss-pyramide": "pyramidar",
+  "kloss-prisme": "prismar",
+};
+
+export function vareBestemt(id: string, spraak: Spraak): string {
+  if (spraak === "nn") return BESTEMT_NN[id] ?? navnVare(id, spraak);
+  return BESTEMT_NB[id] ?? navnVare(id, spraak);
+}
+
+export function vareFlertall(id: string, spraak: Spraak): string {
+  if (spraak === "nn") return FLERTALL_VARE_NN[id] ?? navnVare(id, spraak);
+  if (spraak === "nb") return FLERTALL_VARE_NB[id] ?? navnVare(id, spraak);
+  return navnVare(id, spraak);
+}
+
 const FORM_NB: Record<string, string> = {
   sirkel: "sirkel",
   trekant: "trekant",
@@ -237,7 +337,7 @@ const FLERTALL_NB: Record<string, string> = {
   kjegle: "kjeglene",
   trekant: "trekantene",
   sirkel: "sirklene",
-  kvadrat: "firkantene",
+  kvadrat: "kvadratene",
   rektangel: "rektanglene",
   femkant: "femkantene",
   sekskant: "sekskantene",
@@ -253,7 +353,7 @@ const FLERTALL_NN: Record<string, string> = {
   kjegle: "kjeglane",
   trekant: "trekantane",
   sirkel: "sirklane",
-  kvadrat: "firkantane",
+  kvadrat: "kvadratane",
   rektangel: "rektangla",
   femkant: "femkantane",
   sekskant: "sekskantane",
@@ -272,6 +372,7 @@ export function formFlertall(id: string, spraak: Spraak): string {
 
 o("Slik er klokka", "Slik er klokka", "This is the time", "Así es la hora", "So ist die Uhr", "Esta é a hora", "Så är klockan", "Sådan er klokken", "Voici l'heure");
 o("Ferdig", "Ferdig", "Done", "Listo", "Fertig", "Pronto", "Klar", "Færdig", "Fini");
+o("Hva viser klokka?", "Kva viser klokka?", "What does the clock show?", "¿Qué muestra el reloj?", "Was zeigt die Uhr?", "O que mostra o relógio?", "Vad visar klockan?", "Hvad viser uret?", "Que montre l'horloge ?");
 o("Fra", "Frå", "From", "Desde", "Von", "De", "Från", "Fra", "De");
 o("Nå", "No", "Now", "Ahora", "Jetzt", "Agora", "Nu", "Nu", "Maintenant");
 o("Åpner", "Opnar", "Opens", "Abre", "Öffnet", "Abre", "Öppnar", "Åbner", "Ouvre");

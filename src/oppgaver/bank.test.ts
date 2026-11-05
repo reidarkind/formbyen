@@ -118,5 +118,47 @@ describe("oppgavebank", () => {
       "nb",
     );
     expect(tekst).toContain("halvveis til tre");
+    const hint = forklaring(
+      {
+        id: "x",
+        type: "les-klokka",
+        mal: "les-6",
+        ferdighet: "halv",
+        prompt: "Hva viser klokka?",
+        nokkel: "",
+        valg: [{ id: "k210", klokke: 3 * 60 + 30 }],
+        fasit: "k150",
+        vare: "planke",
+        hvem: "naboen",
+        overraskelse: false,
+        maalKlokke: 2 * 60 + 30,
+      },
+      "k210",
+      "nb",
+      1,
+    );
+    expect(hint.toLowerCase()).not.toContain("halv");
+    expect(hint).not.toContain("14:30");
+    expect(hint).not.toContain("02:30");
+  });
+
+  it("fordeler riktig svar jevnt og lar ikke spørsmålet svare seg selv", () => {
+    const tell = [0, 0, 0];
+    for (let i = 0; i < 10000; i++) {
+      const oppgave = trekkType("les-klokka", ctx(i * 17 + 3));
+      if (oppgave.valg.length !== 3) continue;
+      const rett = oppgave.valg.find((valg) => valg.id === oppgave.fasit);
+      if (rett?.tekst && rett.tekst.length >= 4) {
+        const ord = oppgave.prompt.toLowerCase().split(/[^\p{L}\p{N}:]+/u);
+        expect(ord).not.toContain(rett.tekst.toLowerCase());
+      }
+      const indeks = oppgave.valg.findIndex((valg) => valg.id === oppgave.fasit);
+      const boks = tell[indeks];
+      if (boks !== undefined) tell[indeks] = boks + 1;
+    }
+    const n = tell.reduce((sum, antall) => sum + antall, 0);
+    const forventet = n / tell.length;
+    const chi = tell.reduce((sum, observert) => sum + (observert - forventet) ** 2 / forventet, 0);
+    expect(chi, tell.join(",")).toBeLessThan(9.21);
   });
 });

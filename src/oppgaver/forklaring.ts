@@ -6,7 +6,16 @@ function si(spraak: Spraak, nb: string, nn: string, verdier: Record<string, stri
   return mal(spraak, nb, nn, verdier);
 }
 
-export function forklaring(oppgave: Oppgave, svar: string, spraak: Spraak): string {
+export function forklaring(oppgave: Oppgave, svar: string, spraak: Spraak, gang = 2): string {
+  if (gang < 2) {
+    if (oppgave.maalKlokke !== undefined) {
+      return si(spraak, "Se på den lille viseren. Den viser timen.", "Sjå på den vesle visaren. Han viser timen.");
+    }
+    if (oppgave.type === "finn-formen" || oppgave.type === "hvem-passer-ikke") {
+      return si(spraak, "Se på formen, ikke fargen.", "Sjå på forma, ikkje fargen.");
+    }
+    return si(spraak, "Se på bildet en gang til.", "Sjå på biletet ein gong til.");
+  }
   const valgt = oppgave.valg.find((valg) => valg.id === svar);
   const svarKlokke = valgt?.klokke ?? (Number.isFinite(Number(svar)) ? Number(svar) : undefined);
   if (oppgave.maalKlokke !== undefined && svarKlokke !== undefined && erHalvFelle(oppgave.maalKlokke, svarKlokke)) {

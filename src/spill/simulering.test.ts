@@ -6,6 +6,7 @@ import { STARTDATO } from "../dag/plan";
 import { standardLagret } from "../lagring/lagring";
 import { erApen } from "../tid/tid";
 import type { ByggId, Lagret, Nivaa } from "../typer";
+import { anbefalt } from "./anbefaling";
 import { utfor } from "./okt";
 
 function svarEn(lagret: Lagret): Lagret {
@@ -206,5 +207,90 @@ describe("avtaler", () => {
     const svart = utfor(dor.lagret, { slag: "svar", svar: dor.lagret.aktivDag?.ko[0]?.fasit ?? "" });
     expect(svart.melding).toContain("Åpner kl.");
     expect(svart.melding ?? "").not.toContain("i morgen");
+  });
+
+  it("gir minst 35 prosent klokkeoppgaver i butikken", () => {
+    const klokke = new Set(["les-klokka", "still-klokka", "koble", "hvor-lenge", "rekker-jeg", "apningstider"]);
+    for (const nivaa of ["forste", "andre", "utfordrende"] as const) {
+      let lagret = utfor(
+        { ...standardLagret(), dato: { ...STARTDATO }, innstillinger: { ...standardLagret().innstillinger, nivaa } },
+        { slag: "start" },
+      ).lagret;
+      const dag = lagret.aktivDag;
+      if (!dag) throw new Error("mangler dag");
+      let antall = 0;
+      let klokker = 0;
+      for (let i = 0; i < 120; i++) {
+        lagret = {
+          ...lagret,
+          fro: i,
+          kurv: {},
+          aktivDag: { ...dag, tid: dag.plan.butikk.apner, sted: "butikk", dorLest: true, fase: "ute", ko: [], forklaring: null },
+        };
+        const startet = utfor(lagret, { slag: "handle" }).lagret;
+        const type = startet.aktivDag?.ko[0]?.type;
+        if (!type) continue;
+        antall += 1;
+        if (klokke.has(type)) klokker += 1;
+      }
+      expect(antall, nivaa).toBeGreaterThan(80);
+      expect(klokker / antall, nivaa).toBeGreaterThanOrEqual(0.35);
+    }
+  });
+
+  it("gir stengt på mellom 40 og 60 prosent av dørspørsmålene", () => {
+    let lagret = {
+      ...standardLagret(),
+      dato: { ...STARTDATO },
+      innstillinger: { ...standardLagret().innstillinger, nivaa: "forste" as Nivaa },
+    };
+    let dorer = 0;
+    let stengt = 0;
+    for (let dag = 0; dag < 48; dag++) {
+      lagret = utfor(lagret, { slag: "start" }).lagret;
+      for (let steg = 0; steg < 80 && lagret.aktivDag; steg++) {
+        const aktiv = lagret.aktivDag;
+        const oppgave = aktiv.ko[aktiv.aktiv];
+        if (aktiv.ko.length > 0 && oppgave) {
+          if (aktiv.fase === "dor") {
+            dorer += 1;
+            if (oppgave.fasit === "nei") stengt += 1;
+          }
+          lagret = svarEn(lagret);
+          if (lagret.aktivDag?.forklaring) lagret = utfor(lagret, { slag: "fortsett" }).lagret;
+          continue;
+        }
+        const valg = anbefalt(lagret);
+        if (valg.slag === "gaa") lagret = utfor(lagret, { slag: "ga", sted: valg.sted }).lagret;
+        else if (valg.slag === "vent") lagret = utfor(lagret, { slag: "vent", tid: valg.tid }).lagret;
+        else if (valg.slag === "handle" || valg.slag === "mot" || valg.slag === "spis") lagret = utfor(lagret, { slag: valg.slag }).lagret;
+        else if (valg.slag === "klokke") lagret = utfor(lagret, { slag: "klokke" }).lagret;
+        else if (valg.slag === "bygg") {
+          const fremdrift = lagret.by.bygg.reduce((sum, bygg) => sum + bygg.steg, 0);
+          const forrige = `${lagret.aktivDag?.tid}:${lagret.aktivDag?.sted}:${fremdrift}`;
+          if (!valg.instans) {
+            const tomt = ledigeTomter(lagret.by, valg.bygg)[0];
+            if (!tomt) break;
+            if (lagret.aktivDag.sted !== "byggeplass") lagret = utfor(lagret, { slag: "ga", sted: "byggeplass" }).lagret;
+            if (lagret.aktivDag) lagret = utfor(lagret, { slag: "velg-bygg", bygg: valg.bygg, x: tomt.x, y: tomt.y }).lagret;
+          } else {
+            lagret = utfor(lagret, { slag: "velg", instans: valg.instans }).lagret;
+            const naa = lagret.by.bygg.find((bygg) => bygg.instans === valg.instans);
+            const trinn = naa ? byggDef(valg.bygg).oppskrift[naa.steg]?.vare : undefined;
+            if (trinn && (lagret.kurv[trinn] ?? 0) > 0) lagret = utfor(lagret, { slag: "steg" }).lagret;
+          }
+          const etter = lagret.by.bygg.reduce((sum, bygg) => sum + bygg.steg, 0);
+          const naa = `${lagret.aktivDag?.tid}:${lagret.aktivDag?.sted}:${etter}`;
+          if (naa === forrige && lagret.aktivDag?.ko.length === 0) break;
+        } else if (valg.slag === "legg" || valg.slag === "se") {
+          lagret = utfor(lagret, { slag: "avslutt" }).lagret;
+          break;
+        } else break;
+      }
+      if (lagret.aktivDag) lagret = utfor(lagret, { slag: "avslutt" }).lagret;
+    }
+    expect(dorer).toBeGreaterThan(10);
+    expect(stengt / dorer, `${stengt}/${dorer}`).toBeGreaterThanOrEqual(0.4);
+    expect(stengt / dorer, `${stengt}/${dorer}`).toBeLessThanOrEqual(0.6);
   });
 });

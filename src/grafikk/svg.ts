@@ -15,8 +15,9 @@ export function polygon(
   return `<polygon points="${punktStreng(punkter)}" fill="${fyll}" stroke="#3B2F2A" stroke-width="${bredde}" stroke-linejoin="round"${ekstra}/>`;
 }
 
-export function svgDokument(innhold: string, bredde: number, hoyde: number, minX = 0, minY = 0): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX} ${minY} ${bredde} ${hoyde}" fill="none">${innhold}</svg>`;
+export function svgDokument(innhold: string, bredde: number, hoyde: number, minX = 0, minY = 0, klasse = ""): string {
+  const navn = klasse ? ` class="${klasse}"` : "";
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX} ${minY} ${bredde} ${hoyde}" width="${bredde}" height="${hoyde}"${navn} fill="none">${innhold}</svg>`;
 }
 
 export function fargerI(svg: string): string[] {

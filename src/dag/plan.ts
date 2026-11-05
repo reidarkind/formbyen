@@ -190,11 +190,9 @@ function byggPlan(inn: PlanInn, tilfeldig: Tilfeldig): Dagsplan | null {
     const apner = velgTid(tilfeldig, [13 * 60 + 30, 14 * 60, 14 * 60 + 30], lovlige);
     const stenger = velgTid(tilfeldig, [16 * 60 + 30, 17 * 60, 17 * 60 + 30], lovlige);
     butikk = { apner, stenger: Math.max(stenger, apner + 60), stengtHele: false };
-    if (tilfeldig() < 0.25) {
-      const fra = velgTid(tilfeldig, [15 * 60, 15 * 60 + 30], lovlige);
-      if (fra > butikk.apner && fra + 30 < butikk.stenger) {
-        butikk = { ...butikk, stengtFra: fra, stengtTil: fra + 30 };
-      }
+    const fra = velgTid(tilfeldig, [15 * 60, 15 * 60 + 30], lovlige);
+    if (fra > butikk.apner && fra + 30 < butikk.stenger) {
+      butikk = { ...butikk, stengtFra: fra, stengtTil: fra + 30 };
     }
   }
 
@@ -269,23 +267,6 @@ function byggPlan(inn: PlanInn, tilfeldig: Tilfeldig): Dagsplan | null {
     avtaler.push(avtaleFra(meta, startTid));
   }
 
-  if (tilfeldig() < 0.4 && avtaler.length < 4) {
-    const tidlig = sfo !== null ? sfo + 60 : start + 90;
-    const startTid = velgTid(tilfeldig, [tidlig, tidlig + 30, tidlig + 60], lovlige);
-    const id = tilfeldig() < 0.5 ? "nabo" : "levering";
-    if (startTid + 30 < leggetid) {
-      avtaler.push({
-        id,
-        slag: "hendelse",
-        navn: id,
-        aktivitet: id,
-        start: startTid,
-        varighet: 0,
-        sted: id === "levering" ? "butikk" : "hjemme",
-      });
-    }
-  }
-
   avtaler.sort((a, b) => a.start - b.start || a.id.localeCompare(b.id, "nb"));
   const antall = avtaler.filter((avtale) => avtale.varighet > 0).length;
   if (antall < 2 || antall > 4) return null;
@@ -331,9 +312,9 @@ export function stedForAktivitet(id: string, krever: string | null): string {
 
 function rekkerHjemFor(meta: Aktivitet, startTid: number, leggetid: number, nivaa: Nivaa): boolean {
   const sted = stedForAktivitet(meta.id, meta.krever);
-  if (sted === "hjemme") return startTid + meta.varighet <= leggetid;
+  if (sted === "hjemme") return startTid + meta.varighet < leggetid - 15;
   const gang = gangMinutter(somSted(sted), "hjemme", nivaa);
-  return startTid + meta.varighet + gang <= leggetid;
+  return startTid + meta.varighet + gang < leggetid - 15;
 }
 
 function forMangeHjemme(avtaler: Avtale[], meta: Aktivitet): boolean {

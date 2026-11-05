@@ -31,6 +31,7 @@ describe("verden", () => {
         butikk: { apner: 14 * 60, stenger: 17 * 60, stengtHele: false },
       },
     });
+    lagret = { ...lagret, fro: 1 };
     const etter = utfor(lagret, { slag: "vent" }).lagret;
     expect(etter.aktivDag?.tid).toBe(13 * 60 + 30);
   });

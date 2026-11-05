@@ -98,7 +98,7 @@ const KNAPP: Record<string, [string, string]> = {
   dans: ["Dans", "Dans"],
   ski: ["Gå på ski", "Gå på ski"],
   skoyter: ["Gå på skøyter", "Gå på skøyter"],
-  speider: ["Dra på speider", "Dra på speidar"],
+  speider: ["Gå på speideren", "Gå på speidaren"],
   sjakk: ["Spill sjakk", "Spel sjakk"],
   fotball: ["Spill fotball", "Spel fotball"],
   handball: ["Spill håndball", "Spel handball"],
@@ -119,7 +119,7 @@ const SPORSMAL: Record<string, [string, string]> = {
   hund: ["Turen tar {min} min. Når er dere hjemme?", "Turen tek {min} min. Når er de heime?"],
   lillesoster: ["Hentingen tar {min} min. Når er dere hjemme?", "Hentinga tek {min} min. Når er de heime?"],
   tannlege: ["Timen hos tannlegen tar {min} min. Når er den ferdig?", "Timen hos tannlækjaren tek {min} min. Når er han ferdig?"],
-  svomming: ["Svømmingen tar {min} min. Når er dere ferdig?", "Symjinga tek {min} min. Når er de ferdige?"],
+  svomming: ["Når er dere ferdige? Svømmingen varer {min} min.", "Når er de ferdige? Symjinga varer {min} min."],
   bursdag: ["Bursdagen varer {min} min. Når er den ferdig?", "Fødselsdagen varer {min} min. Når er han ferdig?"],
   middag: ["Middagen tar {min} min. Når er dere ferdige?", "Middagen tek {min} min. Når er de ferdige?"],
 };
@@ -132,4 +132,28 @@ export function aktivitetKnapp(id: string, spraak: Spraak): string {
 export function aktivitetSporsmal(id: string, spraak: Spraak, min: string): string {
   const rad = SPORSMAL[id] ?? ["{navn} tar {min} min. Når er du ferdig?", "{navn} tek {min} min. Når er du ferdig?"];
   return mal(spraak, rad[0], rad[1], { min, navn: visNavn(id, spraak) });
+}
+
+const NAA: Record<string, [string, string]> = {
+  hund: ["Nå er det tid for å lufte hunden.", "No er det tid for å lufte hunden."],
+  lillesoster: ["Nå skal vi hente lillesøster.", "No skal vi hente lillesyster."],
+  svomming: ["Nå begynner svømmingen.", "No byrjar symjinga."],
+  tannlege: ["Nå er det timen hos tannlegen.", "No er det timen hos tannlækjaren."],
+};
+
+const VENTER: Record<string, [string, string]> = {
+  hund: ["Hunden venter. Gå tur nå.", "Hunden ventar. Gå tur no."],
+  lillesoster: ["Lillesøster venter. Hent henne nå.", "Lillesyster ventar. Hent henne no."],
+  svomming: ["Svømmingen venter. Svøm nå.", "Symjinga ventar. Sym no."],
+  tannlege: ["Tannlegen venter. Gå inn nå.", "Tannlækjaren ventar. Gå inn no."],
+};
+
+export function aktivitetNa(id: string, spraak: Spraak, sen = false): string {
+  const tabell = sen ? VENTER : NAA;
+  const rad = tabell[id];
+  if (rad) return mal(spraak, rad[0], rad[1]);
+  const navn = visNavn(id, spraak);
+  return sen
+    ? mal(spraak, "{navn} venter. Gjør det nå.", "{navn} ventar. Gjer det no.", { navn })
+    : mal(spraak, "Nå er det tid for {navn}.", "No er det tid for {navn}.", { navn });
 }

@@ -24,5 +24,7 @@ describe("mestring", () => {
     expect(ferdighetApent("lengde", "blandet", {})).toBe(true);
     expect(tillatteMinutter("forste", {})).toEqual([0]);
     expect(tillatteMinutter("andre", {})).toEqual([0, 15, 30, 45]);
+    expect(tillatteMinutter("andre", { kvart: { ...tomFerdighet(), riktige: 6 } })).toEqual([0, 15, 30, 45]);
+    expect(tillatteMinutter("utfordrende", {})).toContain(5);
   });
 });

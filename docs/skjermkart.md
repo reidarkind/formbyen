@@ -27,3 +27,6 @@ Ark fra toppfeltet: kurven, dagens plan, pause. Byplanen åpnes fra kartet.
 - Ett gult trykk om gangen. Knappen og hjelperen kommer fra samme neste steg. Hjelperen sier hvorfor, ikke en annen ordre.
 - «Sett på [del]» er gul bare når neste steg er å bygge. Ellers viser scenen delen, og den gule knappen er turen som haster.
 - Den gamle byskjermen, den gamle byggeskjermen og det frie tårnuret er ikke en del av denne veien.
+- Flaten under tidsstripa kan rulles. Svarene og «Ferdig» skal være synlige. Hjelperen er skjult mens en oppgave eller en feilmelding vises.
+- Dagen slutter med «Legg deg» hjemme. «Snart leggetid» vises bare det siste halvtimet. Før det kan barnet øve i klokkeleken.
+- Når slottet er ferdig, sier forsiden «Byen er ferdig!» og tilbyr pynt, klokkeleken eller en ny by.

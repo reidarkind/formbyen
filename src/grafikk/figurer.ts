@@ -48,7 +48,7 @@ export function kjaeledyr(slag: Kjaeledyr, speil = false): string {
   return svgDokument(indre, 100, 80);
 }
 
-export function ikon(navn: string): string {
+export function ikon(navn: string, klasse = "ikon-m"): string {
   const s = `stroke="${FARGER.kontur}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"`;
   const motiver: Record<string, string> = {
     still: `<circle cx="10" cy="12" r="7" ${s}/><line x1="10" y1="12" x2="10" y2="8" ${s}/><path d="M16 16 L21 21" ${s}/>`,
@@ -71,6 +71,10 @@ export function ikon(navn: string): string {
     svom: `<path d="M4 12 Q8 8 12 12 T20 12" ${s}/><path d="M4 17 Q8 13 12 17 T20 17" ${s}/>`,
     seng: `<path d="M4 14 L4 18 L20 18 L20 12 L10 12 L10 14 Z" ${s}/>`,
     avtale: `<rect x="6" y="4" width="12" height="16" rx="2" ${s}/><line x1="6" y1="8" x2="18" y2="8" ${s}/>`,
+    hund: `<ellipse cx="12" cy="14" rx="6" ry="4" ${s}/><circle cx="8" cy="8" r="2" ${s}/><path d="M16 12 L20 8" ${s}/>`,
+    barn: `<circle cx="12" cy="8" r="3" ${s}/><path d="M8 18 Q12 12 16 18" ${s}/>`,
+    lekse: `<rect x="6" y="4" width="12" height="16" ${s}/><line x1="8" y1="9" x2="16" y2="9" ${s}/><line x1="8" y1="13" x2="14" y2="13" ${s}/>`,
+    barnehage: `<path d="M4 12 L12 6 L20 12" ${s}/><rect x="7" y="12" width="10" height="7" ${s}/>`,
   };
-  return svgDokument(motiver[navn] ?? motiver.velg ?? "", 24, 24);
+  return svgDokument(motiver[navn] ?? motiver.velg ?? "", 24, 24, 0, 0, klasse);
 }

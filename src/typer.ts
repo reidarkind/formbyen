@@ -222,6 +222,8 @@ export interface Dagsplan {
   avtaler: Avtale[];
   leggetid: number;
   start: number;
+  /** Når butikken åpner neste dag den er åpen. */
+  nesteApning?: number;
 }
 
 export interface FerdighetsTilstand {
@@ -259,6 +261,8 @@ export interface KveldsAvtale {
   aktivitet: string;
   start: number;
   gjort: boolean;
+  /** Avtalen hadde ikke startet da dagen ble avsluttet. */
+  ikke?: boolean;
 }
 
 export interface DagbokInnslag {
@@ -286,6 +290,9 @@ export interface AktivDag {
   sent?: string[];
   handlet: boolean;
   dorLest: boolean;
+  /** Deler kjøpt i dag til bygg fra nivå 3. */
+  kjopIDag?: number;
+  klokkeLekt?: boolean;
   byggetIDag: string[];
   formerIDag: string[];
   klokkerIDag: number[];
