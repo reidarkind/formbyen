@@ -659,6 +659,11 @@ o("Måneder", "Månader", "Months", "Meses", "Monate", "Meses", "Månader", "Må
 o("Tid på dagen", "Tid på dagen", "Time of day", "Momento del día", "Tageszeit", "Parte do dia", "Tid på dagen", "Tid på dagen", "Moment de la journée");
 
 o("← Byen", "← Byen", "← Town", "← Ciudad", "← Stadt", "← Cidade", "← Stan", "← Byen", "← Ville");
+o("Les skiltet på døra.", "Les skiltet på døra.", "Read the sign on the door.", "Lee el cartel de la puerta.", "Lies das Schild an der Tür.", "Lê a placa na porta.", "Läs skylten på dörren.", "Læs skiltet på døren.", "Lis le panneau sur la porte.");
+o("Når åpner butikken?", "Når opnar butikken?", "When does the shop open?", "¿Cuándo abre la tienda?", "Wann öffnet der Laden?", "Quando abre a loja?", "När öppnar butiken?", "Hvornår åbner butikken?", "Quand ouvre la boutique ?");
+o("Sammenlign skiltet med klokka.", "Samanlikn skiltet med klokka.", "Compare the sign with the clock.", "Compara el cartel con el reloj.", "Vergleiche das Schild mit der Uhr.", "Compara a placa com o relógio.", "Jämför skylten med klockan.", "Sammenlign skiltet med uret.", "Compare le panneau et l'horloge.");
+o("Les åpningstidene før du går", "Les opningstidene før du går", "Read the hours before you go", "Lee el horario antes de ir", "Lies die Öffnungszeiten, bevor du gehst", "Lê o horário antes de ires", "Läs öppettiderna innan du går", "Læs åbningstiderne før du går", "Lis les horaires avant de partir");
+o("Vent til {tid}. Butikken åpner.", "Vent til {tid}. Butikken opnar.", "Wait until {tid}. The shop opens.", "Espera hasta las {tid}. La tienda abre.", "Warte bis {tid}. Der Laden öffnet.", "Espera até às {tid}. A loja abre.", "Vänta till {tid}. Butiken öppnar.", "Vent til {tid}. Butikken åbner.", "Attends jusqu'à {tid}. La boutique ouvre.");
 o("Les skiltet.", "Les skiltet.", "Read the sign.", "Lee el cartel.", "Lies das Schild.", "Lê a placa.", "Läs skylten.", "Læs skiltet.", "Lis le panneau.");
 o("Les skiltet", "Les skiltet", "Read the sign", "Lee el cartel", "Lies das Schild", "Lê a placa", "Läs skylten", "Læs skiltet", "Lis le panneau");
 o("Vi trenger en {del}.", "Vi treng ein {del}.", "We need a {del}.", "Necesitamos un {del}.", "Wir brauchen ein {del}.", "Precisamos de um {del}.", "Vi behöver en {del}.", "Vi skal bruge en {del}.", "Il nous faut un {del}.");

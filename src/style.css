@@ -185,6 +185,9 @@ p { margin: 0 0 10px; line-height: 1.35; }
 .ur-160 { width: 160px; }
 .ur-200 { width: 200px; }
 .ur-96 .tall, .ur-120 .tall, .ur-160 .tall, .ur-200 .tall { width: max-content; height: 14px; font-size: 14px; line-height: 14px; }
+.skilt { display: flex; gap: 8px; align-items: center; justify-content: center; }
+.skilt-tider { display: flex; flex-direction: column; gap: 4px; }
+.skilt-rad { display: flex; align-items: center; gap: 4px; font-weight: 800; }
 .sammenlign { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .sammenlign .ord { font-weight: 800; font-size: 16px; text-align: center; }
 .dagstart { height: 100dvh; display: flex; flex-direction: column; overflow: hidden; padding: 8px 12px; box-sizing: border-box; }

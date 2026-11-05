@@ -319,11 +319,23 @@ export function nesteSteg(lagret: Lagret): NesteSteg {
     return {
       handling: { slag: "handle" },
       knapp: si(lagret, "Les skiltet", "Les skiltet"),
-      grunn: apenNaa
-        ? si(lagret, "Les skiltet.", "Les skiltet.")
-        : si(lagret, "Butikken er stengt. Les skiltet.", "Butikken er stengt. Les skiltet."),
+      grunn: si(lagret, "Les skiltet på døra.", "Les skiltet på døra."),
       puls: "butikk",
     };
+  }
+  if (dag.sted === "butikk" && dag.dorLest && !apenNaa && !dag.plan.butikk.stengtHele) {
+    const butikk = dag.plan.butikk;
+    const apner = dag.tid < butikk.apner ? butikk.apner : butikk.stengtTil !== undefined && dag.tid < butikk.stengtTil ? butikk.stengtTil : null;
+    if (apner !== null && apner > dag.tid) {
+      const tid = tidTilDigital24(apner);
+      return ventHer(
+        lagret,
+        apner,
+        si(lagret, "butikken åpner", "butikken opnar"),
+        si(lagret, "Vent til {tid}. Butikken åpner.", "Vent til {tid}. Butikken opnar.", { tid }),
+        "butikk",
+      );
+    }
   }
   if (dag.sted === "butikk" && apenNaa && mangler.length > 0 && !stans) {
     const vare = mangler[0] ?? "planke";
@@ -377,36 +389,9 @@ export function nesteSteg(lagret: Lagret): NesteSteg {
   const forste = apne(lagret).find((avtale) => avtale.start >= dag.tid && kanMotes(lagret, avtale));
   const tidlig = forste && erHer(lagret, forste) && dag.tid < forste.start ? forste : undefined;
 
-  if (mangler.length > 0 && !stans && dag.sted !== "butikk" && !dag.dorLest && lagret.fro % 2 === 0) {
-    const pause = dag.plan.butikk.stengtFra;
-    const etterPause = dag.plan.butikk.stengtTil;
-    if (pause !== undefined && etterPause !== undefined && dag.tid < etterPause) {
-      const dit = gang(lagret, dag.sted, "butikk");
-      const fr = frist(lagret);
-      const rekkerEtter = pause + gang(lagret, "butikk", fr.sted) <= fr.tid;
-      if (rekkerEtter && dag.tid + dit < etterPause) {
-        if (dag.tid + dit >= pause) {
-          return gaaKnapp(lagret, "butikk", si(lagret, "Gå til butikken og les skiltet.", "Gå til butikken og les skiltet."));
-        }
-        const avreise = pause - dit;
-        return ventHer(
-          lagret,
-          avreise,
-          si(lagret, "les skiltet", "les skiltet"),
-          si(lagret, "Vi går kl. {tid}, så er vi i butikken kl. {fremme}.", "Vi går kl. {tid}, så er vi i butikken kl. {fremme}.", {
-            tid: tidTilDigital24(avreise),
-            fremme: tidTilDigital24(pause),
-          }),
-          dag.sted,
-        );
-      }
-    }
-  }
   if (mangler.length > 0 && !stans && dag.sted !== "butikk") {
-    const dit = gang(lagret, dag.sted, "butikk");
-    const ankomst = dag.tid + dit;
+    const ankomst = dag.tid + gang(lagret, dag.sted, "butikk");
     const apenVedAnkomst = butikkVed(lagret, ankomst);
-    const lesStengt = !dag.dorLest && lagret.fro % 2 === 0 && !apenVedAnkomst && nesteApneTid(lagret) !== null;
     if (apenVedAnkomst && rekkerMotFrist(lagret, "butikk", 0)) {
       const vare = mangler[0] ?? "planke";
       return gaaKnapp(
@@ -416,9 +401,6 @@ export function nesteSteg(lagret: Lagret): NesteSteg {
           del: delTekst(lagret, vare),
         }),
       );
-    }
-    if (lesStengt && rekkerMotFrist(lagret, "butikk", 0)) {
-      return gaaKnapp(lagret, "butikk", si(lagret, "Gå til butikken og les skiltet.", "Gå til butikken og les skiltet."));
     }
   }
 
@@ -453,16 +435,14 @@ export function nesteSteg(lagret: Lagret): NesteSteg {
     if (venterHer && avreise >= dag.tid && fremme <= fr.tid && hjemmeEtter < dag.plan.leggetid) {
       const tidTekst = tidTilDigital24(avreise);
       const fremmeTekst = tidTilDigital24(apneIgjen);
-      return ventHer(
-        lagret,
-        avreise,
-        si(lagret, "butikken åpner", "butikken opnar"),
-        si(lagret, "Vi går kl. {tid}, så er vi i butikken kl. {fremme}.", "Vi går kl. {tid}, så er vi i butikken kl. {fremme}.", {
-          tid: tidTekst,
-          fremme: fremmeTekst,
-        }),
-        dag.sted === "butikk" ? "butikk" : "hjemme",
-      );
+      const tekst =
+        dag.sted === "butikk"
+          ? si(lagret, "Vent til {tid}. Butikken åpner.", "Vent til {tid}. Butikken opnar.", { tid: fremmeTekst })
+          : si(lagret, "Vi går kl. {tid}, så er vi i butikken kl. {fremme}.", "Vi går kl. {tid}, så er vi i butikken kl. {fremme}.", {
+              tid: tidTekst,
+              fremme: fremmeTekst,
+            });
+      return ventHer(lagret, avreise, si(lagret, "butikken åpner", "butikken opnar"), tekst, dag.sted === "butikk" ? "butikk" : "hjemme");
     }
   }
 

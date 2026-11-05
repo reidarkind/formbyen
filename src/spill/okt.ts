@@ -7,12 +7,12 @@ import { forklaring } from "../oppgaver/forklaring";
 import { trekkOppgave, type OppgaveKontekst } from "../oppgaver/lag";
 import { sjekkSvar } from "../oppgaver/sjekk";
 import { registrerSvar } from "../tilpasning/mestring";
-import { erApen, leggTil, tidTilDigital24, tidTilOrd } from "../tid/tid";
+import { erApen, leggTil, nesteApning, tidTilDigital24, tidTilOrd } from "../tid/tid";
 import { aktivitetSporsmal, visNavn } from "../dag/aktiviteter";
 import { tegnKart } from "../grafikk/bygg-svg";
 import { mal, navnVare } from "../tekst/ordbok";
 import { ukedagTekst } from "../tekst/spraak";
-import type { AktivDag, ByggId, Ferdighet, Hylle, Lagret, Nivaa, Oppgave, StedId, VareId } from "../typer";
+import type { AktivDag, ByggId, Ferdighet, Hylle, Lagret, Nivaa, Oppgave, SkiltTid, StedId, Valg, VareId } from "../typer";
 import { avtaleHer, gangMinutter, nesteSteg, startTidFor } from "./anbefaling";
 
 export type Handling =
@@ -48,6 +48,7 @@ function kontekst(lagret: Lagret): OppgaveKontekst {
     nivaa: lagret.innstillinger.nivaa,
     mestring: lagret.mestring,
     plan: lagret.aktivDag?.plan ?? null,
+    naa: lagret.aktivDag?.tid,
     unngaMal: lagret.sisteMaler,
     unngaNokkel: lagret.sisteNokkel,
     tidsromPa: lagret.innstillinger.tidsromPa,
@@ -135,10 +136,29 @@ export function apningTekst(lagret: Lagret): string {
   return si(lagret, "Butikken er åpen.", "Butikken er open.");
 }
 
+function skiltFor(dag: AktivDag): SkiltTid {
+  const butikk = dag.plan.butikk;
+  return {
+    naa: dag.tid,
+    apner: butikk.apner,
+    stenger: butikk.stenger,
+    stengtFra: butikk.stengtFra,
+    stengtTil: butikk.stengtTil,
+    neste: nesteApning(dag.tid, butikk, dag.plan.nesteApning),
+  };
+}
+
+function blandValg(lagret: Lagret, tid: number, valg: Valg[]): Valg[] {
+  const bland = froTilfeldig((lagret.fro + 1) * 17 + tid);
+  bland();
+  return stokk(bland, valg);
+}
+
 function dorOppgave(lagret: Lagret): Oppgave {
   const dag = lagret.aktivDag;
   if (!dag) throw new Error("ingen dag");
   const apen = erApen(dag.tid, dag.plan.butikk);
+  const skilt = skiltFor(dag);
   return {
     id: `dor-${dag.tid}`,
     type: "apningstider",
@@ -148,16 +168,49 @@ function dorOppgave(lagret: Lagret): Oppgave {
       naa: tidTilOrd(dag.tid, lagret.innstillinger.spraak),
     }),
     nokkel: `klokke:${dag.tid}`,
-    valg: [
+    valg: blandValg(lagret, dag.tid, [
       { id: "ja", ja: true, tekst: si(lagret, "Åpen", "Open") },
       { id: "nei", ja: false, tekst: si(lagret, "Stengt", "Stengt") },
-    ],
+    ]),
     fasit: apen ? "ja" : "nei",
     vare: "dor-rektangel",
     hvem: si(lagret, "skiltet", "skiltet"),
     overraskelse: false,
-    maalKlokke: dag.plan.butikk.apner,
-    tall: dag.plan.butikk.stenger,
+    maalKlokke: dag.tid,
+    tall: skilt.neste,
+    skilt,
+  };
+}
+
+function apneOppgave(lagret: Lagret): Oppgave {
+  const dag = lagret.aktivDag;
+  if (!dag) throw new Error("ingen dag");
+  const skilt = skiltFor(dag);
+  const spraak = lagret.innstillinger.spraak;
+  const riktig = skilt.neste;
+  const kandidater = [riktig - 60, riktig + 60, riktig - 30, riktig + 30]
+    .map((tid) => (tid + 24 * 60) % (24 * 60))
+    .filter((tid, indeks, liste) => tid !== riktig && liste.indexOf(tid) === indeks)
+    .slice(0, 2);
+  const valg = blandValg(lagret, riktig, [
+    { id: "rett", klokke: riktig, tekst: tidTilOrd(riktig, spraak) },
+    ...kandidater.map((tid, indeks) => ({ id: `feil-${indeks}`, klokke: tid, tekst: tidTilOrd(tid, spraak) })),
+  ]);
+  return {
+    id: `dor-apner-${dag.tid}`,
+    type: "apningstider",
+    mal: "apen-2",
+    ferdighet: "hele-timer",
+    prompt: si(lagret, "Når åpner butikken?", "Når opnar butikken?"),
+    nokkel: `klokke:${riktig}`,
+    valg,
+    fasit: "rett",
+    vare: "dor-rektangel",
+    hvem: si(lagret, "skiltet", "skiltet"),
+    overraskelse: false,
+    maalKlokke: dag.tid,
+    tall: riktig,
+    skilt,
   };
 }
 
@@ -334,7 +387,7 @@ function vent(lagret: Lagret, tid?: number): { lagret: Lagret; melding: string |
 
 function dor(lagret: Lagret): { lagret: Lagret; melding: string | null } {
   const dag = lagret.aktivDag;
-  if (!dag || dag.sted !== "butikk") return { lagret, melding: si(lagret, "Gå til butikken først.", "Gå til butikken først.") };
+  if (!dag || (dag.sted !== "butikk" && dag.sted !== "hjemme")) return { lagret, melding: si(lagret, "Gå til butikken først.", "Gå til butikken først.") };
   const oppgave = dorOppgave(lagret);
   return {
     lagret: huskOppgave(
@@ -396,7 +449,24 @@ function svar(lagret: Lagret, gitt: string): { lagret: Lagret; melding: string |
   const erAktivitet = dag.fase === "aktivitet" || oppgave.nokkel.startsWith("avtale:");
   if (erDor) {
     const dagEtter = neste.aktivDag ?? dag;
+    const butikk = dagEtter.plan.butikk;
+    const apen = erApen(dagEtter.tid, butikk);
+    const ferdig = oppgave.id.startsWith("dor-apner-") || apen;
+    if (!ferdig) {
+      const oppfolging = apneOppgave(neste);
+      return {
+        lagret: huskOppgave(
+          { ...neste, aktivDag: { ...dagEtter, fase: "dor", ko: [oppfolging], aktiv: 0, forklaring: null, feil: 0 } },
+          oppfolging,
+        ),
+        melding: null,
+      };
+    }
     const medDor = { ...neste, aktivDag: { ...dagEtter, dorLest: true, fase: "handel" as const, ko: [], forklaring: null, feil: 0 } };
+    if (!apen && !butikk.stengtHele && dagEtter.tid < butikk.stenger) {
+      const tid = tidTilDigital24(oppgave.skilt?.neste ?? nesteApning(dagEtter.tid, butikk, dagEtter.plan.nesteApning));
+      return { lagret: medDor, melding: si(medDor, "Vent til {tid}. Butikken åpner.", "Vent til {tid}. Butikken opnar.", { tid }) };
+    }
     return { lagret: medDor, melding: apningTekst(medDor) };
   }
   let gittVare = oppgave.vare;

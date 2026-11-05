@@ -160,6 +160,15 @@ export interface Valg {
   ja?: boolean;
 }
 
+export interface SkiltTid {
+  naa: number;
+  apner: number;
+  stenger: number;
+  stengtFra?: number;
+  stengtTil?: number;
+  neste: number;
+}
+
 export interface Oppgave {
   id: string;
   type: OppgaveType;
@@ -173,6 +182,7 @@ export interface Oppgave {
   hvem: string;
   overraskelse: boolean;
   maalKlokke?: number;
+  skilt?: SkiltTid;
   form?: string;
   form3d?: string;
   tall?: number;

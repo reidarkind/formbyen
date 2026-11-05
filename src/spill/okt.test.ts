@@ -10,7 +10,9 @@ describe("en ettermiddag", () => {
     lagret = utfor(lagret, { slag: "ga", sted: "butikk" }).lagret;
     const stengt = utfor(lagret, { slag: "handle" });
     expect(stengt.lagret.aktivDag?.ko[0]?.type).toBe("apningstider");
-    const svart = utfor(stengt.lagret, { slag: "svar", svar: stengt.lagret.aktivDag?.ko[0]?.fasit ?? "" });
+    let svart = utfor(stengt.lagret, { slag: "svar", svar: stengt.lagret.aktivDag?.ko[0]?.fasit ?? "" });
+    const oppfolging = svart.lagret.aktivDag?.ko[0];
+    if (oppfolging) svart = utfor(svart.lagret, { slag: "svar", svar: oppfolging.fasit });
     expect(svart.melding).toContain("Stengt i dag");
     expect(svart.melding ?? "").not.toContain("i morgen");
     expect(svart.lagret.by.bygg.some((bygg) => bygg.bygg === "ronne" && bygg.ferdig)).toBe(true);

@@ -85,6 +85,21 @@ export function erApen(naa: number, aapning: Aapning): boolean {
   return tid >= apner || tid < stenger;
 }
 
+/** Neste tid butikken er åpen, ut fra dagens plan. Etter stengetid brukes morgendagens åpning. */
+export function nesteApning(naa: number, aapning: Aapning, etterStenging?: number): number {
+  const tid = normaliser(naa);
+  if (
+    aapning.stengtFra !== undefined &&
+    aapning.stengtTil !== undefined &&
+    tid >= normaliser(aapning.stengtFra) &&
+    tid < normaliser(aapning.stengtTil)
+  ) {
+    return aapning.stengtTil;
+  }
+  if (!aapning.stengtHele && tid < normaliser(aapning.apner)) return aapning.apner;
+  return etterStenging ?? aapning.apner;
+}
+
 /** Timeviser i grader med klokka fra 12. Ved halv tre står den midt mellom 2 og 3. */
 export function timeviserVinkel(minutter: number): number {
   const time = timer(minutter) % 12;

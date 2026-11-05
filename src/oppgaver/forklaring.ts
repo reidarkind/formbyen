@@ -8,6 +8,9 @@ function si(spraak: Spraak, nb: string, nn: string, verdier: Record<string, stri
 
 export function forklaring(oppgave: Oppgave, svar: string, spraak: Spraak, gang = 2): string {
   if (gang < 2) {
+    if (oppgave.type === "apningstider") {
+      return si(spraak, "Sammenlign skiltet med klokka.", "Samanlikn skiltet med klokka.");
+    }
     if (oppgave.maalKlokke !== undefined) {
       return si(spraak, "Se på den lille viseren. Den viser timen.", "Sjå på den vesle visaren. Han viser timen.");
     }
@@ -22,10 +25,14 @@ export function forklaring(oppgave: Oppgave, svar: string, spraak: Spraak, gang 
     return halvveisTekst(oppgave.maalKlokke, spraak);
   }
   if (oppgave.type === "apningstider") {
-    const apen = oppgave.fasit === "ja";
-    return apen
-      ? si(spraak, "Butikken er åpen. Den stenger {tid}.", "Butikken er open. Den stengjer {tid}.", { tid: tidTilDigital24(oppgave.tall ?? 0) })
-      : si(spraak, "Butikken er stengt. Den åpner {tid}.", "Butikken er stengt. Den opnar {tid}.", { tid: tidTilDigital24(oppgave.maalKlokke ?? 0) });
+    if (oppgave.fasit === "ja") {
+      const skilt = oppgave.skilt;
+      const stenger = skilt?.stengtFra !== undefined && skilt.naa < skilt.stengtFra ? skilt.stengtFra : (skilt?.stenger ?? oppgave.tall ?? 0);
+      return si(spraak, "Butikken er åpen. Den stenger {tid}.", "Butikken er open. Den stengjer {tid}.", { tid: tidTilDigital24(stenger) });
+    }
+    const rett = oppgave.valg.find((valg) => valg.id === oppgave.fasit);
+    const apner = rett?.klokke ?? oppgave.skilt?.neste ?? oppgave.tall ?? 0;
+    return si(spraak, "Butikken er stengt. Den åpner {tid}.", "Butikken er stengt. Den opnar {tid}.", { tid: tidTilDigital24(apner) });
   }
   if (oppgave.maalKlokke !== undefined && oppgave.type !== "rekker-jeg" && oppgave.type !== "hvor-lenge") {
     return si(spraak, "Klokka er {ord}. Digitalt er det {digital}.", "Klokka er {ord}. Digitalt er det {digital}.", {

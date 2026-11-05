@@ -6,7 +6,7 @@ import { ferdighetApent, tillatteMinutter } from "../tilpasning/mestring";
 import { formFlertall, formNavn, mal, navnVare } from "../tekst/ordbok";
 import { arstidTekst, manedTekst } from "../tekst/spraak";
 import { timeNavn } from "../tid/ord";
-import { klokke, normaliser, tidTilDigital24, tidTilOrd } from "../tid/tid";
+import { erApen, klokke, nesteApning, normaliser, tidTilDigital24, tidTilOrd } from "../tid/tid";
 import type { Dagsplan, Ferdighet, FerdighetsTilstand, Hylle, Nivaa, Oppgave, OppgaveType, Spraak, Valg, VareId } from "../typer";
 import { MALER, malFerdighet, malerFor, type Mal } from "./maler";
 
@@ -25,6 +25,7 @@ export interface OppgaveKontekst {
   tidsromPa?: boolean;
   ukedagNavn?: (dag: string) => string;
   blandetValgt?: boolean;
+  naa?: number;
 }
 
 const HYLLE: Record<Hylle, OppgaveType[]> = {
@@ -345,9 +346,9 @@ function lagLenge(mal: Mal, ctx: OppgaveKontekst): Oppgave {
 
 function lagApen(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const butikk = ctx.plan?.butikk ?? { apner: klokke(14, 0), stenger: klokke(17, 0), stengtHele: false };
-  const v = variant(mal.id);
-  const naa = v === 5 || butikk.stengtHele ? klokke(12, 0) : v % 2 === 0 ? butikk.apner : normaliser(butikk.stenger + 30);
-  const apen = !butikk.stengtHele && naa >= butikk.apner && naa < butikk.stenger && !(butikk.stengtFra !== undefined && naa >= butikk.stengtFra && butikk.stengtTil !== undefined && naa < butikk.stengtTil);
+  const naa = ctx.naa ?? butikk.apner;
+  const apen = erApen(naa, butikk);
+  const neste = nesteApning(naa, butikk, ctx.plan?.nesteApning);
   const oppgave = basis(
     mal,
     ctx,
@@ -358,8 +359,16 @@ function lagApen(mal: Mal, ctx: OppgaveKontekst): Oppgave {
     apen ? "ja" : "nei",
     "dor-rektangel",
   );
-  oppgave.maalKlokke = naa;
-  oppgave.tall = butikk.apner;
+  oppgave.maalKlokke = butikk.apner;
+  oppgave.tall = butikk.stenger;
+  oppgave.skilt = {
+    naa,
+    apner: butikk.apner,
+    stenger: butikk.stenger,
+    stengtFra: butikk.stengtFra,
+    stengtTil: butikk.stengtTil,
+    neste,
+  };
   oppgave.valg = stokk(ctx.tilfeldig, [
     { id: "ja", ja: true, tekst: si(ctx.spraak, "Åpen", "Open") },
     { id: "nei", ja: false, tekst: si(ctx.spraak, "Stengt", "Stengt") },

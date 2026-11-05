@@ -22,7 +22,7 @@ import { visNavn } from "./dag/aktiviteter";
 import { fraNb, formNavn, mal, navnBygg, navnVare, vareFlertall } from "./tekst/ordbok";
 import { manedTekst, si, SPRAAK_NAVN, ukedagTekst } from "./tekst/spraak";
 import { himmel, leggTil, tidTilDigital24, tidTilOrd, minutt, timer, klokke } from "./tid/tid";
-import { erSpraak, SPRAAK, type ByggId, type Lagret, type Nivaa, type NokkelLager, type Oppgave, type Spraak, type StedId, type Ukedag, type VareId } from "./typer";
+import { erSpraak, SPRAAK, type ByggId, type Lagret, type Nivaa, type NokkelLager, type Oppgave, type SkiltTid, type Spraak, type StedId, type Ukedag, type VareId } from "./typer";
 import { lagVoksenStykke } from "./voksen";
 import { klikk } from "./lyd/lyd";
 import "./style.css";
@@ -244,7 +244,20 @@ function fargeFor(id: string): Farge {
   return DELFARGE[sum % DELFARGE.length] ?? FARGER.tre;
 }
 
+function skiltHtml(skilt: SkiltTid): string {
+  const rad = (fra: number, til: number) =>
+    `<div class="skilt-rad">${urHtml(fra, false, false, "analog", 36)}${urHtml(til, false, false, "analog", 36)}<span>${tidTilDigital24(fra)}–${tidTilDigital24(til)}</span></div>`;
+  const tider =
+    skilt.stengtFra !== undefined && skilt.stengtTil !== undefined
+      ? `${rad(skilt.apner, skilt.stengtFra)}${rad(skilt.stengtTil, skilt.stenger)}`
+      : skilt.apner !== skilt.stenger
+        ? rad(skilt.apner, skilt.stenger)
+        : "";
+  return `<div class="skilt"><div class="skilt-tider">${tider}</div>${urHtml(skilt.naa, false, false, "analog", 160)}</div>`;
+}
+
 function oppgaveBilde(oppgave: Oppgave): string {
+  if (oppgave.id.startsWith("dor-")) return "";
   if (oppgave.type === "still-klokka" && oppgave.maalKlokke !== undefined) {
     const vis = sporsmalViser(oppgave);
     const maal = vis === "digital" ? tidTilDigital24(oppgave.maalKlokke) : tidTilOrd(oppgave.maalKlokke, spraak());
@@ -286,7 +299,11 @@ function oppgaveBilde(oppgave: Oppgave): string {
   if ((oppgave.type === "hvor-lenge" || oppgave.type === "rekker-jeg" || oppgave.type === "apningstider") && oppgave.maalKlokke !== undefined && oppgave.tall !== undefined) {
     const venstre = oppgave.type === "hvor-lenge" ? si(spraak(), "Fra", "Frå") : oppgave.type === "apningstider" ? si(spraak(), "Åpner", "Opnar") : si(spraak(), "Nå", "No");
     const hoyre = oppgave.type === "apningstider" ? si(spraak(), "Stenger", "Stengjer") : si(spraak(), "Til", "Til");
-    return `<div class="sammenlign"><div><p class="ord">${venstre}</p>${urHtml(oppgave.maalKlokke, false, false, "analog", 120)}</div><div><p class="ord">${hoyre}</p>${urHtml(oppgave.tall, false, false, "analog", 120)}</div></div>`;
+    const pause =
+      oppgave.skilt?.stengtFra !== undefined && oppgave.skilt.stengtTil !== undefined
+        ? `<p class="ord">${tidTilDigital24(oppgave.skilt.apner)}–${tidTilDigital24(oppgave.skilt.stengtFra)} · ${tidTilDigital24(oppgave.skilt.stengtTil)}–${tidTilDigital24(oppgave.skilt.stenger)}</p>`
+        : "";
+    return `<div class="sammenlign"><div><p class="ord">${venstre}</p>${urHtml(oppgave.maalKlokke, false, false, "analog", 120)}</div><div><p class="ord">${hoyre}</p>${urHtml(oppgave.tall, false, false, "analog", 120)}</div></div>${pause}`;
   }
   if (oppgave.maalKlokke !== undefined && oppgave.type !== "still-klokka") return urHtml(oppgave.maalKlokke, false, false, sporsmalViser(oppgave) === "full" ? "analog" : sporsmalViser(oppgave));
   if (oppgave.form3d) return formSvg(oppgave.form3d, 120);
@@ -413,8 +430,10 @@ function oppgaveHtml(oppgave: Oppgave): string {
     const klokke = visTid !== undefined ? urHtml(visTid, false, false, "analog", 120) : "";
     return `<article class="kort feil"><p>${esc(forklaring)}</p>${klokke}${videre && rett?.tekst ? `<p class="valgt-svar">${esc(rett.tekst)}</p>` : ""}${videre && oppgave.form ? formSvg(oppgave.form, 96) : ""}<button type="button" class="hoved" data-handling="fortsett">${videre ? si(spraak(), "Fortsett", "Hald fram") : si(spraak(), "Prøv igjen", "Prøv igjen")}</button></article>`;
   }
+  const skilt = oppgave.skilt && oppgave.id.startsWith("dor-") ? skiltHtml(oppgave.skilt) : "";
   return `<article class="kort" aria-label="${esc(oppgave.prompt)}">
     <div class="rad">${ikon(ikonFor(oppgave.type))}<p>${esc(oppgave.hvem)}</p></div>
+    ${skilt}
     <h2>${esc(oppgave.prompt)}</h2>
     ${oppgaveBilde(oppgave)}
     ${valgHtml(oppgave)}
@@ -491,7 +510,7 @@ function planHtml(): string {
   if (!dag) return "";
   return `<div class="tidslinje">${planPunkter()
     .map((punkt) => `<div class="tidspunkt">${urHtml(punkt.tid, true)}<p>${esc(punkt.navn)} ${tidTilDigital24(punkt.tid)}</p></div>`)
-    .join("")}</div><button type="button" class="hoved" data-plan="lukk">${si(spraak(), "Lukk", "Lukk")}</button>`;
+    .join("")}</div>${skiltKort()}<button type="button" class="hoved" data-plan="lukk">${si(spraak(), "Lukk", "Lukk")}</button>`;
 }
 
 function raad(): string {
@@ -538,7 +557,8 @@ function sceneHtml(): string {
   const tilbake = `<button type="button" data-ute="1">${si(spraak(), "← Byen", "← Byen")}</button>`;
   if (dag.sted === "butikk") {
     const rader = handlelisteRader();
-    return `${tilbake}<section class="scene"><h1>${si(spraak(), "Butikken", "Butikken")}</h1><p>${esc(apningTekst(lagret))}</p><div class="hyller">${rader
+    const apning = dag.dorLest ? `<p>${esc(apningTekst(lagret))}</p>` : "";
+    return `${tilbake}<section class="scene"><h1>${si(spraak(), "Butikken", "Butikken")}</h1>${apning}<div class="hyller">${rader
       .map((rad) => `<div class="kurv-rad${rad.har ? " har" : ""}">${delBilde(rad.vare)}<p>${rad.har ? "✓ " : ""}${esc(navnVare(rad.vare, spraak()))}</p></div>`)
       .join("")}</div><div class="ekspeditor">${byggmester(1)}</div></section>`;
   }
@@ -696,6 +716,12 @@ function menyHtml(): string {
 
 const MANED_ID = ["januar", "februar", "mars", "april", "mai", "juni", "juli", "august", "september", "oktober", "november", "desember"];
 
+function skiltKort(): string {
+  const dag = lagret.aktivDag;
+  if (!dag || dag.dorLest || dag.plan.butikk.stengtHele || dag.sted !== "hjemme") return "";
+  return `<button type="button" data-handling="dor">${si(spraak(), "Les åpningstidene før du går", "Les opningstidene før du går")}</button>`;
+}
+
 function fremdriftTekst(): string {
   const maal = maalBygg(lagret);
   const nivaa = String(lagret.by.nivaa);
@@ -723,6 +749,7 @@ function dagstartHtml(): string {
       .map((punkt) => `<div class="dagrad">${ikon(ikonNavn(punkt.navn))}<div class="dagtid">${urHtml(punkt.tid, true, false, "analog", 36)}<span>${tidTilDigital24(punkt.tid)}</span>${ord ? `<span class="ord">${esc(tidTilOrd(punkt.tid, spraak()))}</span>` : ""}</div><p>${esc(punkt.navn)}</p></div>`)
       .join("")}</div>
     ${maal ? `<div class="bygg-start"><h2>${esc(byggNavn(maal.id))}</h2><div class="bygg-lite">${tegnBygg(maal.id, false)}</div><p>${esc(byggNavn(maal.id))} ${si(spraak(), "trenger:", "treng:")}</p><div class="delrad">${deler}</div></div>` : ""}
+    ${skiltKort()}
     </div>
     <button type="button" class="hoved dagstart-start" data-handling="start-ettermiddag">${si(spraak(), "Start ettermiddagen", "Start ettermiddagen")}</button>
   </div>`;
@@ -1297,6 +1324,10 @@ rot.addEventListener("click", (hendelse) => {
     gjor({ slag: "klokke" });
     skjerm = "ur";
     return;
+  }
+  if (handling === "dor") {
+    skjerm = "verden";
+    gjor({ slag: "dor" });
   }
   if (handling === "handle" || handling === "fortsett" || handling === "steg" || handling === "angre" || handling === "mot" || handling === "spis" || handling === "avslutt") {
     bekreftAvslutt = false;
