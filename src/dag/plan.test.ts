@@ -63,6 +63,22 @@ describe("dagsplan", () => {
     expect(forste.avtaler.some((avtale) => avtale.start % 60 === 15)).toBe(false);
   });
 
+  it("legger ikke en aktivitet i den første timen etter skolen", () => {
+    let dato = STARTDATO;
+    for (let i = 0; i < 30; i++) {
+      const plan = lagDagsplan(grunn({ fro: 400 + i, dato, nivaa: "forste" }));
+      expect(plan.avtaler.some((avtale) => avtale.id === "sfo")).toBe(false);
+      if (plan.skoleslutt !== null) {
+        const tidligst = plan.sfo ?? plan.start + 90;
+        for (const avtale of plan.avtaler) {
+          if (avtale.slag === "middag" || avtale.varighet <= 0) continue;
+          expect(avtale.start).toBeGreaterThanOrEqual(tidligst);
+        }
+      }
+      dato = nesteDato(dato);
+    }
+  });
+
   it("holder korps på tirsdag når rytmen sier det og lokalet er bygd", () => {
     const plan = lagDagsplan(
       grunn({

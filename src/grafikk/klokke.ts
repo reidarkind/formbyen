@@ -36,7 +36,7 @@ export function tallPosisjoner(cx = 120, cy = 120, radius = 96): TallPos[] {
   return Array.from({ length: 12 }, (_, i) => {
     const tall = i + 1;
     const rad = (tall * 30 * Math.PI) / 180;
-    return { tall, x: cx + Math.sin(rad) * radius * 0.78, y: cy - Math.cos(rad) * radius * 0.78 };
+    return { tall, x: cx + Math.sin(rad) * radius * 0.62, y: cy - Math.cos(rad) * radius * 0.62 };
   });
 }
 

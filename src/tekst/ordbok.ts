@@ -114,6 +114,30 @@ v("maling", "måling", "paint", "pintura", "Farbe", "tinta", "färg", "maling", 
 v("fliselim", "fliselim", "tile glue", "adhesivo", "Fliesenkleber", "cola", "kakellim", "fliselim", "colle");
 v("spiker", "spikar", "nails", "clavos", "Nägel", "pregos", "spik", "søm", "clous");
 v("jord", "jord", "soil", "tierra", "Erde", "terra", "jord", "jord", "terre");
+v("vegg-tre", "trevegg", "wood wall", "pared de madera", "Holzwand", "parede de madeira", "trävägg", "trævæg", "mur en bois");
+v("vegg-mur", "murvegg", "brick wall", "pared de ladrillo", "Mauer", "parede de tijolo", "tegelvägg", "murvæg", "mur de briques");
+v("vegg-stein", "steinkant", "stone edge", "borde de piedra", "Steinkante", "borda de pedra", "stenskant", "stenkant", "bord de pierre");
+v("tak-rodt", "raudt tak", "red roof", "tejado rojo", "rotes Dach", "telhado vermelho", "rött tak", "rødt tag", "toit rouge");
+v("tak-blatt", "blått tak", "blue roof", "tejado azul", "blaues Dach", "telhado azul", "blått tak", "blåt tag", "toit bleu");
+v("planke", "planke", "plank", "tablón", "Planke", "tábua", "planka", "planke", "planche");
+v("dor-rektangel", "dør", "door", "puerta", "Tür", "porta", "dörr", "dør", "porte");
+v("dor-bue", "boga dør", "arched door", "puerta de arco", "Bogentür", "porta em arco", "välvd dörr", "buet dør", "porte en arc");
+v("vindu-kvadrat", "kvadratvindauge", "square window", "ventana cuadrada", "Quadratfenster", "janela quadrada", "kvadratfönster", "kvadratvindue", "fenêtre carrée");
+v("vindu-rektangel", "rektangelvindauge", "rectangle window", "ventana rectangular", "Rechteckfenster", "janela retangular", "rektangelfönster", "rektangelvindue", "fenêtre rectangulaire");
+v("vindu-sirkel", "sirkelvindauge", "round window", "ventana redonda", "Rundes Fenster", "janela redonda", "runt fönster", "rundt vindue", "fenêtre ronde");
+v("vindu-halvsirkel", "halvsirkelvindauge", "semicircle window", "ventana de semicírculo", "Halbkreisfenster", "janela em semicírculo", "halvcirkelfönster", "halvcirkelvindue", "fenêtre en demi-cercle");
+v("vindu-sekskant", "sekskantvindauge", "hexagon window", "ventana hexagonal", "Sechseckfenster", "janela hexagonal", "sexhörningsfönster", "sekskantvindue", "fenêtre hexagonale");
+v("vindu-femkant", "femkantvindauge", "pentagon window", "ventana pentagonal", "Fünfeckfenster", "janela pentagonal", "femhörningsfönster", "femkantvindue", "fenêtre pentagonale");
+v("kloss-kube", "kube", "cube", "cubo", "Würfel", "cubo", "kub", "terning", "cube");
+v("kloss-sylinder", "sylinder", "cylinder", "cilindro", "Zylinder", "cilindro", "cylinder", "cylinder", "cylindre");
+v("kloss-kule", "kule", "sphere", "esfera", "Kugel", "esfera", "klot", "kugle", "sphère");
+v("kloss-kjegle", "kjegle", "cone", "cono", "Kegel", "cone", "kon", "kegle", "cône");
+v("kloss-pyramide", "pyramide", "pyramid", "pirámide", "Pyramide", "pirâmide", "pyramid", "pyramide", "pyramide");
+v("kloss-prisme", "prisme", "prism", "prisma", "Prisma", "prisma", "prisma", "prisme", "prisme");
+v("pynt-blomst", "blomster", "flower", "flor", "Blume", "flor", "blomma", "blomst", "fleur");
+v("pynt-flagg", "flagg", "flag", "bandera", "Fahne", "bandeira", "flagga", "flag", "drapeau");
+v("pynt-benk", "benk", "bench", "banco", "Bank", "banco", "bänk", "bænk", "banc");
+v("pynt-lykt", "lykt", "lamp", "farol", "Laterne", "lanterna", "lykta", "lygte", "lanterne");
 
 export function navnAktivitet(id: string, spraak: Spraak, nb: string, nn: string): string {
   return navn(id, spraak, AKTIVITET, nb, nn);
@@ -123,9 +147,87 @@ export function navnBygg(id: string, spraak: Spraak, nb: string, nn: string): st
   return navn(id, spraak, BYGG, nb, nn);
 }
 
+const VARE_NB: Record<string, string> = {
+  "vegg-tre": "trevegg",
+  "vegg-mur": "murvegg",
+  "vegg-stein": "steinkant",
+  "tak-rodt": "rødt tak",
+  "tak-blatt": "blått tak",
+  planke: "planke",
+  "dor-rektangel": "dør",
+  "dor-bue": "buet dør",
+  "vindu-kvadrat": "kvadratvindu",
+  "vindu-rektangel": "rektangelvindu",
+  "vindu-sirkel": "sirkelvindu",
+  "vindu-halvsirkel": "halvsirkelvindu",
+  "vindu-sekskant": "sekskantvindu",
+  "vindu-femkant": "femkantvindu",
+  "kloss-kube": "kube",
+  "kloss-sylinder": "sylinder",
+  "kloss-kule": "kule",
+  "kloss-kjegle": "kjegle",
+  "kloss-pyramide": "pyramide",
+  "kloss-prisme": "prisme",
+  sement: "sement",
+  sand: "sand",
+  grus: "grus",
+  maling: "maling",
+  fliselim: "fliselim",
+  spiker: "spiker",
+  jord: "jord",
+  "pynt-blomst": "blomst",
+  "pynt-flagg": "flagg",
+  "pynt-benk": "benk",
+  "pynt-lykt": "lykt",
+};
+
 export function navnVare(id: string, spraak: Spraak): string {
-  if (spraak === "nb") return id;
-  return VARE[id]?.[spraak] ?? id;
+  const nb = VARE_NB[id] ?? id;
+  if (spraak === "nb") return nb;
+  if (spraak === "nn") return VARE[id]?.nn ?? nb;
+  return VARE[id]?.[spraak] ?? nb;
+}
+
+const FORM_NB: Record<string, string> = {
+  sirkel: "sirkel",
+  trekant: "trekant",
+  kvadrat: "kvadrat",
+  rektangel: "rektangel",
+  femkant: "femkant",
+  sekskant: "sekskant",
+  halvsirkel: "halvsirkel",
+  oval: "oval",
+  kube: "kube",
+  kule: "kule",
+  sylinder: "sylinder",
+  kjegle: "kjegle",
+  pyramide: "pyramide",
+  prisme: "prisme",
+};
+const FORM: Record<string, Andre> = {};
+function f(id: string, nn: string, en: string, es: string, de: string, pt: string, sv: string, da: string, fr: string): void {
+  FORM[id] = { nn, en, es, de, pt, sv, da, fr };
+}
+f("sirkel", "sirkel", "circle", "círculo", "Kreis", "círculo", "cirkel", "cirkel", "cercle");
+f("trekant", "trekant", "triangle", "triángulo", "Dreieck", "triângulo", "triangel", "trekant", "triangle");
+f("kvadrat", "kvadrat", "square", "cuadrado", "Quadrat", "quadrado", "kvadrat", "kvadrat", "carré");
+f("rektangel", "rektangel", "rectangle", "rectángulo", "Rechteck", "retângulo", "rektangel", "rektangel", "rectangle");
+f("femkant", "femkant", "pentagon", "pentágono", "Fünfeck", "pentágono", "femhörning", "femkant", "pentagone");
+f("sekskant", "sekskant", "hexagon", "hexágono", "Sechseck", "hexágono", "sexhörning", "sekskant", "hexagone");
+f("halvsirkel", "halvsirkel", "semicircle", "semicírculo", "Halbkreis", "semicírculo", "halvcirkel", "halvcirkel", "demi-cercle");
+f("oval", "oval", "oval", "óvalo", "Oval", "oval", "oval", "oval", "ovale");
+f("kube", "kube", "cube", "cubo", "Würfel", "cubo", "kub", "terning", "cube");
+f("kule", "kule", "sphere", "esfera", "Kugel", "esfera", "klot", "kugle", "sphère");
+f("sylinder", "sylinder", "cylinder", "cilindro", "Zylinder", "cilindro", "cylinder", "cylinder", "cylindre");
+f("kjegle", "kjegle", "cone", "cono", "Kegel", "cone", "kon", "kegle", "cône");
+f("pyramide", "pyramide", "pyramid", "pirámide", "Pyramide", "pirâmide", "pyramid", "pyramide", "pyramide");
+f("prisme", "prisme", "prism", "prisma", "Prisma", "prisma", "prisma", "prisme", "prisme");
+
+export function formNavn(id: string, spraak: Spraak): string {
+  const nb = FORM_NB[id] ?? id;
+  if (spraak === "nb") return nb;
+  if (spraak === "nn") return FORM[id]?.nn ?? nb;
+  return FORM[id]?.[spraak] ?? nb;
 }
 
 o("Slik er klokka", "Slik er klokka", "This is the time", "Así es la hora", "So ist die Uhr", "Esta é a hora", "Så är klockan", "Sådan er klokken", "Voici l'heure");
@@ -310,5 +412,78 @@ o("Klokka er {ord}. Digitalt er det {digital}.", "Klokka er {ord}. Digitalt er d
 o("Det er {tall}. Følg med når de lyses opp.", "Det er {tall}. Følg med når dei lyser opp.", "There are {tall}. Watch when they light up.", "Hay {tall}. Mira cuando se encienden.", "Es sind {tall}. Schau, wenn sie aufleuchten.", "Há {tall}. Olha quando acendem.", "Det är {tall}. Följ med när de lyser upp.", "Der er {tall}. Følg med, når de lyser op.", "Il y en a {tall}. Regarde quand ils s'allument.");
 o("Se tidslinjen. Den korte veien rekker, den lange gjør ikke det.", "Sjå tidslinja. Den korte vegen rekk, den lange gjer ikkje det.", "Look at the timeline. The short way makes it. The long way does not.", "Mira la línea de tiempo. El camino corto llega. El largo no.", "Sieh die Zeitlinie. Der kurze Weg schafft es. Der lange nicht.", "Olha a linha do tempo. O caminho curto chega. O longo não.", "Se tidslinjen. Den korta vägen hinner. Den långa gör det inte.", "Se tidslinjen. Den korte vej når det. Den lange gør ikke.", "Regarde la ligne du temps. Le chemin court arrive. Le long n'arrive pas.");
 o("Se på bildet en gang til. Det riktige er markert.", "Sjå på biletet ein gong til. Det rette er merkt.", "Look at the picture again. The right one is marked.", "Mira el dibujo otra vez. Lo correcto está marcado.", "Sieh das Bild noch einmal an. Das Richtige ist markiert.", "Olha a imagem outra vez. O certo está marcado.", "Titta på bilden en gång till. Det rätta är markerat.", "Se på billedet en gang til. Det rigtige er markeret.", "Regarde l'image encore. La bonne est marquée.");
+
+o("Stengt i dag.", "Stengt i dag.", "Closed today.", "Cerrada hoy.", "Heute zu.", "Fechada hoje.", "Stängd i dag.", "Lukket i dag.", "Fermée aujourd'hui.");
+o("Åpner kl. {tid}", "Opnar kl. {tid}", "Opens at {tid}", "Abre a las {tid}", "Öffnet um {tid}", "Abre às {tid}", "Öppnar kl. {tid}", "Åbner kl. {tid}", "Ouvre à {tid}");
+o("Stengt nå. Åpner kl. {tid}", "Stengt no. Opnar kl. {tid}", "Closed now. Opens at {tid}", "Cerrada ahora. Abre a las {tid}", "Jetzt zu. Öffnet um {tid}", "Fechada agora. Abre às {tid}", "Stängd nu. Öppnar kl. {tid}", "Lukket nu. Åbner kl. {tid}", "Fermée. Ouvre à {tid}");
+o("Stengt nå. Åpner i morgen.", "Stengt no. Opnar i morgon.", "Closed now. Opens tomorrow.", "Cerrada ahora. Abre mañana.", "Jetzt zu. Öffnet morgen.", "Fechada agora. Abre amanhã.", "Stängd nu. Öppnar i morgon.", "Lukket nu. Åbner i morgen.", "Fermée. Ouvre demain.");
+o("Butikken er åpen.", "Butikken er open.", "The shop is open.", "La tienda está abierta.", "Der Laden ist offen.", "A loja está aberta.", "Butiken är öppen.", "Butikken er åben.", "La boutique est ouverte.");
+o("Er butikken åpen nå? Klokka er {naa}.", "Er butikken open no? Klokka er {naa}.", "Is the shop open now? It is {naa}.", "¿Está abierta la tienda ahora? Son las {naa}.", "Hat der Laden jetzt offen? Es ist {naa}.", "A loja está aberta agora? São {naa}.", "Är butiken öppen nu? Klockan är {naa}.", "Er butikken åben nu? Klokken er {naa}.", "La boutique est ouverte maintenant ? Il est {naa}.");
+o("Det er ingen avtale nå.", "Det er inga avtale no.", "There is no plan right now.", "No hay ninguna cita ahora.", "Gerade ist kein Termin.", "Não há nenhum plano agora.", "Det finns ingen plan nu.", "Der er ingen aftale nu.", "Il n'y a pas de rendez-vous maintenant.");
+o("{navn} varer {min} minutter. Når er den ferdig?", "{navn} varer {min} minutt. Når er den ferdig?", "{navn} lasts {min} minutes. When does it end?", "{navn} dura {min} minutos. ¿Cuándo termina?", "{navn} dauert {min} Minuten. Wann ist es fertig?", "{navn} dura {min} minutos. Quando acaba?", "{navn} varar {min} minuter. När är den klar?", "{navn} varer {min} minutter. Hvornår er den færdig?", "{navn} dure {min} minutes. Quand est-ce fini ?");
+o("Vi øver mer på den senere.", "Vi øver meir på den seinare.", "We will practice that later.", "Lo practicamos luego.", "Das üben wir später.", "Praticamos isso depois.", "Vi övar mer på den senare.", "Vi øver mere på den senere.", "On s'entraînera plus tard.");
+o("Tegn en {form}.", "Teikn ein {form}.", "Draw a {form}.", "Dibuja un {form}.", "Zeichne einen {form}.", "Desenha um {form}.", "Rita en {form}.", "Tegn en {form}.", "Dessine un {form}.");
+o("Tell sidene.", "Tel sidene.", "Count the sides.", "Cuenta los lados.", "Zähl die Seiten.", "Conta os lados.", "Räkna sidorna.", "Tæl siderne.", "Compte les côtés.");
+o("Tell hjørnene.", "Tel hjørna.", "Count the corners.", "Cuenta las esquinas.", "Zähl die Ecken.", "Conta os cantos.", "Räkna hörnen.", "Tæl hjørnerne.", "Compte les coins.");
+o("Tell de rette hjørnene.", "Tel dei rette hjørna.", "Count the square corners.", "Cuenta las esquinas rectas.", "Zähl die rechten Winkel.", "Conta os cantos retos.", "Räkna de räta hörnen.", "Tæl de rette hjørner.", "Compte les angles droits.");
+o("Tell kantene.", "Tel kantane.", "Count the edges.", "Cuenta las aristas.", "Zähl die Kanten.", "Conta as arestas.", "Räkna kanterna.", "Tæl kanterne.", "Compte les arêtes.");
+o("Tell flatene.", "Tel flatene.", "Count the faces.", "Cuenta las caras.", "Zähl die Flächen.", "Conta as faces.", "Räkna sidorna.", "Tæl fladerne.", "Compte les faces.");
+o("Det er {tall}.", "Det er {tall}.", "There are {tall}.", "Hay {tall}.", "Es sind {tall}.", "Há {tall}.", "Det är {tall}.", "Der er {tall}.", "Il y en a {tall}.");
+o("Følg kanten rundt hele formen.", "Følg kanten rundt heile forma.", "Follow the edge around the whole shape.", "Sigue el borde de toda la forma.", "Folge der Kante um die ganze Form.", "Segue a borda à volta da forma.", "Följ kanten runt hela formen.", "Følg kanten rundt hele formen.", "Suis le bord de toute la forme.");
+o("Se på bildet en gang til.", "Sjå på biletet ein gong til.", "Look at the picture again.", "Mira el dibujo otra vez.", "Sieh das Bild noch einmal an.", "Olha a imagem outra vez.", "Titta på bilden en gång till.", "Se på billedet en gang til.", "Regarde l'image encore.");
+o("Det riktige er {svar}.", "Det rette er {svar}.", "The right one is {svar}.", "Lo correcto es {svar}.", "Das Richtige ist {svar}.", "O certo é {svar}.", "Det rätta är {svar}.", "Det rigtige er {svar}.", "La bonne réponse est {svar}.");
+o("Tøm", "Tøm", "Clear", "Borrar", "Leeren", "Apagar", "Töm", "Tøm", "Effacer");
+o("Spill", "Spel", "Play", "Jugar", "Spielen", "Jogar", "Spela", "Spil", "Jouer");
+o("Pause", "Pause", "Pause", "Pausa", "Pause", "Pausa", "Paus", "Pause", "Pause");
+o("Fortsett", "Hald fram", "Continue", "Sigue", "Weiter", "Continua", "Fortsätt", "Fortsæt", "Continue");
+o("Avslutt dagen", "Avslutt dagen", "End the day", "Termina el día", "Tag beenden", "Acaba o dia", "Avsluta dagen", "Afslut dagen", "Finis la journée");
+o("Neste del", "Neste del", "Next part", "Siguiente pieza", "Nächstes Teil", "Próxima peça", "Nästa del", "Næste del", "Pièce suivante");
+o("Du har delen.", "Du har delen.", "You have the part.", "Tienes la pieza.", "Du hast das Teil.", "Tens a peça.", "Du har delen.", "Du har delen.", "Tu as la pièce.");
+o("Du trenger delen.", "Du treng delen.", "You need the part.", "Te falta la pieza.", "Dir fehlt das Teil.", "Falta-te a peça.", "Du behöver delen.", "Du mangler delen.", "Il te faut la pièce.");
+o("Vent til {tid}", "Vent til {tid}", "Wait until {tid}", "Espera hasta las {tid}", "Warte bis {tid}", "Espera até às {tid}", "Vänta till {tid}", "Vent til {tid}", "Attends jusqu'à {tid}");
+o("Hopp over", "Hopp over", "Skip", "Saltar", "Überspringen", "Saltar", "Hoppa över", "Spring over", "Passer");
+o("Neste", "Neste", "Next", "Siguiente", "Weiter", "Seguinte", "Nästa", "Næste", "Suivant");
+o("Hele timer og halve.", "Heile timar og halve.", "Whole hours and half hours.", "Horas enteras y medias.", "Volle und halbe Stunden.", "Horas inteiras e meias.", "Hela timmar och halva.", "Hele timer og halve.", "Heures entières et demies.");
+o("Kvartene også.", "Kvartane også.", "Quarters too.", "También los cuartos.", "Auch Viertel.", "Quartos também.", "Kvartar också.", "Kvarter også.", "Les quarts aussi.");
+o("Fem minutter.", "Fem minutt.", "Five minutes.", "Cinco minutos.", "Fünf Minuten.", "Cinco minutos.", "Fem minuter.", "Fem minutter.", "Cinq minutes.");
+o("Litt av hvert.", "Litt av kvart.", "A bit of everything.", "Un poco de todo.", "Ein bisschen von allem.", "Um pouco de tudo.", "Lite av varje.", "Lidt af hvert.", "Un peu de tout.");
+o("Spiller", "Spelar", "Player", "Jugador", "Spieler", "Jogador", "Spelare", "Spiller", "Joueur");
+o("Lyd og visning", "Lyd og vising", "Sound and display", "Sonido y pantalla", "Ton und Anzeige", "Som e ecrã", "Ljud och visning", "Lyd og visning", "Son et affichage");
+o("Språk", "Språk", "Language", "Idioma", "Sprache", "Língua", "Språk", "Sprog", "Langue");
+o("Lyd", "Lyd", "Sound", "Sonido", "Ton", "Som", "Ljud", "Lyd", "Son");
+o("Digital klokke", "Digital klokke", "Digital clock", "Reloj digital", "Digitale Uhr", "Relógio digital", "Digital klocka", "Digitalt ur", "Horloge digitale");
+o("Tid", "Tid", "Time", "Hora", "Zeit", "Hora", "Tid", "Tid", "Heure");
+o("Introduksjon", "Introduksjon", "Introduction", "Introducción", "Einführung", "Introdução", "Introduktion", "Introduktion", "Introduction");
+o("Se introduksjonen", "Sjå introduksjonen", "See the introduction", "Ver la introducción", "Einführung ansehen", "Ver a introdução", "Se introduktionen", "Se introduktionen", "Voir l'introduction");
+o("Kurven", "Korga", "Basket", "Cesta", "Korb", "Cesto", "Korgen", "Kurven", "Panier");
+o("Handlelisten er tom.", "Handlelista er tom.", "The shopping list is empty.", "La lista está vacía.", "Die Einkaufsliste ist leer.", "A lista está vazia.", "Inköpslistan är tom.", "Indkøbslisten er tom.", "La liste est vide.");
+o("{navn} er snart.", "{navn} er snart.", "{navn} is soon.", "{navn} es pronto.", "{navn} ist bald.", "{navn} é já.", "{navn} är snart.", "{navn} er snart.", "{navn} est bientôt.");
+o("Hva vil du gjøre?", "Kva vil du gjere?", "What do you want to do?", "¿Qué quieres hacer?", "Was willst du tun?", "O que queres fazer?", "Vad vill du göra?", "Hvad vil du lave?", "Tu veux faire quoi ?");
+o("Bygg", "Bygg", "Build", "Construye", "Baue", "Constrói", "Bygg", "Byg", "Construis");
+o("Gå til butikken", "Gå til butikken", "Go to the shop", "Ve a la tienda", "Geh zum Laden", "Vai à loja", "Gå till butiken", "Gå til butikken", "Va à la boutique");
+o("Stenger", "Stengjer", "Closes", "Cierra", "Schließt", "Fecha", "Stänger", "Lukker", "Ferme");
+o("Stjerne", "Stjerne", "Star", "Estrella", "Stern", "Estrela", "Stjärna", "Stjerne", "Étoile");
+o("Tidsrom er oppgaver om hvor lenge noe varer.", "Tidsrom er oppgåver om kor lenge noko varer.", "Time spans are tasks about how long something lasts.", "Los intervalos son tareas sobre cuánto dura algo.", "Zeitspannen sind Aufgaben dazu, wie lange etwas dauert.", "Intervalos são tarefas sobre quanto tempo algo dura.", "Tidsrymder är uppgifter om hur länge något varar.", "Tidsrum er opgaver om, hvor længe noget varer.", "Les durées sont des tâches sur combien de temps ça dure.");
+o("Dagboklisten viser alle dager.", "Dagboklista viser alle dagar.", "The diary list shows every day.", "La lista muestra todos los días.", "Die Liste zeigt alle Tage.", "A lista mostra todos os dias.", "Listan visar alla dagar.", "Listen viser alle dage.", "La liste montre tous les jours.");
+o("Data", "Data", "Data", "Datos", "Daten", "Dados", "Data", "Data", "Données");
+o("Nivå", "Nivå", "Level", "Nivel", "Stufe", "Nível", "Nivå", "Niveau", "Niveau");
+o("Om appen", "Om appen", "About the app", "Sobre la app", "Über die App", "Sobre a app", "Om appen", "Om appen", "À propos");
+o("Lukk", "Lukk", "Close", "Cerrar", "Schließen", "Fechar", "Stäng", "Luk", "Fermer");
+o("SFO", "SFO", "After-school club", "Actividades", "Hort", "ATL", "Fritids", "SFO", "Garderie");
+o("Dag", "Dag", "Day", "Día", "Tag", "Dia", "Dag", "Dag", "Jour");
+o("Kveld", "Kveld", "Evening", "Tarde", "Abend", "Tarde", "Kväll", "Aften", "Soir");
+o("Dalen er tom.", "Dalen er tom.", "The valley is empty.", "El valle está vacío.", "Das Tal ist leer.", "O vale está vazio.", "Dalen är tom.", "Dalen er tom.", "La vallée est vide.");
+o("Her står en rønne. Du kan bo her.", "Her står ei rønne. Du kan bu her.", "Here is a cottage. You can live here.", "Aquí hay una cabaña. Puedes vivir aquí.", "Hier steht eine Hütte. Du kannst hier wohnen.", "Aqui está uma cabana. Podes morar aqui.", "Här står en stuga. Du kan bo här.", "Her står et hus. Du kan bo her.", "Voici une cabane. Tu peux vivre ici.");
+o("Bygg helt til slottet.", "Bygg heilt til slottet.", "Build all the way to the castle.", "Construye hasta el castillo.", "Bau bis zum Schloss.", "Constrói até ao castelo.", "Bygg ända till slottet.", "Byg helt til slottet.", "Construis jusqu'au château.");
+o("Pass på klokka. Butikken har åpningstid.", "Pass på klokka. Butikken har opningstid.", "Watch the clock. The shop has opening hours.", "Mira el reloj. La tienda tiene horario.", "Pass auf die Uhr auf. Der Laden hat Öffnungszeiten.", "Olha o relógio. A loja tem horário.", "Passa klockan. Butiken har öppettider.", "Pas på uret. Butikken har åbningstid.", "Surveille l'horloge. La boutique a des horaires.");
+o("Aktivitet", "Aktivitet", "Activity", "Actividad", "Aktivität", "Atividade", "Aktivitet", "Aktivitet", "Activité");
+o("Kurven er tom.", "Korga er tom.", "The basket is empty.", "La cesta está vacía.", "Der Korb ist leer.", "O cesto está vazio.", "Korgen är tom.", "Kurven er tom.", "Le panier est vide.");
+o("Ingen nye bygg.", "Ingen nye bygg.", "No new buildings.", "Ningún edificio nuevo.", "Keine neuen Gebäude.", "Nenhum prédio novo.", "Inga nya hus.", "Ingen nye bygninger.", "Pas de nouveaux bâtiments.");
+o("Hele timer", "Heile timar", "Whole hours", "Horas enteras", "Volle Stunden", "Horas inteiras", "Hela timmar", "Hele timer", "Heures entières");
+o("Halvtime", "Halvtime", "Half hours", "Medias horas", "Halbe Stunden", "Meias horas", "Halvtimmar", "Halve timer", "Demies");
+o("Kvart", "Kvart", "Quarters", "Cuartos", "Viertel", "Quartos", "Kvartar", "Kvarter", "Quarts");
+o("Ukedager", "Vekedagar", "Weekdays", "Días", "Wochentage", "Dias", "Veckodagar", "Ugedage", "Jours");
+o("Måneder", "Månader", "Months", "Meses", "Monate", "Meses", "Månader", "Måneder", "Mois");
+o("Tid på dagen", "Tid på dagen", "Time of day", "Momento del día", "Tageszeit", "Parte do dia", "Tid på dagen", "Tid på dagen", "Moment de la journée");
 
 fyllSteg(o);

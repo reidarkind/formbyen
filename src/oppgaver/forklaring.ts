@@ -18,13 +18,16 @@ export function forklaring(oppgave: Oppgave, svar: string, spraak: Spraak): stri
       digital: tidTilDigital24(oppgave.maalKlokke),
     });
   }
+  if (oppgave.type === "tegn") {
+    return si(spraak, "Følg kanten rundt hele formen.", "Følg kanten rundt heile forma.");
+  }
   if (oppgave.tall !== undefined && oppgave.type === "tell") {
-    return si(spraak, "Det er {tall}. Følg med når de lyses opp.", "Det er {tall}. Følg med når dei lyser opp.", {
-      tall: String(oppgave.tall),
-    });
+    return si(spraak, "Det er {tall}.", "Det er {tall}.", { tall: String(oppgave.tall) });
   }
   if (oppgave.type === "rekker-jeg") {
     return si(spraak, "Se tidslinjen. Den korte veien rekker, den lange gjør ikke det.", "Sjå tidslinja. Den korte vegen rekk, den lange gjer ikkje det.");
   }
-  return si(spraak, "Se på bildet en gang til. Det riktige er markert.", "Sjå på biletet ein gong til. Det rette er merkt.");
+  const rett = oppgave.valg.find((valg) => valg.id === oppgave.fasit);
+  if (rett?.tekst) return si(spraak, "Det riktige er {svar}.", "Det rette er {svar}.", { svar: rett.tekst });
+  return si(spraak, "Se på bildet en gang til.", "Sjå på biletet ein gong til.");
 }

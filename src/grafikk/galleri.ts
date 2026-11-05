@@ -27,7 +27,7 @@ export function galleriKort(): GalleriKort[] {
   }
   for (const variant of [0, 1, 2, 3]) kort.push({ tittel: `mester ${variant}`, svg: byggmester(variant, variant % 2 === 1), referanse: false });
   for (const dyr of ["hund", "katt", "kanin"] as const) kort.push({ tittel: dyr, svg: kjaeledyr(dyr), referanse: false });
-  for (const navn of ["still", "les", "koble", "sorter", "tell", "tegn", "velg", "feil", "ja", "mal", "vekt"]) {
+  for (const navn of ["still", "les", "koble", "sorter", "tell", "tegn", "velg", "feil", "ja", "nei", "mal", "vekt"]) {
     kort.push({ tittel: navn, svg: ikon(navn), referanse: false });
   }
   for (const form of ["sirkel", "trekant", "kvadrat", "rektangel", "femkant", "sekskant", "halvsirkel", "oval", "kube", "kjegle"]) {

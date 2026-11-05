@@ -283,6 +283,8 @@ export interface AktivDag {
   valgtInstans: string | null;
   melding: string | null;
   visteForSent: string[];
+  /** Feil på rad på samme oppgave. To feil slipper videre. */
+  feil?: number;
 }
 
 export interface Innstillinger {

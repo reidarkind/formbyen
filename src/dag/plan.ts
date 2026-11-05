@@ -197,19 +197,7 @@ function byggPlan(inn: PlanInn, tilfeldig: Tilfeldig): Dagsplan | null {
     });
   }
 
-  if (skole && tilfeldig() < 0.35) {
-    const sfo = velgTid(tilfeldig, [15 * 60 + 30, 16 * 60], lovlige);
-    if (ledig(avtaler, sfo, 30)) {
-      avtaler.push({
-        id: "sfo",
-        slag: "hjemme",
-        navn: visNavn("henting", inn.spraak),
-        start: sfo,
-        varighet: 30,
-        sted: "hjemme",
-      });
-    }
-  }
+  const sfo = skole && tilfeldig() < 0.35 ? velgTid(tilfeldig, [15 * 60 + 30, 16 * 60], lovlige) : null;
 
   const rytme = inn.fasteAvtaler.length ? inn.fasteAvtaler : inn.ukerytme;
   const vinter = arstid === "vinter";
@@ -233,7 +221,7 @@ function byggPlan(inn: PlanInn, tilfeldig: Tilfeldig): Dagsplan | null {
     vakt += 1;
     const meta = trekk(tilfeldig, hjemmevalg.length ? hjemmevalg : apne);
     const varighet = meta.varighet;
-    const tidlig = start + 30;
+    const tidlig = sfo ?? start + 90;
     const sen = leggetid - varighet;
     if (sen <= tidlig) break;
     const tider = Array.from({ length: Math.floor((sen - tidlig) / 15) + 1 }, (_, i) => tidlig + i * 15).filter(
@@ -247,25 +235,18 @@ function byggPlan(inn: PlanInn, tilfeldig: Tilfeldig): Dagsplan | null {
   }
 
   if (tilfeldig() < 0.4 && avtaler.length < 4) {
-    const startTid = velgTid(tilfeldig, [15 * 60, 15 * 60 + 30, 16 * 60], lovlige);
+    const tidlig = sfo ?? start + 90;
+    const startTid = velgTid(tilfeldig, [tidlig, tidlig + 30, tidlig + 60], lovlige);
     const id = tilfeldig() < 0.5 ? "nabo" : "levering";
-    if (ledig(avtaler, startTid, 30)) {
+    if (startTid + 30 < leggetid) {
       avtaler.push({
         id,
         slag: "hendelse",
         navn: visNavn(id, inn.spraak),
         start: startTid,
-        varighet: 30,
-        sted: "hjemme",
+        varighet: 0,
+        sted: id === "levering" ? "butikk" : "hjemme",
       });
-    }
-  }
-
-  const opptatt = avtaler.filter((avtale) => avtale.varighet > 0).sort((a, b) => a.start - b.start);
-  if (opptatt[0] && opptatt[0].start - start > 60) {
-    const ny = start + (lovlige.includes(30) ? 30 : 60);
-    if (ledig(avtaler.filter((avtale) => avtale !== opptatt[0]), ny, opptatt[0].varighet)) {
-      opptatt[0].start = ny;
     }
   }
 
@@ -282,7 +263,7 @@ function byggPlan(inn: PlanInn, tilfeldig: Tilfeldig): Dagsplan | null {
     bursdag: bursdag?.hvem,
     skoleslutt,
     sisteTime: skole ? visNavn(trekk(tilfeldig, SKOLEFAG), inn.spraak) : null,
-    sfo: avtaler.find((avtale) => avtale.id === "sfo")?.start ?? null,
+    sfo,
     butikk,
     avtaler,
     leggetid,
@@ -333,7 +314,7 @@ function byggNodplan(inn: PlanInn): Dagsplan {
       id: "hund-nod",
       slag: "hjemme",
       navn: visNavn("hund", inn.spraak),
-      start: 18 * 60,
+      start: 17 * 60 + 30,
       varighet: 30,
       sted: "hjemme",
       aktivitet: "hund",

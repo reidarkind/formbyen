@@ -9,12 +9,14 @@ describe("en ettermiddag", () => {
     lagret = utfor(lagret, { slag: "start" }).lagret;
     lagret = utfor(lagret, { slag: "ga", sted: "butikk" }).lagret;
     const stengt = utfor(lagret, { slag: "handle" });
-    expect(stengt.melding).toContain("14:00");
-    expect(stengt.lagret.by.bygg.some((bygg) => bygg.bygg === "ronne" && bygg.ferdig)).toBe(true);
+    expect(stengt.lagret.aktivDag?.ko[0]?.type).toBe("apningstider");
+    const svart = utfor(stengt.lagret, { slag: "svar", svar: stengt.lagret.aktivDag?.ko[0]?.fasit ?? "" });
+    expect(svart.melding).toContain("Stengt i dag");
+    expect(svart.melding ?? "").not.toContain("i morgen");
+    expect(svart.lagret.by.bygg.some((bygg) => bygg.bygg === "ronne" && bygg.ferdig)).toBe(true);
 
-    const medSpor = utfor(stengt.lagret, { slag: "dor" }).lagret;
-    const feil = utfor(medSpor, { slag: "svar", svar: "helt-feil" });
-    expect(feil.melding?.length).toBeGreaterThan(0);
+    const feil = utfor(stengt.lagret, { slag: "svar", svar: "helt-feil" });
+    expect(feil.lagret.aktivDag?.forklaring?.length).toBeGreaterThan(0);
     expect(feil.lagret.by.bygg).toHaveLength(1);
     expect(feil.lagret.kurv).toEqual({});
   });
@@ -72,7 +74,7 @@ describe("en ettermiddag", () => {
     if (!dag) throw new Error("mangler dag");
     const middag = dag.plan.avtaler.find((avtale) => avtale.slag === "middag");
     if (!middag) throw new Error("mangler middag");
-    lagret = { ...start, aktivDag: { ...dag, tid: middag.start } };
+    lagret = { ...start, aktivDag: { ...dag, tid: middag.start, sted: "butikk" } };
     const etter = utfor(lagret, { slag: "vent" });
     expect(etter.melding ?? etter.lagret.aktivDag?.melding ?? "").toMatch(/spiste|åt|begynt/);
     expect(etter.lagret.by.bygg[0]?.ferdig).toBe(true);

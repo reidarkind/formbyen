@@ -152,8 +152,9 @@ export function byggSomKanStartes(by: ByTilstand): ByggId[] {
   const harHjem = by.bygg.some((bygg) => BYGG[bygg.bygg].hjem && !bygg.uthus && !bygg.ferdig);
   return (Object.keys(BYGG) as ByggId[]).filter((id) => {
     const def = BYGG[id];
+    if (def.hjem && nesteHjem(by) === id) return !harHjem;
     if (def.nivaa > by.nivaa) return false;
-    if (def.hjem) return nesteHjem(by) === id && !harHjem;
+    if (def.hjem) return false;
     return !by.bygg.some((bygg) => bygg.bygg === id);
   });
 }

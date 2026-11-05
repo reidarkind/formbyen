@@ -59,7 +59,8 @@ export function ikon(navn: string): string {
     tegn: `<path d="M4 20 L16 8 L19 11 L7 23 Z" fill="${FARGER.aksentGul}" stroke="${FARGER.kontur}" stroke-width="2"/>`,
     velg: `<rect x="2" y="6" width="6" height="12" ${s}/><rect x="9" y="6" width="6" height="12" fill="${FARGER.aksentGul}" stroke="${FARGER.kontur}" stroke-width="2"/><rect x="16" y="6" width="6" height="12" ${s}/>`,
     feil: `<circle cx="10" cy="10" r="6" ${s}/><line x1="14" y1="14" x2="20" y2="20" ${s}/>`,
-    ja: `<path d="M4 12 L9 17 L20 6" ${s}/><path d="M4 20 L12 12" ${s}/>`,
+    ja: `<path d="M5 12 L10 17 L19 7" ${s}/>`,
+    nei: `<path d="M6 6 L18 18 M18 6 L6 18" ${s}/>`,
     mal: `<rect x="3" y="8" width="18" height="8" ${s}/>`,
     vekt: `<path d="M12 4 L12 20 M6 20 L18 20 M4 8 L12 4 L20 8" ${s}/>`,
   };

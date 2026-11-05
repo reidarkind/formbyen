@@ -3,7 +3,7 @@ import { PLANKER, VEKT_KG } from "../bygg/katalog";
 import { heltall, stokk, trekk, type Tilfeldig } from "../felles/tilfeldig";
 import { ALLE_2D, ALLE_3D, GRUNNFORMER, form2d, form3d, type Form2dId, type Form3dId } from "../former/definisjoner";
 import { ferdighetApent, tillatteMinutter } from "../tilpasning/mestring";
-import { mal, navnVare } from "../tekst/ordbok";
+import { formNavn, mal, navnVare } from "../tekst/ordbok";
 import { arstidTekst, manedTekst } from "../tekst/spraak";
 import { timeNavn } from "../tid/ord";
 import { klokke, normaliser, tidTilDigital24, tidTilOrd } from "../tid/tid";
@@ -497,7 +497,7 @@ function lagTegn(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const oppgave = basis(
     mal,
     ctx,
-    si(ctx.spraak, "Tegn formen.", "Teikn forma."),
+    si(ctx.spraak, "Tegn en {form}.", "Teikn ein {form}.", { form: formNavn(form, ctx.spraak) }),
     `form:${form}`,
     "ok",
     vareForForm(form),
@@ -516,7 +516,11 @@ function lagTell(mal: Mal, ctx: OppgaveKontekst): Oppgave {
     const oppgave = basis(
       mal,
       ctx,
-      si(ctx.spraak, "Tell.", "Tel."),
+      si(
+        ctx.spraak,
+        v === 4 ? "Tell flatene." : v === 11 ? "Tell hjørnene." : "Tell kantene.",
+        v === 4 ? "Tel flatene." : v === 11 ? "Tel hjørna." : "Tel kantane.",
+      ),
       `form:${id}`,
       pakke.fasit,
       vareForForm(id),
@@ -531,7 +535,9 @@ function lagTell(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const form = form2d(id);
   const tall = v === 6 ? form.retteVinkler : v % 2 === 0 ? form.hjorner : form.sider;
   const pakke = tallValg(tall, ctx.tilfeldig);
-  const oppgave = basis(mal, ctx, si(ctx.spraak, "Tell.", "Tel."), `form:${id}`, pakke.fasit, vareForForm(id));
+  const prompt = v === 6 ? "Tell de rette hjørnene." : v % 2 === 0 ? "Tell hjørnene." : "Tell sidene.";
+  const promptNn = v === 6 ? "Tel dei rette hjørna." : v % 2 === 0 ? "Tel hjørna." : "Tel sidene.";
+  const oppgave = basis(mal, ctx, si(ctx.spraak, prompt, promptNn), `form:${id}`, pakke.fasit, vareForForm(id));
   oppgave.form = id;
   oppgave.tall = tall;
   oppgave.valg = pakke.valg;
