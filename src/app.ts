@@ -1,6 +1,6 @@
 import { registerSW } from "virtual:pwa-register";
 import { maalBygg, manglendeDeler } from "./bygg/handleliste";
-import { byggSomKanStartes, byenErFerdig, ledigeTomter, lesRute, ruteNavn } from "./bygg/kart";
+import { byggSomKanStartes, byenErFerdig, ferdigeBygg, ledigeTomter, lesRute, ruteNavn } from "./bygg/kart";
 import { byggDef } from "./bygg/katalog";
 import { celleFor } from "./bygg/landemerker";
 import { tegnBygg, tegnFremdrift, tegnKart } from "./grafikk/bygg-svg";
@@ -19,6 +19,7 @@ import { aktivOppgave, apningTekst, utfor, type Handling } from "./spill/okt";
 import { omrissForForm } from "./tegning/omriss";
 import { rasterFraAlpha, vurderTegning } from "./tegning/vurder";
 import { visNavn } from "./dag/aktiviteter";
+import { lagDagsplan, nesteDato } from "./dag/plan";
 import { fraNb, formNavn, mal, navnBygg, navnVare, vareFlertall } from "./tekst/ordbok";
 import { manedTekst, si, SPRAAK_NAVN, ukedagTekst } from "./tekst/spraak";
 import { himmel, leggTil, tidTilDigital24, tidTilOrd, minutt, timer, klokke } from "./tid/tid";
@@ -45,6 +46,8 @@ let svarLase = 0;
 let gar: { sted: StedId; x: number; y: number } | null = null;
 let introSide = 0;
 let pekerTid = 12 * 60;
+let urRunde: number[] = [];
+let urStegNr = 0;
 let valgte = new Set<string>();
 let sorter: Record<string, string> = {};
 let valgtVare = "";
@@ -237,6 +240,38 @@ function minuttSteg(): number {
   if (lagret.innstillinger.nivaa === "forste") return 30;
   if (lagret.innstillinger.nivaa === "andre") return 15;
   return 5;
+}
+
+function snapTilSteg(tid: number): number {
+  const steg = minuttSteg();
+  const avrundet = Math.round(minutt(tid) / steg) * steg;
+  return klokke(timer(tid) + Math.floor(avrundet / 60), avrundet % 60);
+}
+
+function iMorgenTider(): number[] {
+  const start = snapTilSteg(lagret.aktivDag?.tid ?? 12 * 60);
+  const plan = lagDagsplan({
+    fro: lagret.fro + 1,
+    dato: nesteDato(lagret.dato),
+    nivaa: lagret.innstillinger.nivaa,
+    spraak: lagret.innstillinger.spraak,
+    ferdige: ferdigeBygg(lagret.by),
+    ukerytme: lagret.ukerytme,
+    fasteAvtaler: lagret.innstillinger.fasteAvtaler,
+    siste: lagret.sistePlaner,
+    bursdager: lagret.bursdager,
+  });
+  const kandidater = [...plan.avtaler.map((avtale) => avtale.start), plan.butikk.apner, plan.leggetid].map(snapTilSteg);
+  const unike: number[] = [];
+  for (const tid of kandidater) {
+    if (tid !== start && !unike.includes(tid)) unike.push(tid);
+  }
+  let ekstra = ((unike.at(-1) ?? start) + minuttSteg()) % (24 * 60);
+  while (unike.length < 5) {
+    if (ekstra !== start && !unike.includes(ekstra)) unike.push(ekstra);
+    ekstra = (ekstra + minuttSteg()) % (24 * 60);
+  }
+  return unike.slice(0, 5);
 }
 
 function fargeFor(id: string): Farge {
@@ -1000,9 +1035,15 @@ function albumHtml(): string {
 }
 
 function urFriHtml(): string {
+  const steg = minuttSteg();
+  const maal = urRunde[urStegNr] ?? snapTilSteg(lagret.aktivDag?.tid ?? 12 * 60);
+  const prompt = mal(spraak(), "Still tårnuret til {ord}.", "Still tårnuret til {ord}.", { ord: tidTilOrd(maal, spraak()) });
   return `<button type="button" data-skjerm="verden">${si(spraak(), "Tilbake", "Tilbake")}</button><h1>${si(spraak(), "Tårnuret", "Tårnuret")}</h1>
+    <p>${esc(prompt)}</p>
+    <p>${urStegNr + 1} / ${Math.max(urRunde.length, 1)}</p>
     ${urHtml(pekerTid, false, true)}
-    <div class="rad"><button type="button" data-minutt="-5">−5</button><button type="button" data-minutt="5">+5</button><button type="button" data-time="-1">−</button><button type="button" data-time="1">+</button></div>`;
+    <div class="rad"><button type="button" data-minutt="-${steg}">${mal(spraak(), "− {tall} min", "− {tall} min", { tall: String(steg) })}</button><button type="button" data-minutt="${steg}">${mal(spraak(), "+ {tall} min", "+ {tall} min", { tall: String(steg) })}</button><button type="button" data-time="-1">${si(spraak(), "− 1 time", "− 1 time")}</button><button type="button" data-time="1">${si(spraak(), "+ 1 time", "+ 1 time")}</button></div>
+    <button type="button" class="hoved" data-handling="ur-ferdig">${si(spraak(), "Ferdig", "Ferdig")}</button>`;
 }
 
 function tegn(): string {
@@ -1138,20 +1179,9 @@ function tegnStrek(lerret: HTMLCanvasElement, hendelse: PointerEvent): void {
 }
 
 function settPeker(timeDelta: number, minuttDelta: number, byttDogn: boolean): void {
-  let time = timer(pekerTid);
-  let minutter = minutt(pekerTid) + minuttDelta;
-  time += timeDelta;
-  while (minutter < 0) {
-    minutter += 60;
-    time -= 1;
-  }
-  while (minutter >= 60) {
-    minutter -= 60;
-    time += 1;
-  }
-  if (byttDogn) time += time < 12 ? 12 : -12;
-  const steg = minuttSteg();
-  pekerTid = klokke(time, Math.round(minutter / steg) * steg);
+  let minutter = pekerTid + timeDelta * 60 + minuttDelta;
+  if (byttDogn) minutter += timer(pekerTid) < 12 ? 12 * 60 : -12 * 60;
+  pekerTid = ((minutter % (24 * 60)) + 24 * 60) % (24 * 60);
   tegn();
 }
 
@@ -1321,8 +1351,27 @@ rot.addEventListener("click", (hendelse) => {
     gjor({ slag: "vent", tid: knapp.dataset.tid ? Number(knapp.dataset.tid) : undefined });
   }
   if (handling === "klokke") {
-    gjor({ slag: "klokke" });
+    urRunde = iMorgenTider();
+    urStegNr = 0;
+    pekerTid = snapTilSteg(lagret.aktivDag?.tid ?? 12 * 60);
     skjerm = "ur";
+    gjor({ slag: "klokke" });
+    return;
+  }
+  if (handling === "ur-ferdig") {
+    const maal = urRunde[urStegNr];
+    const dagTid = lagret.aktivDag?.tid;
+    if (maal !== undefined && pekerTid === maal) {
+      lagret = { ...lagret, mynter: lagret.mynter + 1 };
+      urStegNr += 1;
+      melding = si(spraak(), "Riktig!", "Riktig!");
+      if (urStegNr >= urRunde.length) skjerm = "verden";
+    } else {
+      melding = si(spraak(), "Prøv igjen.", "Prøv igjen.");
+    }
+    if (lagret.aktivDag && dagTid !== undefined) lagret = { ...lagret, aktivDag: { ...lagret.aktivDag, tid: dagTid } };
+    lagre();
+    tegn();
     return;
   }
   if (handling === "dor") {

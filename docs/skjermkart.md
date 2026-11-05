@@ -28,6 +28,7 @@ Ark fra toppfeltet: kurven, dagens plan, pause. Byplanen åpnes fra kartet.
 - «Sett på [del]» er gul bare når neste steg er å bygge. Ellers viser scenen delen, og den gule knappen er turen som haster.
 - Den gamle byskjermen, den gamle byggeskjermen og det frie tårnuret er ikke en del av denne veien.
 - Flaten under tidsstripa kan rulles. Svarene og «Ferdig» skal være synlige. Hjelperen er skjult mens en oppgave eller en feilmelding vises.
+- Klokkeleken åpnes med ett trykk når det er minst 30 minutter igjen og ingenting annet å gjøre. Tårnuret starter på tiden i spillet. Knappene flytter viseren med nivåets trinn, og et riktig ur gir en mynt. Tiden og stedet er de samme når barnet kommer tilbake.
 - Ved butikken sier hjelperen «Les skiltet på døra.» Skiltet er et bilde med åpningstidene, pausen og en stor klokke som viser nå. Scenen sier ikke om butikken er åpen før skiltet er lest. Er den stengt, spør spillet «Når åpner butikken?» og ber barnet vente til den åpner. Barnet sendes ikke til en stengt butikk bare for å øve. Hjemmefra kan det lese tidene på kortet «Les åpningstidene før du går».
 - Dagen slutter med «Legg deg» hjemme. «Snart leggetid» vises bare det siste halvtimet. Før det kan barnet øve i klokkeleken.
 - Når slottet er ferdig, sier forsiden «Byen er ferdig!» og tilbyr pynt, klokkeleken eller en ny by.

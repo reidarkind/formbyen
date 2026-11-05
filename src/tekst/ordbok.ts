@@ -659,6 +659,12 @@ o("Måneder", "Månader", "Months", "Meses", "Monate", "Meses", "Månader", "Må
 o("Tid på dagen", "Tid på dagen", "Time of day", "Momento del día", "Tageszeit", "Parte do dia", "Tid på dagen", "Tid på dagen", "Moment de la journée");
 
 o("← Byen", "← Byen", "← Town", "← Ciudad", "← Stadt", "← Cidade", "← Stan", "← Byen", "← Ville");
+o("Ingen flere kjøp i dag. Vil du stille tårnuret?", "Ingen fleire kjøp i dag. Vil du stille tårnuret?", "No more shopping today. Do you want to set the tower clock?", "No hay más compras hoy. ¿Quieres poner el reloj de la torre?", "Heute kein Einkauf mehr. Willst du die Turmuhr stellen?", "Não há mais compras hoje. Queres acertar o relógio da torre?", "Inga fler köp i dag. Vill du ställa tornuret?", "Ingen flere køb i dag. Vil du stille tårnuret?", "Plus d'achats aujourd'hui. Tu veux régler l'horloge de la tour ?");
+o("Still tårnuret til {ord}.", "Still tårnuret til {ord}.", "Set the tower clock to {ord}.", "Pon el reloj de la torre a las {ord}.", "Stelle die Turmuhr auf {ord}.", "Põe o relógio da torre nas {ord}.", "Ställ tornuret på {ord}.", "Stil tårnuret på {ord}.", "Règle l'horloge de la tour sur {ord}.");
+o("+ {tall} min", "+ {tall} min", "+ {tall} min", "+ {tall} min", "+ {tall} min", "+ {tall} min", "+ {tall} min", "+ {tall} min", "+ {tall} min");
+o("− {tall} min", "− {tall} min", "− {tall} min", "− {tall} min", "− {tall} min", "− {tall} min", "− {tall} min", "− {tall} min", "− {tall} min");
+o("+ 1 time", "+ 1 time", "+ 1 hour", "+ 1 hora", "+ 1 Stunde", "+ 1 hora", "+ 1 timme", "+ 1 time", "+ 1 heure");
+o("− 1 time", "− 1 time", "− 1 hour", "− 1 hora", "− 1 Stunde", "− 1 hora", "− 1 timme", "− 1 time", "− 1 heure");
 o("Les skiltet på døra.", "Les skiltet på døra.", "Read the sign on the door.", "Lee el cartel de la puerta.", "Lies das Schild an der Tür.", "Lê a placa na porta.", "Läs skylten på dörren.", "Læs skiltet på døren.", "Lis le panneau sur la porte.");
 o("Når åpner butikken?", "Når opnar butikken?", "When does the shop open?", "¿Cuándo abre la tienda?", "Wann öffnet der Laden?", "Quando abre a loja?", "När öppnar butiken?", "Hvornår åbner butikken?", "Quand ouvre la boutique ?");
 o("Sammenlign skiltet med klokka.", "Samanlikn skiltet med klokka.", "Compare the sign with the clock.", "Compara el cartel con el reloj.", "Vergleiche das Schild mit der Uhr.", "Compara a placa com o relógio.", "Jämför skylten med klockan.", "Sammenlign skiltet med uret.", "Compare le panneau et l'horloge.");

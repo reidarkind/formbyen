@@ -268,7 +268,7 @@ function klokkeKnapp(lagret: Lagret): NesteSteg {
   return {
     handling: { slag: "klokke" },
     knapp: si(lagret, "Klokkeleken", "Klokkeleiken"),
-    grunn: si(lagret, "Byen er ferdig for i dag. Vil du øve på klokka?", "Byen er ferdig for i dag. Vil du øve på klokka?"),
+    grunn: si(lagret, "Ingen flere kjøp i dag. Vil du stille tårnuret?", "Ingen fleire kjøp i dag. Vil du stille tårnuret?"),
     puls: null,
   };
 }
