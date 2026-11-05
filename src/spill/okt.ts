@@ -30,6 +30,7 @@ export type Handling =
   | { slag: "pynt"; vare: VareId }
   | { slag: "flytt"; instans: string; x: number; y: number }
   | { slag: "mot" }
+  | { slag: "spis" }
   | { slag: "avslutt" };
 
 const KLOKKE: Ferdighet[] = ["hele-timer", "halv", "kvart", "fem-minutter", "digital-24", "tidsrom", "periode", "ukedager", "maneder"];
@@ -83,7 +84,7 @@ export function aktuellAvtale(lagret: Lagret) {
         !dag.besokt.includes(avtale.id) &&
         !dag.forSent.includes(avtale.id) &&
         dag.tid >= avtale.start - 15 &&
-        dag.tid <= avtale.start + 15 &&
+        dag.tid <= avtale.start + Math.max(15, avtale.varighet) &&
         stedPasser(dag.sted, avtale.sted),
     ) ?? null
   );
@@ -98,13 +99,6 @@ function merkTid(lagret: Lagret, tid: number): Lagret {
   let melding = dag.melding;
   for (const avtale of dag.plan.avtaler) {
     if (avtale.varighet <= 0 || besokt.includes(avtale.id) || forSent.includes(avtale.id)) continue;
-    const vinduStart = avtale.start - 15;
-    const vinduSlutt = avtale.start + 15;
-    const middagHjemme = avtale.slag === "middag" && dag.sted === "hjemme" && dag.tid <= vinduSlutt && tid >= vinduStart;
-    if (middagHjemme) {
-      besokt.push(avtale.id);
-      continue;
-    }
     if (tid > avtale.start + 15) {
       forSent.push(avtale.id);
       if (!viste.includes(avtale.id)) {
@@ -172,13 +166,9 @@ export function hylleForNivaa(nivaa: Nivaa, indeks: number): Hylle {
   return hyller[indeks % hyller.length] ?? "form";
 }
 
-function hylleFor(lagret: Lagret, indeks: number): Hylle {
-  return hylleForNivaa(lagret.innstillinger.nivaa, indeks);
-}
-
 function giVare(lagret: Lagret, vare: VareId, antall = 1): Lagret {
   const har = lagret.kurv[vare] ?? 0;
-  return { ...lagret, kurv: { ...lagret.kurv, [vare]: har + antall }, mynter: lagret.mynter + 2 };
+  return { ...lagret, kurv: { ...lagret.kurv, [vare]: har + antall }, mynter: lagret.mynter + 1 };
 }
 
 function taVare(lagret: Lagret, vare: VareId): Lagret | null {
@@ -234,6 +224,7 @@ export function utfor(lagret: Lagret, handling: Handling): { lagret: Lagret; mel
   if (handling.slag === "pynt") return pynt(lagret, handling.vare);
   if (handling.slag === "flytt") return flytt(lagret, handling.instans, handling.x, handling.y);
   if (handling.slag === "mot") return mot(lagret);
+  if (handling.slag === "spis") return spis(lagret);
   return avslutt(lagret);
 }
 
@@ -322,17 +313,21 @@ function handle(lagret: Lagret): { lagret: Lagret; melding: string | null } {
   const dag = lagret.aktivDag;
   if (!dag || dag.sted !== "butikk") return { lagret, melding: null };
   if (!dag.dorLest) return dor(lagret);
-  if (dag.handlet) return { lagret, melding: si(lagret, "Du har handlet i dag.", "Du har handla i dag.") };
   if (!erApen(dag.tid, dag.plan.butikk)) return { lagret, melding: apningTekst(lagret) };
-  const ko: Oppgave[] = [];
-  let arbeide = lagret;
-  for (let i = 0; i < 3; i++) {
-    const oppgave = trekkOppgave({ ...kontekst(arbeide), hylle: hylleFor(lagret, i) });
-    ko.push(oppgave);
-    arbeide = huskOppgave(arbeide, oppgave);
+  const vare = manglendeDeler(lagret)[0];
+  if (!vare) {
+    return { lagret, melding: si(lagret, "Handlelisten er tom.", "Handlelista er tom.") };
   }
+  const romform = vare.startsWith("kloss") || lagret.fro % 3 === 0;
+  const klokke = !romform && lagret.fro % 2 === 1;
+  const trukket = trekkOppgave({
+    ...kontekst(lagret),
+    hylle: romform ? "kloss" : undefined,
+    type: romform ? "finn-formen" : klokke ? "les-klokka" : "finn-formen",
+  });
+  const oppgave: Oppgave = { ...trukket, hvem: si(lagret, "ekspeditøren", "ekspeditøren"), vare };
   return {
-    lagret: { ...arbeide, aktivDag: { ...dag, fase: "handel", ko, aktiv: 0, forklaring: null, melding: null } },
+    lagret: huskOppgave({ ...lagret, aktivDag: { ...dag, fase: "handel", ko: [oppgave], aktiv: 0, forklaring: null, melding: null } }, oppgave),
     melding: null,
   };
 }
@@ -355,7 +350,7 @@ function svar(lagret: Lagret, gitt: string): { lagret: Lagret; melding: string |
   const erAktivitet = dag.fase === "aktivitet" || oppgave.nokkel.startsWith("avtale:");
   if (erDor) {
     const dagEtter = neste.aktivDag ?? dag;
-    const medDor = { ...neste, aktivDag: { ...dagEtter, dorLest: true, fase: "ute" as const, ko: [], forklaring: null, feil: 0 } };
+    const medDor = { ...neste, mynter: neste.mynter + 1, aktivDag: { ...dagEtter, dorLest: true, fase: "ute" as const, ko: [], forklaring: null, feil: 0 } };
     return { lagret: medDor, melding: apningTekst(medDor) };
   }
   let fikkEkstra = false;
@@ -372,22 +367,29 @@ function svar(lagret: Lagret, gitt: string): { lagret: Lagret; melding: string |
   if (aktiv >= dag.ko.length) {
     const avtaleId = oppgave.nokkel.startsWith("avtale:") ? oppgave.nokkel.slice("avtale:".length) : "";
     const aktuell = dag.plan.avtaler.find((rad) => rad.id === avtaleId);
-    const tid = leggTil(dag.tid, erAktivitet ? (aktuell?.varighet ?? 0) : 30);
+    const startTid = erAktivitet && aktuell ? Math.max(dag.tid, aktuell.start) : dag.tid;
+    const tid = leggTil(startTid, erAktivitet ? (aktuell?.varighet ?? 0) : 5);
     let etter = merkTid(
       {
         ...neste,
-        aktivDag: { ...dagEtter, tid: dag.tid, fase: "ute", ko: [], handlet: !erAktivitet || dag.handlet, forklaring: null, feil: 0 },
+        aktivDag: { ...dagEtter, tid: dag.tid, fase: "ute", ko: [], handlet: dag.handlet, forklaring: null, feil: 0 },
       },
       tid,
     );
     if (erAktivitet && aktuell && etter.aktivDag) {
-      const sent = etter.aktivDag.tid > aktuell.start + 15;
+      const komForSent = dag.tid > aktuell.start + 15;
+      const forSent = komForSent
+        ? etter.aktivDag.forSent.includes(aktuell.id)
+          ? etter.aktivDag.forSent
+          : [...etter.aktivDag.forSent, aktuell.id]
+        : etter.aktivDag.forSent.filter((rad) => rad !== aktuell.id);
       etter = {
         ...etter,
         aktivDag: {
           ...etter.aktivDag,
-          besokt: [...etter.aktivDag.besokt, aktuell.id],
-          forSent: sent ? etter.aktivDag.forSent.filter((rad) => rad !== aktuell.id) : etter.aktivDag.forSent,
+          besokt: komForSent ? etter.aktivDag.besokt : [...etter.aktivDag.besokt, aktuell.id],
+          forSent,
+          melding: komForSent ? etter.aktivDag.melding : null,
         },
       };
     }
@@ -439,10 +441,13 @@ function hoppOver(lagret: Lagret): { lagret: Lagret; melding: string | null } {
   }
   const aktiv = dag.aktiv + 1;
   if (aktiv >= dag.ko.length) {
-    return {
-      lagret: { ...lagret, aktivDag: { ...dag, fase: "ute", ko: [], forklaring: null, feil: 0 } },
-      melding: si(lagret, "Vi øver mer på den senere.", "Vi øver meir på den seinare."),
-    };
+    const erAvtale = oppgave.nokkel.startsWith("avtale:");
+    const vare = !erAvtale ? manglendeDeler(lagret)[0] : undefined;
+    const medVare = vare ? giVare(lagret, vare) : lagret;
+    const dagMed = medVare.aktivDag ?? dag;
+    const tid = leggTil(dag.tid, erAvtale ? 0 : 5);
+    const neste = merkTid({ ...medVare, aktivDag: { ...dagMed, fase: "ute", ko: [], forklaring: null, feil: 0 } }, tid);
+    return { lagret: neste, melding: si(lagret, "Vi øver mer på den senere.", "Vi øver meir på den seinare.") };
   }
   return {
     lagret: { ...lagret, aktivDag: { ...dag, aktiv, forklaring: null, feil: 0, fase: dag.fase === "forklaring" ? "handel" : dag.fase } },
@@ -455,10 +460,17 @@ function fortsett(lagret: Lagret): { lagret: Lagret; melding: string | null } {
   const oppgave = aktivOppgave(lagret);
   if (!dag || !oppgave) return { lagret, melding: null };
   if ((dag.feil ?? 0) >= 2) return hoppOver(lagret);
+  if (oppgave.nokkel.startsWith("avtale:") || dag.fase === "aktivitet") {
+    const ko = dag.ko.map((rad, indeks) => (indeks === dag.aktiv ? { ...rad, valg: [...rad.valg].reverse() } : rad));
+    return { lagret: { ...lagret, aktivDag: { ...dag, ko, forklaring: null, fase: "aktivitet" } }, melding: null };
+  }
+  if (oppgave.type === "apningstider") {
+    return { lagret: { ...lagret, aktivDag: { ...dag, forklaring: null, fase: "dor" } }, melding: null };
+  }
   const ny = likOppgave(oppgave, kontekst(lagret));
   const ko = dag.ko.map((rad, indeks) => (indeks === dag.aktiv ? ny : rad));
   return {
-    lagret: huskOppgave({ ...lagret, aktivDag: { ...dag, ko, forklaring: null, fase: dag.ko.length === 1 && ny.type === "apningstider" ? "dor" : dag.fase === "forklaring" ? "handel" : dag.fase } }, ny),
+    lagret: huskOppgave({ ...lagret, aktivDag: { ...dag, ko, forklaring: null, fase: "handel" } }, ny),
     melding: null,
   };
 }
@@ -558,6 +570,21 @@ function flytt(lagret: Lagret, instans: string, x: number, y: number): { lagret:
   };
 }
 
+function spis(lagret: Lagret): { lagret: Lagret; melding: string | null } {
+  const dag = lagret.aktivDag;
+  if (!dag) return { lagret, melding: null };
+  const middag = dag.plan.avtaler.find((avtale) => avtale.slag === "middag" && !dag.besokt.includes(avtale.id));
+  if (!middag || dag.sted !== "hjemme") return { lagret, melding: si(lagret, "Gå hjem.", "Gå heim.") };
+  if (dag.tid < middag.start - 15 || dag.tid > middag.start + 15) {
+    return { lagret, melding: si(lagret, "Middagen er over.", "Middagen er over.") };
+  }
+  const tid = leggTil(dag.tid, 30);
+  const med = { ...lagret, aktivDag: { ...dag, besokt: [...dag.besokt, middag.id] } };
+  const neste = merkTid(med, tid);
+  if (tid >= dag.plan.leggetid) return avslutt(neste);
+  return { lagret: neste, melding: si(lagret, "Vi spiser.", "Vi et.") };
+}
+
 function mot(lagret: Lagret): { lagret: Lagret; melding: string | null } {
   const dag = lagret.aktivDag;
   if (!dag) return { lagret, melding: null };
@@ -597,12 +624,9 @@ function avslutt(lagret: Lagret): { lagret: Lagret; melding: string | null } {
   if (!dag) return { lagret, melding: null };
   const skal = dag.plan.avtaler.filter((avtale) => avtale.varighet > 0);
   const stjerne = skal.every((avtale) => dag.besokt.includes(avtale.id)) && dag.forSent.length === 0;
-  const kurv = { ...lagret.kurv };
-  if (stjerne) kurv["pynt-blomst"] = (kurv["pynt-blomst"] ?? 0) + 1;
   return {
     lagret: {
       ...lagret,
-      kurv,
       by: { ...lagret.by, dagerAlleAvtaler: lagret.by.dagerAlleAvtaler + (stjerne ? 1 : 0) },
       dato: nesteDato(lagret.dato),
       aktivDag: null,

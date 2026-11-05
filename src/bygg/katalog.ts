@@ -1,9 +1,17 @@
 import type { ByggId, VareId } from "../typer";
 
+export interface Plass {
+  x: number;
+  y: number;
+  b: number;
+  h: number;
+}
+
 export interface OppskriftSteg {
   vare: VareId;
   nb: string;
   nn: string;
+  plass?: Plass;
 }
 
 export interface ByggDef {
@@ -495,8 +503,25 @@ export const PLANKER = [
   { id: "svart", klosser: 5, cm: 50 },
 ] as const;
 
+/** Plass i fasaden, 0–100 bortover og 0–120 nedover. Samme bilde brukes i kurven. */
+export function standardPlass(vare: string, i: number): Plass {
+  if (vare.startsWith("tak")) return { x: 8, y: 4, b: 84, h: 36 };
+  if (vare.startsWith("dor")) return { x: 40, y: 74, b: 20, h: 42 };
+  if (vare.startsWith("vindu")) return { x: 16 + (i % 3) * 26, y: 52, b: 18, h: 18 };
+  if (vare === "planke") return { x: 12 + (i % 4) * 22, y: 34, b: 16, h: 72 };
+  if (vare === "kloss-sylinder") return { x: 28, y: 42, b: 44, h: 58 };
+  if (vare === "vegg-stein" && i > 0) return { x: 22, y: 34, b: 56, h: 18 };
+  if (vare.startsWith("vegg")) return { x: 14, y: 40, b: 72, h: 74 };
+  if (vare.startsWith("kloss-")) return { x: 20 + (i % 2) * 32, y: 28, b: 36, h: 42 };
+  return { x: 16 + (i % 3) * 26, y: 28 + Math.floor(i / 3) * 30, b: 22, h: 24 };
+}
+
 export function byggDef(id: ByggId): ByggDef {
-  return BYGG[id];
+  const def = BYGG[id];
+  return {
+    ...def,
+    oppskrift: def.oppskrift.map((trinn, i) => ({ ...trinn, plass: trinn.plass ?? standardPlass(trinn.vare, i) })),
+  };
 }
 
 export const HJEM_FOR_NIVAA: Record<1 | 2 | 3 | 4 | 5 | 6, ByggId> = {

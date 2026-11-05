@@ -45,7 +45,6 @@ function handel(lagret: Lagret): Lagret {
       steg += 1;
       if (lagret.aktivDag && lagret.aktivDag.aktiv === forAktiv && lagret.aktivDag.fase === "forklaring") break;
     }
-    break;
   }
   return lagret;
 }
@@ -160,7 +159,7 @@ describe("avtaler", () => {
     const dagEtter = lagret.aktivDag;
     if (!dagEtter) throw new Error("dagen ble borte");
     lagret = { ...lagret, aktivDag: { ...dagEtter, tid: 17 * 60, sted: "hjemme" } };
-    lagret = utfor(lagret, { slag: "vent" }).lagret;
+    lagret = utfor(lagret, { slag: "spis" }).lagret;
     expect(lagret.aktivDag?.besokt).toEqual(expect.arrayContaining(["lek", "middag"]));
     const slutt = utfor(lagret, { slag: "avslutt" });
     expect(slutt.lagret.by.dagerAlleAvtaler).toBe(1);

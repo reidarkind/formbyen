@@ -59,7 +59,7 @@ describe("grafikk", () => {
     const referanser = galleriKort().filter((kort) => kort.referanse);
     const samlet = referanser.map((kort) => `${kort.tittel}:${sjekksum(kort.svg)}`).join("|");
     expect(samlet).toBe(
-      "Rønne:ac812d52|Byggmester:54a99c9d|Urskive:b0c00b54|Ikon:dea35705",
+      "Rønne:ade5f9aa|Byggmester:54a99c9d|Urskive:b0c00b54|Ikon:dea35705",
     );
     expect(tegnKart(standardLagret().by, 12 * 60).includes("svg")).toBe(true);
   });

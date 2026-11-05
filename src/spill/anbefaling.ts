@@ -46,18 +46,27 @@ function avtaleNaa(lagret: Lagret): boolean {
   return dag.plan.avtaler.some((avtale) => {
     if (avtale.slag === "middag" || avtale.varighet <= 0) return false;
     if (dag.besokt.includes(avtale.id) || dag.forSent.includes(avtale.id)) return false;
-    if (dag.tid < avtale.start - 15 || dag.tid > avtale.start + 15) return false;
+    if (dag.tid < avtale.start - 15 || dag.tid > avtale.start + Math.max(15, avtale.varighet)) return false;
     return stedForAvtale(avtale.sted) === dag.sted;
   });
+}
+
+function skalGaaTil(lagret: Lagret, sted: StedId, start: number): boolean {
+  const dag = lagret.aktivDag;
+  if (!dag || sted === dag.sted) return false;
+  const gang = gangMinutter(dag.sted, sted);
+  return dag.tid + gang <= start + 15 && start - dag.tid <= gang + 15;
 }
 
 export type Anbefaling =
   | { slag: "mot" }
   | { slag: "handle" }
+  | { slag: "spis" }
   | { slag: "bygg"; bygg: ByggId; instans: string | null }
   | { slag: "gaa"; sted: StedId }
   | { slag: "vent"; tid: number }
   | { slag: "legg" }
+  | { slag: "byplan" }
   | { slag: "se" };
 
 function delIKurv(lagret: Lagret): { bygg: ByggId; instans: string | null } | null {
@@ -73,27 +82,35 @@ export function anbefalt(lagret: Lagret): Anbefaling {
   const dag = lagret.aktivDag;
   if (!dag) return { slag: "se" };
   if (avtaleNaa(lagret)) return { slag: "mot" };
+  const kommende = dag.plan.avtaler.find(
+    (avtale) =>
+      avtale.varighet > 0 &&
+      avtale.slag !== "middag" &&
+      !dag.besokt.includes(avtale.id) &&
+      !dag.forSent.includes(avtale.id) &&
+      skalGaaTil(lagret, stedForAvtale(avtale.sted), avtale.start),
+  );
+  if (kommende) return { slag: "gaa", sted: stedForAvtale(kommende.sted) };
+  const middag = dag.plan.avtaler.find((avtale) => avtale.slag === "middag" && !dag.besokt.includes(avtale.id) && !dag.forSent.includes(avtale.id));
+  if (middag && dag.sted === "hjemme" && dag.tid >= middag.start - 15 && dag.tid <= middag.start + 15) return { slag: "spis" };
+  if (middag && skalGaaTil(lagret, "hjemme", middag.start)) return { slag: "gaa", sted: "hjemme" };
   const mangler = manglendeDeler(lagret).length > 0;
   const apen = erApen(dag.tid, dag.plan.butikk);
-  const kanHandle = apen && !dag.handlet && mangler;
+  const kanHandle = apen && mangler && !dag.plan.butikk.stengtHele;
   if (dag.sted === "butikk" && (!dag.dorLest || kanHandle)) return { slag: "handle" };
   const del = delIKurv(lagret);
   if (del) return { slag: "bygg", bygg: del.bygg, instans: del.instans };
   if (kanHandle) return { slag: "gaa", sted: "butikk" };
-  const neste = dag.plan.avtaler.find(
-    (avtale) =>
-      avtale.varighet > 0 &&
-      avtale.slag !== "middag" &&
-      avtale.start >= dag.tid - 15 &&
-      !dag.besokt.includes(avtale.id) &&
-      !dag.forSent.includes(avtale.id),
-  );
-  if (neste) {
-    const sted = stedForAvtale(neste.sted);
-    if (sted !== dag.sted && neste.start - dag.tid <= 90) return { slag: "gaa", sted };
+  if (mangler && !apen) {
+    const vent = ventMaalTid(lagret);
+    if (vent) return { slag: "vent", tid: vent };
+    return { slag: "gaa", sted: "torg" };
   }
-  if (mangler && apen && !dag.handlet) return { slag: "gaa", sted: "butikk" };
-  if (dag.tid >= 18 * 60) return { slag: "legg" };
+  if (!maalBygg(lagret)) return { slag: "byplan" };
+  const igjen = dag.plan.avtaler.some(
+    (avtale) => avtale.varighet > 0 && avtale.start >= dag.tid && !dag.besokt.includes(avtale.id) && !dag.forSent.includes(avtale.id),
+  );
+  if (dag.tid >= dag.plan.leggetid - 30 && !igjen) return dag.sted === "hjemme" ? { slag: "legg" } : { slag: "gaa", sted: "hjemme" };
   const vent = ventMaalTid(lagret);
   if (vent) return { slag: "vent", tid: vent };
   return { slag: "se" };

@@ -63,6 +63,13 @@ export function ikon(navn: string): string {
     nei: `<path d="M6 6 L18 18 M18 6 L6 18" ${s}/>`,
     mal: `<rect x="3" y="8" width="18" height="8" ${s}/>`,
     vekt: `<path d="M12 4 L12 20 M6 20 L18 20 M4 8 L12 4 L20 8" ${s}/>`,
+    skole: `<path d="M4 10 L12 6 L20 10 L12 14 Z" ${s}/><path d="M8 12 L8 18 L16 18 L16 12" ${s}/>`,
+    butikk: `<path d="M4 10 L12 6 L20 10" ${s}/><rect x="6" y="10" width="12" height="8" ${s}/>`,
+    tann: `<circle cx="9" cy="10" r="3" ${s}/><circle cx="15" cy="10" r="3" ${s}/>`,
+    mat: `<ellipse cx="12" cy="14" rx="7" ry="3" ${s}/>`,
+    svom: `<path d="M4 12 Q8 8 12 12 T20 12" ${s}/><path d="M4 17 Q8 13 12 17 T20 17" ${s}/>`,
+    seng: `<path d="M4 14 L4 18 L20 18 L20 12 L10 12 L10 14 Z" ${s}/>`,
+    avtale: `<rect x="6" y="4" width="12" height="16" rx="2" ${s}/><line x1="6" y1="8" x2="18" y2="8" ${s}/>`,
   };
   return svgDokument(motiver[navn] ?? motiver.velg ?? "", 24, 24);
 }

@@ -424,7 +424,9 @@ function formerFor(ctx: OppgaveKontekst): Form2dId[] {
 function lagFinn(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   if (mal.ferdighet === "former-3d") {
     const former = ["kule", "kube", "sylinder", "kjegle"] as const;
-    const maal = trekk(ctx.tilfeldig, former);
+    const start = variant(mal.id) % former.length;
+    const rotert = [...former.slice(start), ...former.slice(0, start)];
+    const maal = rotert.find((id) => `form3d:${id}` !== ctx.unngaNokkel) ?? rotert[0] ?? "kule";
     const andre = former.filter((id) => id !== maal);
     const figurer = [
       { id: "f0", form: maal },

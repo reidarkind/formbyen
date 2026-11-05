@@ -1,90 +1,17 @@
 import type { ByggId, ByTilstand } from "../typer";
 import { byggDef } from "../bygg/katalog";
-import { celle } from "../bygg/kart";
+import { celle, ruteNavn } from "../bygg/kart";
 import { LANDMERKE } from "../bygg/landemerker";
-import { FARGER, himmelFarge, materialeFarger, takFarger, type Farge } from "./stil";
+import { FARGER, himmelFarge } from "./stil";
 import { himmel } from "../tid/tid";
-import { polygon, svgDokument } from "./svg";
+import { fasadeInnhold, fasadeSvg } from "./fasade";
+import { svgDokument } from "./svg";
 
-export function iso(x: number, y: number, z: number, speil = false): [number, number] {
-  const X = speil ? y : x;
-  const Y = speil ? x : y;
-  return [(X - Y) * 32, (X + Y) * 16 - z * 48];
-}
+const RUTE = 44;
 
-function boks(
-  x: number,
-  y: number,
-  w: number,
-  d: number,
-  h: number,
-  lys: Farge,
-  skygge: Farge,
-  tak: Farge,
-  speil: boolean,
-): string {
-  const venstre = [iso(x, y + d, 0, speil), iso(x + w, y + d, 0, speil), iso(x + w, y + d, h, speil), iso(x, y + d, h, speil)];
-  const hoyre = [iso(x + w, y, 0, speil), iso(x + w, y + d, 0, speil), iso(x + w, y + d, h, speil), iso(x + w, y, h, speil)];
-  const topp = [iso(x, y, h, speil), iso(x + w, y, h, speil), iso(x + w, y + d, h, speil), iso(x, y + d, h, speil)];
-  const skyggeFlate = [iso(x, y + d, 0, speil), iso(x + w + 0.25, y + d + 0.25, 0, speil), iso(x + w + 0.25, y + 0.25, 0, speil), iso(x, y, 0, speil)];
-  return [
-    polygon(skyggeFlate, FARGER.kontur, 2, ` fill-opacity="0.2"`),
-    polygon(speil ? venstre : hoyre, skygge),
-    polygon(speil ? hoyre : venstre, lys),
-    polygon(topp, tak),
-  ].join("");
-}
-
-function vinduPaVegg(x: number, y: number, d: number, h: number, kveld: boolean, speil: boolean): string {
-  const z0 = h * 0.45;
-  const z1 = h * 0.75;
-  const u0 = x + 0.55;
-  const u1 = x + 0.85;
-  const farge = kveld ? FARGER.vinduslys : FARGER.glass;
-  const punkter = [iso(u0, y + d, z0, speil), iso(u1, y + d, z0, speil), iso(u1, y + d, z1, speil), iso(u0, y + d, z1, speil)];
-  return polygon(punkter, farge, 2);
-}
-
-export function tegnBygg(id: ByggId, kveld = false, speil = false): string {
+export function tegnBygg(id: ByggId, kveld = false): string {
   const def = byggDef(id);
-  const mat = materialeFarger(def.materiale);
-  const tak = def.tak === "bla" ? takFarger("bla") : takFarger("rod");
-  const hoyde = def.etasjer;
-  const deler: string[] = [];
-  if (id === "bronn" || id === "vanntaarn" || id === "fyrtarn") {
-    const topp = iso(0.5, 0.5, hoyde, speil);
-    const bunn = iso(0.5, 0.5, 0, speil);
-    deler.push(
-      `<rect x="${bunn[0] - 18}" y="${topp[1]}" width="36" height="${bunn[1] - topp[1]}" fill="${mat.lys}" stroke="${FARGER.kontur}" stroke-width="3"/>`,
-      `<ellipse cx="${topp[0]}" cy="${topp[1]}" rx="18" ry="8" fill="${tak.lys}" stroke="${FARGER.kontur}" stroke-width="3"/>`,
-    );
-    if (kveld && id === "fyrtarn") {
-      deler.push(`<circle cx="${topp[0]}" cy="${topp[1] - 10}" r="6" fill="${FARGER.vinduslys}" stroke="${FARGER.kontur}" stroke-width="2"/>`);
-    }
-  } else {
-    deler.push(boks(0, 0, def.bredde, def.dybde, hoyde, mat.lys, mat.skygge, tak.lys, speil));
-    if (def.tak !== "ingen") {
-      const peak = hoyde + 0.7;
-      const mote = iso(def.bredde / 2, def.dybde / 2, peak, speil);
-      const a = iso(0, def.dybde, hoyde, speil);
-      const b = iso(def.bredde, def.dybde, hoyde, speil);
-      const c = iso(def.bredde, 0, hoyde, speil);
-      const d = iso(0, 0, hoyde, speil);
-      deler.push(polygon([a, b, mote], tak.lys, 3));
-      deler.push(polygon([b, c, mote], tak.skygge, 3));
-      deler.push(polygon([c, d, mote], tak.lys, 3));
-      deler.push(polygon([d, a, mote], tak.skygge, 3));
-    }
-    deler.push(vinduPaVegg(0, 0, def.dybde, hoyde, kveld, speil));
-  }
-  const alle = deler.join("");
-  const utenFarge = alle.replace(/#[0-9A-Fa-f]{3,8}/g, " ");
-  const tall = [...utenFarge.matchAll(/-?\d+\.?\d*/g)].map(Number).filter((n) => Number.isFinite(n));
-  const minX = Math.min(...tall, 0) - 8;
-  const minY = Math.min(...tall, 0) - 8;
-  const maxX = Math.max(...tall, 64) + 8;
-  const maxY = Math.max(...tall, 64) + 8;
-  return svgDokument(alle, Math.ceil(maxX - minX), Math.ceil(maxY - minY), Math.floor(minX), Math.floor(minY));
+  return fasadeSvg(id, def.oppskrift.length, kveld);
 }
 
 export interface KartValg {
@@ -95,103 +22,123 @@ export interface KartValg {
   tomter?: { x: number; y: number }[];
 }
 
+function utsnitt(by: ByTilstand): { x0: number; y0: number; x1: number; y1: number } {
+  if (by.nivaa <= 2) return { x0: 0, y0: 0, x1: 8, y1: 8 };
+  const hjem = by.bygg.find((bygg) => byggDef(bygg.bygg).hjem && !bygg.uthus);
+  const x = hjem?.x ?? 0;
+  const y = hjem?.y ?? 0;
+  if (x >= 8 && y >= 8) return { x0: 8, y0: 8, x1: 12, y1: 12 };
+  if (x >= 8) return { x0: 8, y0: 0, x1: 12, y1: 8 };
+  if (y >= 8) return { x0: 0, y0: 8, x1: 8, y1: 12 };
+  return { x0: 0, y0: 0, x1: 8, y1: 8 };
+}
+
+function innen(x: number, y: number, ramme: { x0: number; y0: number; x1: number; y1: number }): boolean {
+  return x >= ramme.x0 && x < ramme.x1 && y >= ramme.y0 && y < ramme.y1;
+}
+
+function merkeFor(by: ByTilstand, instans: string, valg: KartValg): string {
+  const plassert = by.bygg.find((bygg) => bygg.instans === instans);
+  if (!plassert) return "hjemme";
+  if (!plassert.ferdig) return `bygg:${plassert.instans}`;
+  const def = byggDef(plassert.bygg);
+  if (def.hjem && !plassert.uthus) return "hjemme";
+  if (valg.aktivitet && valg.aktivitet === plassert.bygg) return "aktivitet";
+  return `bygg:${plassert.instans}`;
+}
+
+function landemerke(sted: string): string {
+  if (sted === "butikk") {
+    return `<polygon points="4,20 22,4 40,20" fill="${FARGER.takBlatt}" stroke="${FARGER.kontur}" stroke-width="2"/>
+      <rect x="6" y="20" width="32" height="18" fill="${FARGER.papir}" stroke="${FARGER.kontur}" stroke-width="2"/>
+      <rect x="10" y="24" width="10" height="8" fill="${FARGER.glass}" stroke="${FARGER.kontur}" stroke-width="2"/>
+      <rect x="24" y="24" width="10" height="8" fill="${FARGER.tre}" stroke="${FARGER.kontur}" stroke-width="2"/>`;
+  }
+  if (sted === "torg") {
+    return `<rect x="18" y="6" width="8" height="22" fill="${FARGER.mur}" stroke="${FARGER.kontur}" stroke-width="2"/>
+      <circle cx="22" cy="6" r="4" fill="${FARGER.papir}" stroke="${FARGER.kontur}" stroke-width="2"/>
+      <ellipse cx="16" cy="34" rx="12" ry="5" fill="${FARGER.vann}" stroke="${FARGER.kontur}" stroke-width="2"/>`;
+  }
+  if (sted === "tannlege") {
+    return `<rect x="6" y="16" width="32" height="22" fill="${FARGER.papir}" stroke="${FARGER.kontur}" stroke-width="2"/>
+      <circle cx="16" cy="18" r="6" fill="${FARGER.papir}" stroke="${FARGER.kontur}" stroke-width="2"/>
+      <circle cx="28" cy="18" r="6" fill="${FARGER.papir}" stroke="${FARGER.kontur}" stroke-width="2"/>`;
+  }
+  return `<rect x="4" y="14" width="36" height="22" fill="${FARGER.vann}" stroke="${FARGER.kontur}" stroke-width="2"/>
+    <path d="M6 24 Q14 18 22 24 T38 24" fill="none" stroke="${FARGER.papir}" stroke-width="2"/>
+    <path d="M6 30 Q14 24 22 30 T38 30" fill="none" stroke="${FARGER.kontur}" stroke-width="2"/>`;
+}
+
+function figurGruppe(x: number, y: number, fra: { x: number; y: number } | null, ramme: { x0: number; y0: number }): string {
+  const tx = (x - ramme.x0) * RUTE + 2;
+  const ty = (y - ramme.y0) * RUTE;
+  const person = `<circle cx="16" cy="10" r="6" fill="${FARGER.tre}" stroke="${FARGER.kontur}" stroke-width="2"/>
+    <rect x="8" y="16" width="16" height="14" fill="${FARGER.takBlatt}" stroke="${FARGER.kontur}" stroke-width="2"/>
+    <rect x="10" y="30" width="5" height="10" fill="${FARGER.kontur}"/>
+    <rect x="17" y="30" width="5" height="10" fill="${FARGER.kontur}"/>
+    <ellipse cx="34" cy="26" rx="6" ry="4" fill="${FARGER.papir}" stroke="${FARGER.kontur}" stroke-width="2"/>`;
+  if (!fra) return `<g class="figur" transform="translate(${tx} ${ty})">${person}</g>`;
+  const fx = (fra.x - ramme.x0) * RUTE + 2;
+  const fy = (fra.y - ramme.y0) * RUTE;
+  return `<g class="figur" transform="translate(${tx} ${ty})"><animateTransform attributeName="transform" type="translate" from="${fx} ${fy}" to="${tx} ${ty}" dur="1s" fill="freeze"/>${person}</g>`;
+}
+
 export function tegnKart(by: ByTilstand, tid: number, leggetid = 20 * 60, valg: KartValg = {}): string {
+  const ramme = utsnitt(by);
+  const kolonner = ramme.x1 - ramme.x0;
+  const rader = ramme.y1 - ramme.y0;
   const kveld = tid >= 18 * 60 && tid < leggetid;
   const flater: string[] = [];
-  const punkter: [number, number][] = [];
-  const lag: { sum: number; svg: string }[] = [];
-  for (let y = 0; y < 12; y++) {
-    for (let x = 0; x < 12; x++) {
+  for (let y = ramme.y0; y < ramme.y1; y++) {
+    for (let x = ramme.x0; x < ramme.x1; x++) {
       const rute = celle(x, y);
-      if (!rute || !by.omrader.includes(rute.omrade)) continue;
-      const a = iso(x, y, 0);
-      const b = iso(x + 1, y, 0);
-      const c = iso(x + 1, y + 1, 0);
-      const d = iso(x, y + 1, 0);
-      punkter.push(a, b, c, d);
-      const farge = rute.slag === "vann" ? FARGER.vann : rute.slag === "sti" ? FARGER.vei : FARGER.gress;
-      flater.push(polygon([a, b, c, d], farge, 2));
+      const farge = rute?.slag === "vann" ? FARGER.vann : rute?.slag === "sti" ? FARGER.vei : FARGER.gress;
+      const px = (x - ramme.x0) * RUTE;
+      const py = (y - ramme.y0) * RUTE;
+      flater.push(`<rect x="${px}" y="${py}" width="${RUTE}" height="${RUTE}" fill="${farge}" stroke="${FARGER.kontur}" stroke-width="2"/>`);
     }
   }
   for (const tomt of valg.tomter ?? []) {
-    const a = iso(tomt.x, tomt.y, 0);
-    const b = iso(tomt.x + 1, tomt.y, 0);
-    const c = iso(tomt.x + 1, tomt.y + 1, 0);
-    const d = iso(tomt.x, tomt.y + 1, 0);
+    if (!innen(tomt.x, tomt.y, ramme)) continue;
+    const px = (tomt.x - ramme.x0) * RUTE + 6;
+    const py = (tomt.y - ramme.y0) * RUTE + 6;
     const klasse = valg.puls === "tomt" ? "puls" : "";
-    lag.push({
-      sum: tomt.x + tomt.y - 0.1,
-      svg: `<g data-sted="tomt:${tomt.x},${tomt.y}" class="${klasse}">${polygon([a, b, c, d], FARGER.papir, 2, ' stroke-dasharray="6 4" fill-opacity="0.55"')}</g>`,
-    });
+    flater.push(
+      `<g data-sted="tomt:${tomt.x},${tomt.y}" class="${klasse}"><rect x="${px}" y="${py}" width="${RUTE - 12}" height="${RUTE - 12}" fill="${FARGER.papir}" stroke="${FARGER.kontur}" stroke-width="2" stroke-dasharray="5 4"/><rect x="${px + 14}" y="${py + 8}" width="4" height="16" fill="${FARGER.kontur}"/><rect x="${px + 8}" y="${py + 14}" width="16" height="4" fill="${FARGER.kontur}"/></g>`,
+    );
   }
   for (const [sted, punkt] of Object.entries(LANDMERKE)) {
-    const mur = sted === "tannlege";
-    const mat = materialeFarger(mur ? "mur" : "tre");
-    const tak = sted === "butikk" ? takFarger("bla").lys : takFarger("rod").lys;
-    const hoyde = sted === "torg" ? 1.6 : sted === "svommehall" ? 0.55 : 0.9;
-    punkter.push(iso(punkt.x, punkt.y, 0));
+    if (!innen(punkt.x, punkt.y, ramme)) continue;
+    const px = (punkt.x - ramme.x0) * RUTE;
+    const py = (punkt.y - ramme.y0) * RUTE;
     const klasse = valg.puls === sted ? "puls" : "";
-    lag.push({
-      sum: punkt.x + punkt.y,
-      svg: `<g data-sted="${sted}" class="${klasse}">${boks(punkt.x, punkt.y, 1, 1, hoyde, mat.lys, mat.skygge, tak, false)}</g>`,
-    });
+    flater.push(`<g data-sted="${sted}" class="${klasse}" transform="translate(${px} ${py})">${landemerke(sted)}</g>`);
   }
   for (const plassert of by.bygg) {
-    const def = byggDef(plassert.bygg);
-    const mat = materialeFarger(def.materiale);
-    const tak = def.tak === "bla" ? takFarger("bla").lys : takFarger("rod").lys;
-    const h = plassert.ferdig ? def.etasjer : Math.max(0.4, def.etasjer * (plassert.steg / def.oppskrift.length));
-    punkter.push(iso(plassert.x, plassert.y, 0));
-    const merke = def.hjem && !plassert.uthus ? "hjemme" : !plassert.ferdig ? `bygg:${plassert.instans}` : valg.aktivitet === plassert.bygg ? "aktivitet" : `bygg:${plassert.instans}`;
+    if (!innen(plassert.x, plassert.y, ramme)) continue;
+    const px = (plassert.x - ramme.x0) * RUTE + 2;
+    const py = (plassert.y - ramme.y0) * RUTE + 1;
+    const merke = merkeFor(by, plassert.instans, valg);
     const klasse = valg.puls === merke ? "puls" : "";
-    lag.push({
-      sum: plassert.x + plassert.y,
-      svg: `<g data-sted="${merke}" class="${klasse}">${boks(plassert.x, plassert.y, def.bredde, def.dybde, h, mat.lys, mat.skygge, tak, false)}${vinduPaVegg(plassert.x, plassert.y, def.dybde, Math.max(h, 0.8), kveld && plassert.ferdig, false)}</g>`,
-    });
+    const synlig = plassert.ferdig ? byggDef(plassert.bygg).oppskrift.length : plassert.steg;
+    flater.push(
+      `<g data-sted="${merke}" class="${klasse}" transform="translate(${px} ${py}) scale(0.4)">${fasadeInnhold(plassert.bygg, synlig, kveld && plassert.ferdig)}</g>`,
+    );
   }
-  lag.sort((a, b) => a.sum - b.sum);
-  for (const rad of lag) flater.push(rad.svg);
-  const minX = Math.min(...punkter.map((p) => p[0])) - 16;
-  const minY = Math.min(...punkter.map((p) => p[1])) - 80;
-  const maxX = Math.max(...punkter.map((p) => p[0])) + 16;
-  const maxY = Math.max(...punkter.map((p) => p[1])) + 16;
-  const flytt = (punkt: [number, number]) => [(punkt[0] - minX).toFixed(1), (punkt[1] - minY).toFixed(1)];
-  const innhold = flater.join("").replaceAll(/(-?\d+\.\d),(-?\d+\.\d)/g, (_, x: string, y: string) => {
-    return `${(Number(x) - minX).toFixed(1)},${(Number(y) - minY).toFixed(1)}`;
-  });
-  let figur = "";
-  if (valg.figur) {
-    const [cx, cy] = flytt(iso(valg.figur.x + 0.55, valg.figur.y + 0.55, 0.35));
-    const fra = valg.garFra ? flytt(iso(valg.garFra.x + 0.55, valg.garFra.y + 0.55, 0.35)) : null;
-    const anim = fra
-      ? `<animate attributeName="cx" from="${fra[0]}" to="${cx}" dur="1s" fill="freeze"/><animate attributeName="cy" from="${fra[1]}" to="${cy}" dur="1s" fill="freeze"/>`
-      : "";
-    const [px, py] = flytt(iso(valg.figur.x + 0.85, valg.figur.y + 0.3, 0.15));
-    figur = `<circle class="figur" cx="${cx}" cy="${cy}" r="8" fill="${FARGER.aksentGul}" stroke="${FARGER.kontur}" stroke-width="3">${anim}</circle><circle cx="${px}" cy="${py}" r="5" fill="${FARGER.papir}" stroke="${FARGER.kontur}" stroke-width="2"/>`;
+  if (valg.figur && innen(valg.figur.x, valg.figur.y, ramme)) {
+    flater.push(figurGruppe(valg.figur.x, valg.figur.y, valg.garFra && innen(valg.garFra.x, valg.garFra.y, ramme) ? valg.garFra : null, ramme));
   }
+  const bokstaver = Array.from({ length: kolonner }, (_, i) => `<span>${ruteNavn(ramme.x0 + i, 0).slice(0, 1)}</span>`).join("");
+  const tall = Array.from({ length: rader }, (_, i) => `<span>${ramme.y0 + i + 1}</span>`).join("");
   const himmelF = himmelFarge(himmel(tid));
-  return svgDokument(`<rect width="100%" height="100%" fill="${himmelF}"/>${innhold}${figur}`, Math.ceil(maxX - minX), Math.ceil(maxY - minY));
+  const svg = svgDokument(
+    `<rect width="100%" height="100%" fill="${himmelF}"/>${flater.join("")}`,
+    kolonner * RUTE,
+    rader * RUTE,
+  );
+  return `<div class="brett"><div class="akse-x"><span></span>${bokstaver}</div><div class="akse-rad"><div class="akse-y">${tall}</div>${svg}</div></div>`;
 }
 
-export function tegnFremdrift(id: ByggId, steg: number, maks: number): string {
-  const def = byggDef(id);
-  const mat = materialeFarger(def.materiale);
-  const tak = def.tak === "bla" ? takFarger("bla").lys : takFarger("rod").lys;
-  const full = boks(0, 0, def.bredde, def.dybde, def.etasjer, mat.lys, mat.skygge, tak, false).replaceAll(
-    "<polygon ",
-    '<polygon fill-opacity="0.2" stroke-dasharray="5 4" ',
-  );
-  const hoyde = Math.max(0.35, def.etasjer * (steg / Math.max(1, maks)));
-  const delvis = steg > 0 ? boks(0, 0, def.bredde, def.dybde, hoyde, mat.lys, mat.skygge, tak, false) : "";
-  const alle = `${full}${delvis}`;
-  const utenFarge = alle.replace(/#[0-9A-Fa-f]{3,8}/g, " ");
-  const tall = [...utenFarge.matchAll(/-?\d+\.?\d*/g)].map(Number).filter((n) => Number.isFinite(n));
-  const minX = Math.min(...tall, 0) - 8;
-  const minY = Math.min(...tall, 0) - 8;
-  const maxX = Math.max(...tall, 64) + 8;
-  const maxY = Math.max(...tall, 64) + 8;
-  const innhold = alle.replaceAll(/(-?\d+\.\d),(-?\d+\.\d)/g, (_, x: string, y: string) => {
-    return `${(Number(x) - minX).toFixed(1)},${(Number(y) - minY).toFixed(1)}`;
-  });
-  return svgDokument(innhold, Math.ceil(maxX - minX), Math.ceil(maxY - minY));
+export function tegnFremdrift(id: ByggId, steg: number, _maks: number): string {
+  return fasadeSvg(id, steg, false);
 }

@@ -515,4 +515,38 @@ o("Ukedager", "Vekedagar", "Weekdays", "Días", "Wochentage", "Dias", "Veckodaga
 o("Måneder", "Månader", "Months", "Meses", "Monate", "Meses", "Månader", "Måneder", "Mois");
 o("Tid på dagen", "Tid på dagen", "Time of day", "Momento del día", "Tageszeit", "Parte do dia", "Tid på dagen", "Tid på dagen", "Moment de la journée");
 
+o("← Byen", "← Byen", "← Town", "← Ciudad", "← Stadt", "← Cidade", "← Stan", "← Byen", "← Ville");
+o("Les skiltet.", "Les skiltet.", "Read the sign.", "Lee el cartel.", "Lies das Schild.", "Lê a placa.", "Läs skylten.", "Læs skiltet.", "Lis le panneau.");
+o("Les skiltet", "Les skiltet", "Read the sign", "Lee el cartel", "Lies das Schild", "Lê a placa", "Läs skylten", "Læs skiltet", "Lis le panneau");
+o("Vi trenger en {del}.", "Vi treng ein {del}.", "We need a {del}.", "Necesitamos un {del}.", "Wir brauchen ein {del}.", "Precisamos de um {del}.", "Vi behöver en {del}.", "Vi skal bruge en {del}.", "Il nous faut un {del}.");
+o("Dra {del} på plass.", "Dra {del} på plass.", "Drag the {del} into place.", "Arrastra {del}.", "Zieh {del} an den Platz.", "Arrasta {del}.", "Dra {del} på plats.", "Træk {del} på plads.", "Glisse {del} à sa place.");
+o("Hva vil du bygge?", "Kva vil du byggje?", "What do you want to build?", "¿Qué quieres construir?", "Was willst du bauen?", "O que queres construir?", "Vad vill du bygga?", "Hvad vil du bygge?", "Que veux-tu construire ?");
+o("Gå hjem.", "Gå heim.", "Go home.", "Ve a casa.", "Geh nach Hause.", "Vai para casa.", "Gå hem.", "Gå hjem.", "Rentre à la maison.");
+o("Gå hjem", "Gå heim", "Go home", "Ve a casa", "Geh nach Hause", "Vai para casa", "Gå hem", "Gå hjem", "Rentre");
+o("Middagen er klar.", "Middagen er klar.", "Dinner is ready.", "La cena está lista.", "Das Essen ist fertig.", "O jantar está pronto.", "Middagen är klar.", "Maden er klar.", "Le dîner est prêt.");
+o("Møt opp.", "Møt opp.", "Show up.", "Preséntate.", "Komm hin.", "Chega.", "Kom dit.", "Mød op.", "Va au rendez-vous.");
+o("Kjøp {del}", "Kjøp {del}", "Buy {del}", "Compra {del}", "Kauf {del}", "Compra {del}", "Köp {del}", "Køb {del}", "Achète {del}");
+o("Sett på {del} · 15 min", "Set på {del} · 15 min", "Put on {del} · 15 min", "Pon {del} · 15 min", "Setze {del} · 15 Min", "Põe {del} · 15 min", "Sätt på {del} · 15 min", "Sæt {del} på · 15 min", "Pose {del} · 15 min");
+o("Hent delen i butikken.", "Hent delen i butikken.", "Get the part at the shop.", "Busca la pieza en la tienda.", "Hol das Teil im Laden.", "Vai buscar a peça à loja.", "Hämta delen i butiken.", "Hent delen i butikken.", "Va chercher la pièce à la boutique.");
+o("Gå til {sted}", "Gå til {sted}", "Go to {sted}", "Ve a {sted}", "Geh zu {sted}", "Vai a {sted}", "Gå till {sted}", "Gå til {sted}", "Va à {sted}");
+o("butikken", "butikken", "the shop", "la tienda", "den Laden", "a loja", "butiken", "butikken", "la boutique");
+o("tannlegen", "tannlækjaren", "the dentist", "el dentista", "den Zahnarzt", "o dentista", "tandläkaren", "tandlægen", "le dentiste");
+o("svømmehallen", "symjehallen", "the pool", "la piscina", "das Schwimmbad", "a piscina", "simhallen", "svømmehallen", "la piscine");
+o("torget", "torget", "the square", "la plaza", "den Platz", "a praça", "torget", "torvet", "la place");
+o("stedet", "staden", "the place", "el lugar", "den Ort", "o lugar", "platsen", "stedet", "l'endroit");
+o("Spis", "Et", "Eat", "Come", "Iss", "Come", "Ät", "Spis", "Mange");
+o("God natt", "God natt", "Good night", "Buenas noches", "Gute Nacht", "Boa noite", "God natt", "Godnat", "Bonne nuit");
+o("Dagens plan", "Dagens plan", "Today's plan", "El plan de hoy", "Der Plan für heute", "O plano de hoje", "Dagens plan", "Dagens plan", "Le programme");
+o("I dag bygger du", "I dag byggjer du", "Today you build", "Hoy construyes", "Heute baust du", "Hoje constróis", "I dag bygger du", "I dag bygger du", "Aujourd'hui tu construis");
+o("Bynivå {nivaa}. Du bygger {bygg}.", "Bynivå {nivaa}. Du byggjer {bygg}.", "Town level {nivaa}. You are building {bygg}.", "Nivel {nivaa}. Construyes {bygg}.", "Stadtstufe {nivaa}. Du baust {bygg}.", "Nível {nivaa}. Estás a construir {bygg}.", "Stadsnivå {nivaa}. Du bygger {bygg}.", "Byniveau {nivaa}. Du bygger {bygg}.", "Niveau {nivaa}. Tu construis {bygg}.");
+o("Bynivå {nivaa}.", "Bynivå {nivaa}.", "Town level {nivaa}.", "Nivel {nivaa}.", "Stadtstufe {nivaa}.", "Nível {nivaa}.", "Stadsnivå {nivaa}.", "Byniveau {nivaa}.", "Niveau {nivaa}.");
+o("Byplanen", "Byplanen", "The town plan", "El plano", "Der Stadtplan", "O plano", "Stadsplanen", "Byplanen", "Le plan");
+o("Kurven", "Korga", "Basket", "Cesta", "Korb", "Cesto", "Korgen", "Kurven", "Panier");
+o("Mynter", "Myntar", "Coins", "Monedas", "Münzen", "Moedas", "Mynt", "Mønter", "Pièces");
+o("Familien er sulten.", "Familien er svolten.", "The family is hungry.", "La familia tiene hambre.", "Die Familie ist hungrig.", "A família tem fome.", "Familjen är hungrig.", "Familien er sulten.", "La famille a faim.");
+o("Middagen er over.", "Middagen er over.", "Dinner is over.", "La cena ya pasó.", "Das Essen ist vorbei.", "O jantar já passou.", "Middagen är över.", "Maden er overstået.", "Le dîner est passé.");
+o("Vi spiser.", "Vi et.", "We are eating.", "Comemos.", "Wir essen.", "Estamos a comer.", "Vi äter.", "Vi spiser.", "Nous mangeons.");
+o("time minus", "time minus", "hour minus", "hora menos", "Stunde minus", "hora menos", "timme minus", "time minus", "heure moins");
+o("time pluss", "time pluss", "hour plus", "hora más", "Stunde plus", "hora mais", "timme plus", "time plus", "heure plus");
+
 fyllSteg(o);

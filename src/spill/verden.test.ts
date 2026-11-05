@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { byggSomKanStartes, ledigeTomter } from "../bygg/kart";
+import { byggDef } from "../bygg/katalog";
 import { froTilfeldig } from "../felles/tilfeldig";
 import { standardLagret } from "../lagring/lagring";
 import { trekkOppgave } from "../oppgaver/lag";
 import { erApen } from "../tid/tid";
-import type { Lagret } from "../typer";
+import type { ByggId, Lagret } from "../typer";
 import { anbefalt } from "./anbefaling";
 import { hylleForNivaa, utfor } from "./okt";
 
@@ -43,7 +45,7 @@ describe("verden", () => {
     const oppgave = lagret.aktivDag?.ko[0];
     if (!oppgave) throw new Error("mangler døroppgave");
     const etter = utfor(lagret, { slag: "svar", svar: oppgave.fasit }).lagret;
-    expect(etter.mynter).toBe(mynter);
+    expect(etter.mynter).toBe(mynter + 1);
     expect(Object.values(etter.kurv).reduce((sum, n) => sum + (n ?? 0), 0)).toBe(0);
   });
 
@@ -139,6 +141,7 @@ describe("verden", () => {
     for (let dag = 0; dag < 30 && sett.size < 4; dag++) {
       lagret = utfor(lagret, { slag: "start" }).lagret;
       lagret = handleKloss(lagret);
+      lagret = byggDetDuHar(lagret);
       for (const form of lagret.by.kjente3d) sett.add(form);
       if (lagret.aktivDag) lagret = utfor(lagret, { slag: "avslutt" }).lagret;
     }
@@ -174,6 +177,38 @@ function handleKloss(lagret: Lagret): Lagret {
     const forAktiv = lagret.aktivDag.aktiv;
     lagret = utfor(lagret, { slag: "svar", svar: oppgave.fasit }).lagret;
     if (lagret.aktivDag?.aktiv === forAktiv && lagret.aktivDag.fase === "forklaring") break;
+  }
+  return lagret;
+}
+
+function byggDetDuHar(lagret: Lagret): Lagret {
+  const rekkefolge: ByggId[] = ["bronn", "gjerde", "vedskjul", "hytte"];
+  for (const id of rekkefolge) {
+    if (!lagret.aktivDag) return lagret;
+    if (lagret.by.bygg.some((bygg) => bygg.bygg === id && bygg.ferdig)) continue;
+    let plassert = lagret.by.bygg.find((bygg) => bygg.bygg === id && !bygg.ferdig);
+    if (!plassert) {
+      if (!byggSomKanStartes(lagret.by).includes(id)) continue;
+      const tomt = ledigeTomter(lagret.by, id)[0];
+      if (!tomt) continue;
+      const valgt = utfor(lagret, { slag: "velg-bygg", bygg: id, x: tomt.x, y: tomt.y });
+      if (!valgt.lagret.aktivDag) return valgt.lagret;
+      lagret = valgt.lagret;
+      plassert = lagret.by.bygg.find((bygg) => bygg.bygg === id && !bygg.ferdig);
+    } else {
+      lagret = utfor(lagret, { slag: "velg", instans: plassert.instans }).lagret;
+    }
+    for (let vakt = 0; vakt < 8 && lagret.aktivDag && plassert; vakt++) {
+      const naa = lagret.by.bygg.find((bygg) => bygg.instans === plassert?.instans);
+      if (!naa || naa.ferdig) break;
+      const trinn = byggDef(id).oppskrift[naa.steg];
+      if (!trinn || (lagret.kurv[trinn.vare] ?? 0) < 1) break;
+      const bygd = utfor(lagret, { slag: "steg" });
+      if (!bygd.lagret.aktivDag) return bygd.lagret;
+      const etter = bygd.lagret.by.bygg.find((bygg) => bygg.instans === naa.instans);
+      if (!etter || etter.steg === naa.steg) break;
+      lagret = bygd.lagret;
+    }
   }
   return lagret;
 }
