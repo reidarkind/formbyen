@@ -38,12 +38,14 @@
 
 html, body {
   margin: 0;
-  min-height: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
   background: var(--himmel);
 }
 
 body {
-  min-height: 100dvh;
+  min-height: 0;
 }
 
 button, input, select, a.knapp {
@@ -74,8 +76,22 @@ button:focus-visible {
 
 #app {
   max-width: 720px;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
   margin: 0 auto;
-  padding: max(12px, env(safe-area-inset-top)) 12px max(16px, env(safe-area-inset-bottom));
+  padding: max(8px, env(safe-area-inset-top)) 12px max(8px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+}
+
+main.kort, main.by {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
 }
 
 #app:has(.verden) {
@@ -173,7 +189,7 @@ p { margin: 0 0 10px; line-height: 1.35; }
   padding: max(8px, env(safe-area-inset-top)) 12px max(8px, env(safe-area-inset-bottom));
   box-sizing: border-box;
 }
-.verden-midten { flex: 1; min-height: 0; overflow: auto; }
+.verden-midten { flex: 1; min-height: 0; overflow: hidden; }
 .verden .bykart, .verden .scene { max-height: none; }
 .verden-bunn { flex: none; background: var(--himmel); padding-top: 8px; z-index: 3; }
 .ikon-s, .ikon-s svg, svg.ikon-s { width: 20px; height: 20px; }
@@ -190,12 +206,29 @@ p { margin: 0 0 10px; line-height: 1.35; }
 .skilt-rad { display: flex; align-items: center; gap: 4px; font-weight: 800; }
 .sammenlign { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .sammenlign .ord { font-weight: 800; font-size: 16px; text-align: center; }
-.dagstart { height: 100dvh; display: flex; flex-direction: column; overflow: hidden; padding: 8px 12px; box-sizing: border-box; }
-.dagstart-scroll { flex: 1; min-height: 0; overflow: auto; }
+.dagstart { flex: 1; min-height: 0; height: auto; display: flex; flex-direction: column; overflow: hidden; padding: 8px 12px; box-sizing: border-box; }
+.dagstart-scroll { flex: 1; min-height: 0; overflow: hidden; }
+.dagstart-bunn { flex: none; display: flex; flex-direction: column; gap: 6px; }
 .dagstart-start { flex: none; }
-.dagrad { grid-template-columns: 24px 44px 1fr; min-height: 44px; }
+.dagrad { grid-template-columns: 24px 44px 1fr; min-height: 32px; }
 .dagrad .ur, .dagrad .ur-36 { width: 36px; }
-.bygg-lite svg { max-height: 120px; width: auto; }
+.bygg-lite svg { max-height: 80px; width: auto; }
+.kasser { display: flex; gap: 8px; flex-wrap: wrap; }
+.kasse { min-width: 140px; min-height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; touch-action: none; }
+.kasse.lyser, .kasse.under { outline: 3px solid var(--gul); background: var(--papir); }
+.kasse .lokk { display: flex; align-items: center; gap: 4px; }
+.hake { color: var(--gronn); font-weight: 900; }
+.prikker { letter-spacing: 4px; margin: 0; }
+.valg button.loftet { transform: scale(1.08); box-shadow: 0 6px 0 var(--kontur); }
+.valg button.rist { animation: rist 0.45s linear; }
+@keyframes rist {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-8px); }
+  75% { transform: translateX(8px); }
+}
+.valg { touch-action: none; }
+.forside { flex: 1; min-height: 0; max-height: 100%; overflow: hidden; }
+.forside .brett, .forside svg { max-height: 42dvh; }
 .delrad .del { display: inline-flex; align-items: center; gap: 4px; }
 .delrad svg { width: 32px; height: 32px; }
 .valg .ur-96, .valg .ur-96 svg { width: 96px; height: 96px; }
@@ -212,7 +245,18 @@ p { margin: 0 0 10px; line-height: 1.35; }
   padding: 10px 12px;
 }
 
+@media (max-height: 700px) {
+  .figurer svg, .inn-midten svg { width: 48px; height: 48px; }
+  h1 { font-size: 1.35rem; }
+  .forside svg, .forside .brett, .forside .kart-bilde { max-height: 34dvh; }
+}
 @media (orientation: landscape) and (max-height: 500px) {
+  .forside { grid-template-columns: minmax(160px, 42%) 1fr; align-content: center; gap: 4px; height: 100%; }
+  .forside > h1, .forside > p, .forside > button, .forside > .ikonrad { grid-column: 1; margin: 0; }
+  .forside > .bykart, .forside.intro > svg, .forside.intro > .ur { grid-column: 2; grid-row: 1 / span 8; max-height: 100%; min-height: 0; overflow: hidden; align-self: center; }
+  .forside .bykart svg { max-height: 86dvh; }
+  .inn-midten .liste { grid-template-columns: 1fr 1fr; }
+  .nivaa-kort { padding: 4px 8px; min-height: 0; }
   .verden { display: grid; grid-template-columns: minmax(150px, 36%) 1fr; align-content: start; }
   .verden > .hud, .verden > .tidslinje, .verden > .stripe { grid-column: 1; }
   .verden .bykart, .verden .scene, .verden .kort { grid-column: 2; grid-row: 1 / span 4; max-height: 70dvh; }
@@ -245,7 +289,7 @@ p { margin: 0 0 10px; line-height: 1.35; }
 .tidspunkt p { margin: 0; }
 
 .kart-bilde {
-  overflow: auto;
+  overflow: hidden;
   background: var(--gress);
   border: 3px solid var(--kontur);
   border-radius: 12px;
@@ -309,19 +353,22 @@ a.knapp {
 .dagstart { gap: 8px; }
 .dagstart h1, .dagstart h2 { margin: 0; }
 .dagstart .dato { margin: 0; font-size: 1.15rem; }
-.dagliste { display: grid; gap: 8px; }
-.dagrad { display: grid; grid-template-columns: 24px 44px 1fr; gap: 4px; align-items: center; min-height: 44px; }
+.dagliste { display: grid; gap: 2px; }
+.dagrad { display: grid; grid-template-columns: 24px 44px 1fr; gap: 4px; align-items: center; min-height: 32px; }
 .dagrad .ur { width: 36px; margin: 0; }
 .dagtid { display: grid; justify-items: center; font-variant-numeric: tabular-nums; }
 .dagtid .ord { font-size: 0.8rem; }
 .delrad { display: flex; flex-wrap: wrap; gap: 8px; }
 .delrad .har { opacity: 0.45; }
-.forside { display: grid; gap: 12px; justify-items: center; }
-.forside h1 { font-size: 2.4rem; }
+.innstillinger { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; gap: 6px; }
+.inn-midten { flex: 1; min-height: 0; overflow: hidden; }
+.innstillinger h1, .forside h1 { margin: 0; }
+.forside { display: grid; gap: 8px; justify-items: center; align-content: start; }
+.forside h1 { font-size: 2rem; }
 .forside .kart-bilde { width: 100%; }
 button.stor { min-height: 64px; font-size: 1.4rem; padding-inline: 32px; }
 .ikonrad { display: flex; gap: 8px; }
-.stripe { display: flex; gap: 4px; overflow: auto; width: 100%; background: transparent; border: none; border-radius: 0; padding: 4px 0; margin-bottom: 4px; justify-content: space-between; }
+.stripe { display: flex; gap: 4px; overflow: hidden; width: 100%; background: transparent; border: none; border-radius: 0; padding: 4px 0; margin-bottom: 4px; justify-content: space-between; }
 .stripe .punkt { opacity: 0.45; font-size: 14px; font-weight: 800; padding: 2px; display: flex; flex-direction: column; align-items: center; min-width: 44px; }
 .stripe svg { width: 20px; height: 20px; }
 .plass { width: 56px; height: 56px; border: 3px dashed var(--kontur); display: inline-flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800; }
@@ -373,7 +420,9 @@ select.spraak { min-height: 48px; width: 100%; border: 3px solid var(--kontur); 
 .valg .ur { width: 96px; }
 
 @media (max-height: 700px) {
-  .valg svg:not(.ur svg), .figurer svg { width: 48px; height: 48px; }
+  .valg svg:not(.ur svg), .figurer svg, .inn-midten svg { width: 48px; height: 48px; }
+  .innstillinger button, .forside button { padding: 4px 10px; }
+  .inn-midten h2 { margin: 0; }
   .ur-160 { width: min(100%, 160px); }
   .kort { padding: 8px; }
   .ekspeditor svg { max-height: 64px; width: auto; }
@@ -385,12 +434,12 @@ select.spraak { min-height: 48px; width: 100%; border: 3px solid var(--kontur); 
 }
 @media (orientation: landscape) and (max-height: 500px) {
   .verden-midten .kort { display: grid; grid-template-columns: 1fr 1fr; align-items: center; }
-  .valg .ur-96, .valg .ur-96 svg { width: 72px; height: 72px; }
+  .valg .ur-96, .valg .ur-96 svg { width: 96px; height: 96px; }
 }
 
 @media (orientation: landscape) and (max-height: 520px) {
   .brett { max-width: min(100%, 58vh); }
   .valg svg:not(.ur-96):not(.ur-120):not(.ur-160):not(.ur-200) { width: 40px; height: 40px; }
-  .valg .ur-96, .valg .ur-96 svg { width: 72px; height: 72px; }
+  .valg .ur-96, .valg .ur-96 svg { width: 96px; height: 96px; }
   .hud .ur { width: 44px; }
 }

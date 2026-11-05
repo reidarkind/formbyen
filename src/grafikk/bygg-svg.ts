@@ -86,6 +86,13 @@ export function tegnKart(by: ByTilstand, tid: number, leggetid = 20 * 60, valg: 
   const kolonner = ramme.x1 - ramme.x0;
   const rader = ramme.y1 - ramme.y0;
   const kveld = tid >= 18 * 60 && tid < leggetid;
+  const dekket = new Set<string>();
+  for (const plassert of by.bygg) {
+    const def = byggDef(plassert.bygg);
+    for (let dy = 0; dy < def.dybde; dy++) {
+      for (let dx = 0; dx < def.bredde; dx++) dekket.add(`${plassert.x + dx},${plassert.y + dy}`);
+    }
+  }
   const flater: string[] = [];
   for (let y = ramme.y0; y < ramme.y1; y++) {
     for (let x = ramme.x0; x < ramme.x1; x++) {
@@ -93,7 +100,8 @@ export function tegnKart(by: ByTilstand, tid: number, leggetid = 20 * 60, valg: 
       const farge = rute?.slag === "vann" ? FARGER.vann : rute?.slag === "sti" ? FARGER.vei : FARGER.gress;
       const px = (x - ramme.x0) * RUTE;
       const py = (y - ramme.y0) * RUTE;
-      flater.push(`<rect x="${px}" y="${py}" width="${RUTE}" height="${RUTE}" fill="${farge}" stroke="${FARGER.kontur}" stroke-width="2"/>`);
+      const strek = dekket.has(`${x},${y}`) ? "" : ` stroke="${FARGER.kontur}" stroke-width="2"`;
+      flater.push(`<rect x="${px}" y="${py}" width="${RUTE}" height="${RUTE}" fill="${farge}"${strek}/>`);
     }
   }
   for (const tomt of valg.tomter ?? []) {
@@ -122,6 +130,11 @@ export function tegnKart(by: ByTilstand, tid: number, leggetid = 20 * 60, valg: 
     const merke = merkeFor(by, plassert.instans, valg);
     const klasse = valg.puls === merke ? "puls" : "";
     const synlig = plassert.ferdig ? def.oppskrift.length : plassert.steg;
+    const rx = (plassert.x - ramme.x0) * RUTE;
+    const ry = (plassert.y - ramme.y0) * RUTE;
+    flater.push(
+      `<rect x="${rx}" y="${ry}" width="${def.bredde * RUTE}" height="${def.dybde * RUTE}" fill="none" stroke="${FARGER.kontur}" stroke-width="2" stroke-opacity="0.35"/>`,
+    );
     flater.push(
       `<g data-sted="${merke}" class="${klasse}" transform="translate(${px} ${py}) scale(${sx} ${sy})">${fasadeInnhold(plassert.bygg, synlig, kveld && plassert.ferdig)}</g>`,
     );

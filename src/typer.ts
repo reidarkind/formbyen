@@ -187,8 +187,9 @@ export interface Oppgave {
   form3d?: string;
   tall?: number;
   digital?: boolean;
-  kasser?: { id: string; tekst: string }[];
-  varer?: { id: string; form: string }[];
+  kasser?: { id: string; tekst: string; symbol?: string }[];
+  varer?: { id: string; form: string; stor?: number }[];
+  ovelse?: boolean;
   monster?: string[];
   ruter?: { id: string; ruter: number }[];
   koordinat?: string;
@@ -278,6 +279,8 @@ export interface KveldsAvtale {
 export interface DagbokInnslag {
   dato: Dato;
   stjerne: boolean;
+  stjerner?: number;
+  merknad?: string;
   bygget: string[];
   former: string[];
   klokker: number[];
@@ -311,6 +314,10 @@ export interface AktivDag {
   visteForSent: string[];
   /** Feil på rad på samme oppgave. To feil slipper videre. */
   feil?: number;
+  /** Svar der første forsøk var riktig. */
+  forsteRett?: number;
+  /** Oppgaver som fikk et første svar. */
+  svarTotalt?: number;
 }
 
 export interface Innstillinger {
@@ -357,6 +364,8 @@ export interface Lagret {
   album: Foto[];
   demoSett: string[];
   aktivDag: AktivDag | null;
+  /** Planen som ble lagret da forrige dag sluttet. */
+  nestePlan?: Dagsplan | null;
   startet: boolean;
   fro: number;
 }

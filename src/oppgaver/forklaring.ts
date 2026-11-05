@@ -6,6 +6,23 @@ function si(spraak: Spraak, nb: string, nn: string, verdier: Record<string, stri
   return mal(spraak, nb, nn, verdier);
 }
 
+function sorterHint(oppgave: Oppgave, spraak: Spraak, fasit: boolean): string {
+  const kasser = oppgave.kasser ?? [];
+  if (kasser.some((kasse) => kasse.id === "tre")) {
+    return fasit
+      ? si(spraak, "Tre hjørner er en trekant. Fire hjørner er et kvadrat eller et rektangel.", "Tre hjørne er ein trekant. Fire hjørne er eit kvadrat eller eit rektangel.")
+      : si(spraak, "Se etter hjørner. En trekant har tre.", "Sjå etter hjørne. Ein trekant har tre.");
+  }
+  if (kasser.some((kasse) => kasse.id === "triller")) {
+    return fasit
+      ? si(spraak, "Kule, sylinder og kjegle kan trille. Kuben kan ikke.", "Kule, sylinder og kjegle kan trille. Kuben kan ikkje.")
+      : si(spraak, "Se om formen kan trille.", "Sjå om forma kan trille.");
+  }
+  return fasit
+    ? si(spraak, "Runde former har ingen hjørner.", "Runde former har ingen hjørne.")
+    : si(spraak, "Se etter hjørner. Har sirkelen noen hjørner?", "Sjå etter hjørne. Har sirkelen nokon hjørne?");
+}
+
 export function forklaring(oppgave: Oppgave, svar: string, spraak: Spraak, gang = 2): string {
   if (gang < 2) {
     if (oppgave.type === "apningstider") {
@@ -17,8 +34,10 @@ export function forklaring(oppgave: Oppgave, svar: string, spraak: Spraak, gang 
     if (oppgave.type === "finn-formen" || oppgave.type === "hvem-passer-ikke") {
       return si(spraak, "Se på formen, ikke fargen.", "Sjå på forma, ikkje fargen.");
     }
+    if (oppgave.type === "sorter") return sorterHint(oppgave, spraak, false);
     return si(spraak, "Se på bildet en gang til.", "Sjå på biletet ein gong til.");
   }
+  if (oppgave.type === "sorter") return sorterHint(oppgave, spraak, true);
   const valgt = oppgave.valg.find((valg) => valg.id === svar);
   const svarKlokke = valgt?.klokke ?? (Number.isFinite(Number(svar)) ? Number(svar) : undefined);
   if (oppgave.maalKlokke !== undefined && svarKlokke !== undefined && erHalvFelle(oppgave.maalKlokke, svarKlokke)) {
@@ -34,10 +53,14 @@ export function forklaring(oppgave: Oppgave, svar: string, spraak: Spraak, gang 
     const apner = rett?.klokke ?? oppgave.skilt?.neste ?? oppgave.tall ?? 0;
     return si(spraak, "Butikken er stengt. Den åpner {tid}.", "Butikken er stengt. Den opnar {tid}.", { tid: tidTilDigital24(apner) });
   }
+  if (oppgave.koordinat) {
+    return si(spraak, "Det riktige er rute {rute}.", "Det rette er rute {rute}.", { rute: oppgave.koordinat });
+  }
   if (oppgave.maalKlokke !== undefined && oppgave.type !== "rekker-jeg" && oppgave.type !== "hvor-lenge") {
+    const fasitTid = oppgave.valg.find((valg) => valg.id === oppgave.fasit)?.klokke ?? oppgave.maalKlokke;
     return si(spraak, "Klokka er {ord}. Digitalt er det {digital}.", "Klokka er {ord}. Digitalt er det {digital}.", {
-      ord: tidTilOrd(oppgave.maalKlokke, spraak),
-      digital: tidTilDigital24(oppgave.maalKlokke),
+      ord: tidTilOrd(fasitTid, spraak),
+      digital: tidTilDigital24(fasitTid),
     });
   }
   if (oppgave.type === "tegn") {

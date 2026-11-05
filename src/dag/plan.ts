@@ -388,3 +388,16 @@ function byggNodplan(inn: PlanInn): Dagsplan {
   };
   return { ...utkast, nokkel: `${nokkelFor(utkast)}|${inn.fro}` };
 }
+
+/** Åpningstid på neste dag som butikken er åpen, regnet med frøet dagen faktisk bruker. */
+export function morgendagensApning(inn: PlanInn): number {
+  let dato = inn.dato;
+  let fro = inn.fro;
+  for (let i = 0; i < 3; i++) {
+    dato = nesteDato(dato);
+    const plan = lagDagsplan({ ...inn, fro, dato });
+    if (!plan.butikk.stengtHele) return plan.butikk.apner;
+    fro += 1;
+  }
+  return 14 * 60;
+}

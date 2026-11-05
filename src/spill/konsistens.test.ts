@@ -59,7 +59,9 @@ function sjekkSteg(lagret: Lagret, steg: NesteSteg): string | null {
     if (!steg.knapp.includes("·")) return `vent uten grunn: ${steg.knapp}`;
     if (dag.sted === "butikk" && stengtResten(lagret)) return "venter i stengt butikk";
     if (dag.sted === "byggeplass") return "venter på tom tomt";
-    if (steg.grunn.toLowerCase().includes("butikk") && steg.handling.tid > dag.plan.butikk.stenger && !dag.plan.butikk.stengtHele) {
+    const omButikk = steg.grunn.toLowerCase().includes("butikk");
+    const omIMorgen = steg.grunn.toLowerCase().includes("i morgen") || steg.grunn.toLowerCase().includes("mandag");
+    if (omButikk && !omIMorgen && steg.handling.tid > dag.plan.butikk.stenger && !dag.plan.butikk.stengtHele) {
       return "venter på butikken etter stengetid";
     }
   }
@@ -193,7 +195,7 @@ function spill(lagret: Lagret, strategi: "a" | "b" | "c"): { lagret: Lagret; bru
     const naa = lagret.aktivDag;
     const fremdrift = lagret.by.bygg.reduce((sum, bygg) => sum + bygg.steg, 0);
     const kurv = Object.values(lagret.kurv).reduce((sum, n) => sum + (n ?? 0), 0);
-    const nokkel = `${naa.tid}:${naa.sted}:${naa.fase}:${naa.ko.length}:${fremdrift}:${kurv}`;
+    const nokkel = `${naa.tid}:${naa.sted}:${naa.fase}:${naa.aktiv}:${naa.ko.length}:${fremdrift}:${kurv}`;
     likt = nokkel === forrige ? likt + 1 : 0;
     forrige = nokkel;
     if (likt > 3) return { lagret, brudd: `fastlåst ${nokkel}`, spor };

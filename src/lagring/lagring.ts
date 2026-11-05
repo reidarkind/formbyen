@@ -162,6 +162,7 @@ export function normaliserLagret(raa: unknown): Lagret | null {
     album: Array.isArray(raa.album) ? (raa.album as Lagret["album"]) : [],
     demoSett: Array.isArray(raa.demoSett) ? raa.demoSett.filter((id): id is string => typeof id === "string") : [],
     aktivDag: erObjekt(raa.aktivDag) && erObjekt(raa.aktivDag.plan) ? (raa.aktivDag as unknown as AktivDag) : null,
+    nestePlan: erObjekt(raa.nestePlan) && erObjekt((raa.nestePlan as { butikk?: unknown }).butikk) ? (raa.nestePlan as unknown as Lagret["nestePlan"]) : null,
     startet: raa.startet === true,
     fro: typeof raa.fro === "number" ? raa.fro : 1,
     mestring: erObjekt(raa.mestring) ? (raa.mestring as Lagret["mestring"]) : {},

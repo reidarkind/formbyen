@@ -30,7 +30,7 @@ export function galleriKort(): GalleriKort[] {
   for (const navn of ["still", "les", "koble", "sorter", "tell", "tegn", "velg", "feil", "ja", "nei", "mal", "vekt"]) {
     kort.push({ tittel: navn, svg: ikon(navn), referanse: false });
   }
-  for (const form of ["sirkel", "trekant", "kvadrat", "rektangel", "femkant", "sekskant", "halvsirkel", "oval", "kube", "kjegle"]) {
+  for (const form of ["sirkel", "trekant", "kvadrat", "rektangel", "femkant", "sekskant", "halvsirkel", "oval", "kule", "kube", "sylinder", "kjegle", "pyramide", "prisme"]) {
     kort.push({ tittel: form, svg: formSvg(form), referanse: false });
   }
   kort.push({ tittel: "Ur null", svg: urskive(0), referanse: false });

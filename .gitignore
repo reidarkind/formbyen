@@ -6,3 +6,6 @@ dist
 dev-dist
 *.local
 /tmp
+/test-results
+/playwright-report
+/blob-report

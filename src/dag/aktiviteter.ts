@@ -129,9 +129,33 @@ export function aktivitetKnapp(id: string, spraak: Spraak): string {
   return mal(spraak, rad[0], rad[1]);
 }
 
-export function aktivitetSporsmal(id: string, spraak: Spraak, min: string): string {
+export function aktivitetSporsmal(id: string, spraak: Spraak, min: string, nivaa?: string): string {
   const rad = SPORSMAL[id] ?? ["{navn} tar {min} min. Når er du ferdig?", "{navn} tek {min} min. Når er du ferdig?"];
-  return mal(spraak, rad[0], rad[1], { min, navn: visNavn(id, spraak) });
+  const ledd = nivaa === "forste" && min === "60" ? (["en time", "ein time"] as const) : nivaa === "forste" && min === "30" ? (["en halvtime", "ein halvtime"] as const) : null;
+  const nb = ledd ? rad[0].replaceAll("{min} min", ledd[0]) : rad[0];
+  const nn = ledd ? rad[1].replaceAll("{min} min", ledd[1]) : rad[1];
+  return mal(spraak, nb, nn, { min, navn: visNavn(id, spraak) });
+}
+
+export function visBestemt(id: string, spraak: Spraak): string {
+  const tabell: Record<string, [string, string]> = {
+    svomming: ["svømmingen", "symjinga"],
+    lekser: ["leksene", "leksene"],
+    hund: ["hundeturen", "hundeturen"],
+    tannlege: ["tannlegen", "tannlækjaren"],
+    dans: ["dansen", "dansen"],
+    lillesoster: ["henting av lillesøster", "henting av lillesyster"],
+    middag: ["middagen", "middagen"],
+    fotball: ["fotballen", "fotballen"],
+    korps: ["korpset", "korpset"],
+    piano: ["pianoøvingen", "pianoøvinga"],
+    kor: ["koret", "koret"],
+    bibliotek: ["biblioteket", "biblioteket"],
+  };
+  const rad = tabell[id];
+  if (rad) return mal(spraak, rad[0], rad[1]);
+  const navn = visNavn(id, spraak);
+  return navn.charAt(0).toLowerCase() + navn.slice(1);
 }
 
 const NAA: Record<string, [string, string]> = {
@@ -153,7 +177,8 @@ export function aktivitetNa(id: string, spraak: Spraak, sen = false): string {
   const rad = tabell[id];
   if (rad) return mal(spraak, rad[0], rad[1]);
   const navn = visNavn(id, spraak);
+  const liten = navn.charAt(0).toLowerCase() + navn.slice(1);
   return sen
-    ? mal(spraak, "{navn} venter. Gjør det nå.", "{navn} ventar. Gjer det no.", { navn })
-    : mal(spraak, "Nå er det tid for {navn}.", "No er det tid for {navn}.", { navn });
+    ? mal(spraak, "{navn} venter. Gjør det nå.", "{navn} ventar. Gjer det no.", { navn: liten })
+    : mal(spraak, "Nå er det tid for {navn}.", "No er det tid for {navn}.", { navn: liten });
 }

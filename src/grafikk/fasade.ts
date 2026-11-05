@@ -63,8 +63,39 @@ export function delSvg(vare: string, stor = 64): string {
   return svgDokument(delFragment(vare, { x: 4, y: 4, b: stor - 8, h: stor - 8 }, false), stor, stor);
 }
 
+function gjerdeInnhold(steg: number): string {
+  const stolpe = (x: number) => boks(x, 28, 8, 78, FARGER.tre, false, 2);
+  const skinne = (y: number) => boks(10, y, 80, 8, FARGER.tre, false, 2);
+  const planker = [24, 44, 64].map((x, i) => {
+    if (i > steg) return "";
+    return boks(x, 40, 12, 52, FARGER.tre, i === steg, 2);
+  });
+  return `${stolpe(8)}${stolpe(84)}${skinne(44)}${skinne(78)}${planker.join("")}`;
+}
+
+function vedskjulInnhold(steg: number): string {
+  const bak = steg > 0 ? boks(18, 50, 64, 58, FARGER.papirSkygge, false, 2) : boks(18, 50, 64, 58, FARGER.papirSkygge, true, 2);
+  const side = `${boks(10, 46, 10, 62, FARGER.tre, false, 2)}${boks(80, 46, 10, 62, FARGER.tre, false, 2)}`;
+  const ved =
+    steg > 1
+      ? [0, 1, 2].map((i) => boks(28, 84 - i * 12, 44, 10, FARGER.tre, false, 2)).join("")
+      : steg === 1
+        ? boks(28, 84, 44, 10, FARGER.tre, true, 2)
+        : "";
+  const aapning = steg > 2 ? "" : steg === 2 ? boks(36, 72, 28, 36, FARGER.himmelDag, true, 2) : "";
+  const tak =
+    steg > 3
+      ? `<polygon points="8,52 50,16 92,52" fill="${FARGER.takRodt}" stroke="${FARGER.kontur}" stroke-width="3" stroke-linejoin="round"/>`
+      : steg === 3
+        ? `<polygon points="8,52 50,16 92,52" fill="${FARGER.takRodt}" stroke="${FARGER.kontur}" stroke-width="3" stroke-linejoin="round" stroke-dasharray="5 4" fill-opacity="0.25"/>`
+        : "";
+  return `${bak}${side}${ved}${aapning}${tak}`;
+}
+
 /** Fasade sett forfra. Ferdige deler er heltrukket. Neste del er stiplet. */
 export function fasadeInnhold(id: ByggId, steg: number, kveld = false): string {
+  if (id === "gjerde") return gjerdeInnhold(steg);
+  if (id === "vedskjul") return vedskjulInnhold(steg);
   const def = byggDef(id);
   const deler = def.oppskrift.map((trinn, indeks) => {
     if (!trinn.plass) return "";

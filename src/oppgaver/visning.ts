@@ -8,7 +8,10 @@ function erDigital(tekst: string): boolean {
 
 /** Det barnet skal lese. Aldri den samme formen som svarene. */
 export function sporsmalViser(oppgave: Oppgave): Representasjon {
-  if (oppgave.type === "still-klokka") return erDigital(oppgave.prompt) ? "digital" : "ord";
+  if (oppgave.type === "still-klokka") {
+    if (oppgave.digital) return "digital";
+    return erDigital(oppgave.prompt) ? "digital" : "ord";
+  }
   if (
     oppgave.type === "les-klokka" ||
     oppgave.type === "hvor-lenge" ||

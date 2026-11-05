@@ -168,6 +168,7 @@ describe("avtaler", () => {
     const slutt = utfor(lagret, { slag: "avslutt" });
     expect(slutt.lagret.by.dagerAlleAvtaler).toBe(1);
     expect(slutt.lagret.dagbok.at(-1)?.stjerne).toBe(true);
+    expect(slutt.lagret.dagbok.at(-1)?.stjerner).toBe(2);
   });
 
   it("krysser ikke av en avtale som ikke pågår", () => {
@@ -240,7 +241,8 @@ describe("avtaler", () => {
         if (klokke.has(type)) klokker += 1;
       }
       expect(antall, nivaa).toBeGreaterThan(80);
-      expect(klokker / antall, nivaa).toBeGreaterThanOrEqual(0.35);
+      expect(klokker / antall, nivaa).toBeGreaterThanOrEqual(0.45);
+      expect(klokker / antall, nivaa).toBeLessThanOrEqual(0.55);
     }
   });
 

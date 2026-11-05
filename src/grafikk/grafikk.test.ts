@@ -29,8 +29,14 @@ describe("grafikk", () => {
   });
 
   it("holder seg til paletten og har verken gradient, filter eller tekst", () => {
+    const rom = new Set(["kule", "sylinder", "kjegle"]);
     for (const kort of galleriKort()) {
-      expect(harForbudt(kort.svg), kort.tittel).toBe(false);
+      if (rom.has(kort.tittel)) {
+        expect(kort.svg, kort.tittel).toMatch(/radialGradient|linearGradient/);
+        expect(/<filter|<text|#000/i.test(kort.svg), kort.tittel).toBe(false);
+      } else {
+        expect(harForbudt(kort.svg), kort.tittel).toBe(false);
+      }
       for (const farge of fargerI(kort.svg)) expect(erIPalett(farge), `${kort.tittel} ${farge}`).toBe(true);
       for (const bredde of kort.svg.matchAll(/stroke-width="(\d+(?:\.\d+)?)"/g)) {
         const verdi = Number(bredde[1]);

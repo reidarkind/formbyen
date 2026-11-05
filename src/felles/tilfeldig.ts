@@ -9,6 +9,11 @@ export function froTilfeldig(fro: number): Tilfeldig {
   };
 }
 
+/** Første trekk fra små frø ligger i et smalt bånd. Dette sprer ett tall uten å flytte resten. */
+export function spredt(verdi: number): number {
+  return ((Math.imul(Math.floor(verdi * 1_000_003) ^ 0x9e3779b9, 0x85ebca6b) >>> 0) % 10000) / 10000;
+}
+
 export function heltall(tilfeldig: Tilfeldig, min: number, maks: number): number {
   if (maks < min) return min;
   return min + Math.floor(tilfeldig() * (maks - min + 1));
