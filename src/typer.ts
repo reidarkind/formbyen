@@ -190,6 +190,7 @@ export interface Oppgave {
   kasser?: { id: string; tekst: string; symbol?: string }[];
   varer?: { id: string; form: string; stor?: number }[];
   ovelse?: boolean;
+  oppdrag?: boolean;
   monster?: string[];
   ruter?: { id: string; ruter: number }[];
   koordinat?: string;
@@ -280,6 +281,7 @@ export interface DagbokInnslag {
   dato: Dato;
   stjerne: boolean;
   stjerner?: number;
+  oppdrag?: boolean;
   merknad?: string;
   bygget: string[];
   former: string[];
@@ -306,6 +308,7 @@ export interface AktivDag {
   /** Deler kjøpt i dag til bygg fra nivå 3. */
   kjopIDag?: number;
   klokkeLekt?: boolean;
+  oppdragFerdig?: boolean;
   byggetIDag: string[];
   formerIDag: string[];
   klokkerIDag: number[];

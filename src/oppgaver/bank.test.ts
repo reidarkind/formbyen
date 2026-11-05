@@ -161,4 +161,24 @@ describe("oppgavebank", () => {
     const chi = tell.reduce((sum, observert) => sum + (observert - forventet) ** 2 / forventet, 0);
     expect(chi, tell.join(",")).toBeLessThan(9.21);
   });
+
+  it("viser fasiten for mønster og om barnet rekker fram", () => {
+    const grunn = {
+      id: "x",
+      mal: "x",
+      ferdighet: "former-2d" as const,
+      prompt: "",
+      nokkel: "",
+      valg: [{ id: "ja", tekst: "Ja" }, { id: "nei", tekst: "Nei" }],
+      vare: "planke" as const,
+      hvem: "naboen",
+      overraskelse: false,
+    };
+    const monster = forklaring({ ...grunn, type: "monster", fasit: "sirkel", valg: [{ id: "sirkel", tekst: "Sirkel" }] }, "kvadrat", "nb");
+    expect(monster).toContain("sirkel");
+    expect(monster).not.toContain("tidslinje");
+    const rekker = forklaring({ ...grunn, type: "rekker-jeg", fasit: "nei", maalKlokke: 15 * 60 }, "ja", "nb");
+    expect(rekker).toBe("Du rekker ikke fram.");
+    expect(rekker).not.toContain("tidslinje");
+  });
 });

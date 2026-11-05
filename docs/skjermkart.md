@@ -33,4 +33,5 @@ Ark fra toppfeltet: kurven, dagens plan, pause. Byplanen åpnes fra kartet.
 - Ett butikkbesøk er en runde: 3 oppgaver i 1. klasse, 4 i 2. klasse og 5 på utfordrende. Prikker viser hvor langt runden er kommet. Bare den første oppgaven gir delen. De andre gir en mynt når svaret er riktig på første forsøk. «Gå ut» beholder delene som allerede er kjøpt. To feil på rad avslutter resten av runden.
 - Dagen slutter med «Legg deg» hjemme. «Snart leggetid» vises bare det siste halvtimet. Før det kan barnet øve i klokkeleken.
 - Når slottet er ferdig, sier forsiden «Byen er ferdig!» og tilbyr spill, pynt, klokkeleken, dagboka og innstillinger. Ny by ligger bak voksenlåsen og må bekreftes.
-- Kvelden viser 0, 1 eller 2 stjerner: én for å rekke alle avtaler, og én for at minst 80 prosent av svarene var riktige på første forsøk.
+- Kvelden viser 0, 1 eller 2 stjerner: én for å rekke alle avtaler, og én for at minst 80 prosent av svarene var riktige på første forsøk. Et frivillig oppdrag på kartet kan gi en tredje stjerne. Hjelperen ber aldri om oppdraget.
+- Fotoalbumet har et kort for hver form. Ukjente former er bare en skygge. På fredag, når minst fem dager den uka har en stjerne, står det «Fredagsfest på torget.»

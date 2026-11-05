@@ -1,4 +1,4 @@
-import { mal } from "../tekst/ordbok";
+import { formNavn, mal } from "../tekst/ordbok";
 import { erHalvFelle, halvveisTekst, tidTilDigital24, tidTilOrd } from "../tid/tid";
 import type { Oppgave, Spraak } from "../typer";
 
@@ -28,6 +28,8 @@ export function forklaring(oppgave: Oppgave, svar: string, spraak: Spraak, gang 
     if (oppgave.type === "apningstider") {
       return si(spraak, "Sammenlign skiltet med klokka.", "Samanlikn skiltet med klokka.");
     }
+    if (oppgave.type === "rekker-jeg") return si(spraak, "Se hvor lang tid veien tar.", "Sjå kor lang tid vegen tek.");
+    if (oppgave.type === "monster") return si(spraak, "Se hva som gjentar seg.", "Sjå kva som gjentar seg.");
     if (oppgave.maalKlokke !== undefined) {
       return si(spraak, "Se på den lille viseren. Den viser timen.", "Sjå på den vesle visaren. Han viser timen.");
     }
@@ -70,7 +72,13 @@ export function forklaring(oppgave: Oppgave, svar: string, spraak: Spraak, gang 
     return si(spraak, "Det er {tall}.", "Det er {tall}.", { tall: String(oppgave.tall) });
   }
   if (oppgave.type === "rekker-jeg") {
-    return si(spraak, "Se tidslinjen. Den korte veien rekker, den lange gjør ikke det.", "Sjå tidslinja. Den korte vegen rekk, den lange gjer ikkje det.");
+    return oppgave.fasit === "ja"
+      ? si(spraak, "Du rekker fram.", "Du rekk fram.")
+      : si(spraak, "Du rekker ikke fram.", "Du rekk ikkje fram.");
+  }
+  if (oppgave.type === "monster") return si(spraak, "Neste form er {form}.", "Neste form er {form}.", { form: formNavn(oppgave.fasit, spraak) });
+  if (oppgave.type === "finn-formen" && oppgave.form) {
+    return si(spraak, "Se etter {form}.", "Sjå etter {form}.", { form: formNavn(oppgave.form, spraak) });
   }
   const rett = oppgave.valg.find((valg) => valg.id === oppgave.fasit);
   if (rett?.tekst) return si(spraak, "Det riktige er {svar}.", "Det rette er {svar}.", { svar: rett.tekst });

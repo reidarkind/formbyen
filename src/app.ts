@@ -9,7 +9,7 @@ import { byggmester, ikon, kjaeledyr } from "./grafikk/figurer";
 import { formSvg } from "./grafikk/former-svg";
 import { FARGER, type Farge } from "./grafikk/stil";
 import { tallPosisjoner, urskive } from "./grafikk/klokke";
-import { erForm2d } from "./former/definisjoner";
+import { ALLE_2D, ALLE_3D, erForm2d, erForm3d, form2d, form3d } from "./former/definisjoner";
 import { importer, lesLagring, skrivLagring, standardLagret } from "./lagring/lagring";
 import { beVarigLagring } from "./pwa/lagring";
 import { oppdateringTekst, sjekkForOppdatering } from "./pwa/oppdatering";
@@ -19,7 +19,7 @@ import { aktivOppgave, apningTekst, utfor, type Handling } from "./spill/okt";
 import { omrissForForm } from "./tegning/omriss";
 import { rasterFraAlpha, vurderTegning } from "./tegning/vurder";
 import { visNavn } from "./dag/aktiviteter";
-import { lagDagsplan, nesteDato } from "./dag/plan";
+import { lagDagsplan, nesteDato, ukedagFor } from "./dag/plan";
 import { fraNb, formNavn, mal, navnBygg, navnVare, vareFlertall } from "./tekst/ordbok";
 import { manedTekst, si, SPRAAK_NAVN, ukedagTekst } from "./tekst/spraak";
 import { himmel, leggTil, tidTilDigital24, tidTilOrd, minutt, timer, klokke } from "./tid/tid";
@@ -77,6 +77,12 @@ const oppdaterSW = registerSW({
 });
 
 void beVarigLagring();
+
+function dyrNavn(dyr: string): string {
+  if (dyr === "hund") return si(spraak(), "Hund", "Hund");
+  if (dyr === "katt") return si(spraak(), "Katt", "Katt");
+  return si(spraak(), "Kanin", "Kanin");
+}
 
 function spraak(): Spraak {
   return lagret.innstillinger.spraak;
@@ -538,7 +544,8 @@ function oppgaveHtml(oppgave: Oppgave): string {
     const visTid = videre ? (rett?.klokke ?? oppgave.maalKlokke) : undefined;
     const klokke = visTid !== undefined ? urHtml(visTid, false, false, "analog", 120) : "";
     const kasser = videre && oppgave.type === "sorter" ? sorterFasit(oppgave) : "";
-    return `<article class="kort feil">${prikker}<p>${esc(forklaring)}</p>${klokke}${kasser}${videre && rett?.tekst ? `<p class="valgt-svar">${esc(rett.tekst)}</p>` : ""}${videre && oppgave.form ? formSvg(oppgave.form, 96) : ""}<button type="button" class="hoved" data-handling="fortsett">${videre ? si(spraak(), "Fortsett", "Hald fram") : si(spraak(), "Prøv igjen", "Prøv igjen")}</button></article>`;
+    const fasitForm = videre ? (oppgave.type === "monster" ? oppgave.fasit : oppgave.form ?? rett?.form) : undefined;
+    return `<article class="kort feil">${prikker}<p>${esc(forklaring)}</p>${klokke}${kasser}${videre && rett?.tekst ? `<p class="valgt-svar">${esc(rett.tekst)}</p>` : ""}${fasitForm ? formSvg(fasitForm, 96) : ""}<button type="button" class="hoved" data-handling="fortsett">${videre ? si(spraak(), "Fortsett", "Hald fram") : si(spraak(), "Prøv igjen", "Prøv igjen")}</button></article>`;
   }
   const skilt = oppgave.skilt && oppgave.id.startsWith("dor-") ? skiltHtml(oppgave.skilt) : "";
   const ut = dag && dag.ko.length > 1 && dag.fase === "handel" && !oppgave.id.startsWith("dor-") ? `<button type="button" data-ute="1">${si(spraak(), "Gå ut", "Gå ut")}</button>` : "";
@@ -550,6 +557,12 @@ function oppgaveHtml(oppgave: Oppgave): string {
     ${oppgaveBilde(oppgave)}
     ${valgHtml(oppgave)}
   </article>`;
+}
+
+function oppdragMerke(): string {
+  const dag = lagret.aktivDag;
+  if (!dag || dag.oppdragFerdig || dag.ko.length > 0 || dag.forklaring) return "";
+  return `<button type="button" class="oppdrag-merke" data-handling="oppdrag">${si(spraak(), "Oppdrag", "Oppdrag")}</button>`;
 }
 
 function delBilde(id: string): string {
@@ -769,7 +782,7 @@ function verdenHtml(): string {
     ${riktigKort && reaksjon ? `<article class="reaksjon riktig"><p>${esc(reaksjon.tekst)}</p></article>` : ""}
     <div class="verden-midten">${visPlan ? planHtml() : viserOppgave || riktigKort ? "" : viserScene ? sceneHtml() : bybilde()}
     ${visUr && !oppgave ? urHtml(dag.tid) : ""}
-    ${viserOppgave && oppgave ? oppgaveHtml(oppgave) : ""}</div>
+    ${viserOppgave && oppgave ? oppgaveHtml(oppgave) : ""}${viserOppgave || riktigKort ? "" : oppdragMerke()}</div>
     <div class="verden-bunn">${viserOppgave || riktigKort ? "" : `<div class="boble">${kjaeledyr(lagret.innstillinger.kjaeledyr)}<p>${esc(raad())}</p></div>`}
     ${enHandling()}</div></div>`;
 }
@@ -969,7 +982,7 @@ function velgHtml(): string {
       .map((variant) => `<button type="button" data-figur="${variant}" class="${lagret.innstillinger.figur === variant ? "riktig" : ""}" aria-label="${si(spraak(), "Byggmester", "Byggmeister")} ${variant + 1}">${byggmester(variant)}</button>`)
       .join("")}</div>
     <div class="figurer">${(["hund", "katt", "kanin"] as const)
-      .map((dyr) => `<button type="button" data-dyr="${dyr}" class="${lagret.innstillinger.kjaeledyr === dyr ? "riktig" : ""}" aria-label="${dyr}">${kjaeledyr(dyr)}</button>`)
+      .map((dyr) => `<button type="button" data-dyr="${dyr}" class="${lagret.innstillinger.kjaeledyr === dyr ? "riktig" : ""}" aria-label="${dyrNavn(dyr)}">${kjaeledyr(dyr)}</button>`)
       .join("")}</div>
     <button type="button" class="hoved" data-start="1">${si(spraak(), "Klar", "Klar")}</button>`;
 }
@@ -1008,7 +1021,7 @@ function innstillingerHtml(): string {
       ? `<h2>${si(spraak(), "Velg figur", "Vel figur")}</h2>
     <div class="figurer">${[0, 1, 2, 3].map((variant) => `<button type="button" data-figur="${variant}" class="${inn.figur === variant ? "valgt" : ""}" aria-label="${si(spraak(), "Byggmester", "Byggmeister")} ${variant + 1}">${byggmester(variant)}</button>`).join("")}</div>
     <h2>${si(spraak(), "Velg kjæledyr", "Vel kjæledyr")}</h2>
-    <div class="figurer">${(["hund", "katt", "kanin"] as const).map((dyr) => `<button type="button" data-dyr="${dyr}" class="${inn.kjaeledyr === dyr ? "valgt" : ""}" aria-label="${dyr}">${kjaeledyr(dyr)}</button>`).join("")}</div>
+    <div class="figurer">${(["hund", "katt", "kanin"] as const).map((dyr) => `<button type="button" data-dyr="${dyr}" class="${inn.kjaeledyr === dyr ? "valgt" : ""}" aria-label="${dyrNavn(dyr)}">${kjaeledyr(dyr)}</button>`).join("")}</div>
     <button type="button" data-intro="se">${si(spraak(), "Se introduksjonen", "Sjå introduksjonen")}</button>`
       : "";
   const nivaaBlokk =
@@ -1158,10 +1171,12 @@ function kveldHtml(): string {
     ? `<p>${esc(si(spraak(), "Ny form i dag:", "Ny form i dag:"))} ${esc(former.map((id) => formNavn(id, spraak())).join(", "))}</p>`
     : "";
   const antall = sist?.stjerner ?? (sist?.stjerne ? 1 : 0);
+  const fest = sist && ukedagFor(sist.dato) === "fredag" && fredagsfest(sist.dato) ? `<p>${esc(si(spraak(), "Fredagsfest på torget.", "Fredagsfest på torget."))}</p>` : "";
   return `<h1>${si(spraak(), "Kvelden kommer", "Kvelden kjem")}</h1>
     <div class="bykart">${tegnKart(lagret.by, 20 * 60)}</div>
     <p class="stjerner">${"★".repeat(antall) || "·"}</p>
     <p>${esc(stjerne)}</p>
+    ${fest}
     ${linjer}
     <p>${esc(bygget)}</p>
     ${formLinje}
@@ -1184,9 +1199,44 @@ function dagbokHtml(): string {
     <button type="button" data-skjerm="album">${si(spraak(), "Fotoalbum", "Fotoalbum")}</button>`;
 }
 
+function kjentForm(id: string): boolean {
+  if (lagret.by.kjente3d.includes(id)) return true;
+  return lagret.dagbok.some((inn) => inn.former.includes(id));
+}
+
+function formEgenskap(id: string): string {
+  const hjorner = erForm3d(id) ? form3d(id).hjorner : erForm2d(id) ? form2d(id).hjorner : 0;
+  if (id === "kule" || id === "sylinder" || id === "kjegle") return si(spraak(), "Kan trille", "Kan trille");
+  if (hjorner === 0) return si(spraak(), "Ingen hjørner", "Ingen hjørne");
+  return mal(spraak(), "{tall} hjørner", "{tal} hjørne", { tall: String(hjorner), tal: String(hjorner) });
+}
+
+function fredagsfest(dato: Lagret["dato"]): boolean {
+  const dag = new Date(Date.UTC(dato.aar, dato.maned - 1, dato.dag));
+  const ukedag = dag.getUTCDay();
+  const mandag = new Date(dag);
+  mandag.setUTCDate(dag.getUTCDate() - (ukedag === 0 ? 6 : ukedag - 1));
+  const sondag = new Date(mandag);
+  sondag.setUTCDate(mandag.getUTCDate() + 6);
+  const treff = lagret.dagbok.filter((inn) => {
+    const d = new Date(Date.UTC(inn.dato.aar, inn.dato.maned - 1, inn.dato.dag));
+    const stjerner = inn.stjerner ?? (inn.stjerne ? 1 : 0);
+    return d >= mandag && d <= sondag && stjerner >= 1;
+  });
+  return treff.length >= 5;
+}
+
 function albumHtml(): string {
+  const kort = [...ALLE_2D, ...ALLE_3D]
+    .map((id) => {
+      const kjent = kjentForm(id);
+      return `<article class="formkort${kjent ? "" : " ukjent"}">${formSvg(id, 64)}<p>${esc(formNavn(id, spraak()))}</p>${kjent ? `<p>${esc(formEgenskap(id))}</p>` : ""}</article>`;
+    })
+    .join("");
   return `<button type="button" data-skjerm="dagbok">${si(spraak(), "Tilbake", "Tilbake")}</button><h1>${si(spraak(), "Fotoalbum", "Fotoalbum")}</h1>
-    ${lagret.album.map((foto, indeks) => `<article class="kort">${foto.svg}<button type="button" data-del="${indeks}">${si(spraak(), "Del bilde", "Del bilete")}</button></article>`).join("") || `<p>${si(spraak(), "Bildene kommer når byen vokser.", "Bileta kjem når byen veks.")}</p>`}`;
+    ${lagret.album.map((foto, indeks) => `<article class="kort">${foto.svg}<button type="button" data-del="${indeks}">${si(spraak(), "Del bilde", "Del bilete")}</button></article>`).join("") || `<p>${si(spraak(), "Bildene kommer når byen vokser.", "Bileta kjem når byen veks.")}</p>`}
+    <h2>${si(spraak(), "Former", "Former")}</h2>
+    <div class="formalbum">${kort}</div>`;
 }
 
 function urFriHtml(): string {
@@ -1576,7 +1626,7 @@ rot.addEventListener("click", (hendelse) => {
     skjerm = "verden";
     gjor({ slag: "dor" });
   }
-  if (handling === "handle" || handling === "fortsett" || handling === "steg" || handling === "angre" || handling === "mot" || handling === "spis" || handling === "avslutt") {
+  if (handling === "handle" || handling === "fortsett" || handling === "steg" || handling === "angre" || handling === "mot" || handling === "spis" || handling === "avslutt" || handling === "oppdrag") {
     bekreftAvslutt = false;
     gjor({ slag: handling });
   }

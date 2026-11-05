@@ -10,7 +10,7 @@ import { registrerSvar } from "../tilpasning/mestring";
 import { erApen, leggTil, nesteApning, tidTilDigital24, tidTilOrd } from "../tid/tid";
 import { aktivitetSporsmal, visNavn } from "../dag/aktiviteter";
 import { tegnKart } from "../grafikk/bygg-svg";
-import { mal, navnVare } from "../tekst/ordbok";
+import { formNavn, mal, navnVare } from "../tekst/ordbok";
 import { ukedagTekst } from "../tekst/spraak";
 import type { AktivDag, ByggId, Ferdighet, Hylle, Lagret, Nivaa, Oppgave, SkiltTid, StedId, Valg, VareId } from "../typer";
 import { avtaleHer, gangMinutter, nesteSteg, startTidFor } from "./anbefaling";
@@ -32,6 +32,7 @@ export type Handling =
   | { slag: "mot" }
   | { slag: "spis" }
   | { slag: "klokke" }
+  | { slag: "oppdrag" }
   | { slag: "avslutt" };
 
 const KLOKKE: Ferdighet[] = ["hele-timer", "halv", "kvart", "fem-minutter", "digital-24", "tidsrom", "periode", "ukedager", "maneder"];
@@ -300,6 +301,7 @@ export function utfor(lagret: Lagret, handling: Handling): { lagret: Lagret; mel
   if (handling.slag === "klokke") {
     return { lagret: { ...lagret, aktivDag: { ...lagret.aktivDag, klokkeLekt: true } }, melding: null };
   }
+  if (handling.slag === "oppdrag") return startOppdrag(lagret);
   return avslutt(lagret);
 }
 
@@ -433,6 +435,54 @@ function handle(lagret: Lagret): { lagret: Lagret; melding: string | null } {
   };
 }
 
+function kasseOppgave(lagret: Lagret): Oppgave {
+  const former = ["kule", "kube", "sylinder"] as const;
+  return {
+    id: `kasse-${lagret.fro}`,
+    type: "stempel",
+    mal: "kasse-1",
+    ferdighet: "former-3d",
+    prompt: si(lagret, "Noe ligger i kassa. Det har ingen hjørner, og det kan trille.", "Noko ligg i kassa. Det har ingen hjørne, og det kan trille."),
+    nokkel: "form:kule",
+    valg: former.map((form) => ({ id: form, form, tekst: formNavn(form, lagret.innstillinger.spraak) })),
+    fasit: "kule",
+    vare: "planke",
+    hvem: si(lagret, "ekspeditøren", "ekspeditøren"),
+    overraskelse: false,
+    ovelse: true,
+  };
+}
+
+function startOppdrag(lagret: Lagret): { lagret: Lagret; melding: string | null } {
+  const dag = lagret.aktivDag;
+  if (!dag || dag.ko.length > 0 || dag.oppdragFerdig) return { lagret, melding: null };
+  let trukket: Oppgave;
+  try {
+    trukket = trekkOppgave({
+      ...kontekst(lagret),
+      tilfeldig: froTilfeldig(lagret.fro + 91),
+      type: lagret.fro % 2 === 0 ? "finn-formen" : "les-klokka",
+      hylle: lagret.fro % 2 === 0 ? "form" : undefined,
+    });
+  } catch {
+    return { lagret, melding: null };
+  }
+  const oppgave: Oppgave = {
+    ...trukket,
+    ovelse: true,
+    oppdrag: true,
+    hvem: si(lagret, "naboen", "naboen"),
+    prompt: `${si(lagret, "Naboen spør.", "Naboen spør.")} ${trukket.prompt}`,
+  };
+  return {
+    lagret: huskOppgave(
+      { ...lagret, aktivDag: { ...dag, fase: "ute", ko: [oppgave], aktiv: 0, forklaring: null, feil: 0 } },
+      oppgave,
+    ),
+    melding: null,
+  };
+}
+
 function bonusOppgaver(lagret: Lagret, forste: Oppgave, antall: number): Oppgave[] {
   const klokkeTyper = ["les-klokka", "still-klokka", "koble", "hvor-lenge", "rekker-jeg", "apningstider"] as const;
   const formTyper = ["finn-formen", "hvem-passer-ikke", "sorter", "tell", "tegn", "monster"] as const;
@@ -449,7 +499,14 @@ function bonusOppgaver(lagret: Lagret, forste: Oppgave, antall: number): Oppgave
         type,
         unngaMal: [forste.mal, ...ut.map((rad) => rad.mal)],
       });
-      ut.push({ ...trukket, ovelse: true });
+      const detektiv =
+        trukket.type === "finn-formen" && trukket.form === "sirkel"
+          ? {
+              ...trukket,
+              prompt: si(lagret, "Kumlokket i gata er rundt. Finn alle sirklene.", "Kumlokket i gata er rundt. Finn alle sirklane."),
+            }
+          : trukket;
+      ut.push(i === 0 && lagret.innstillinger.nivaa !== "forste" ? kasseOppgave(lagret) : { ...detektiv, ovelse: true });
       klokke = !klokke;
     } catch {
       break;
@@ -500,6 +557,18 @@ function svar(lagret: Lagret, gitt: string): { lagret: Lagret; melding: string |
       return { lagret: medDor, melding: si(medDor, "Vent til {tid}. Butikken åpner.", "Vent til {tid}. Butikken opnar.", { tid }) };
     }
     return { lagret: medDor, melding: apningTekst(medDor) };
+  }
+  if (oppgave.oppdrag) {
+    const mynt = (dag.feil ?? 0) === 0 ? 2 : 0;
+    const dagEtter = neste.aktivDag ?? dag;
+    return {
+      lagret: {
+        ...neste,
+        mynter: neste.mynter + mynt,
+        aktivDag: { ...dagEtter, ko: [], fase: "ute", forklaring: null, feil: 0, oppdragFerdig: true, melding: null },
+      },
+      melding: si(neste, "Riktig! Naboen er glad.", "Riktig! Naboen er glad."),
+    };
   }
   let gittVare = oppgave.vare;
   if (!erAktivitet && !oppgave.ovelse) {
@@ -748,8 +817,8 @@ function avslutt(lagret: Lagret): { lagret: Lagret; melding: string | null } {
   const avtalerOk = skal.every((avtale) => dag.besokt.includes(avtale.id)) && dag.forSent.length === 0;
   const totalt = dag.svarTotalt ?? 0;
   const forsteOk = totalt === 0 || (dag.forsteRett ?? 0) / totalt >= 0.8;
-  const stjerner = (avtalerOk ? 1 : 0) + (forsteOk ? 1 : 0);
-  const stjerne = stjerner === 2;
+  const stjerner = (avtalerOk ? 1 : 0) + (forsteOk ? 1 : 0) + (dag.oppdragFerdig ? 1 : 0);
+  const stjerne = avtalerOk && forsteOk;
   const nestePlan = lagDagsplan(planInn(lagret, nesteDato(lagret.dato)));
   const grunn = stjerne
     ? si(lagret, "Du rakk alt, og de fleste svarene var riktige med en gang.", "Du rakk alt, og dei fleste svara var rette med ein gong.")
@@ -769,6 +838,7 @@ function avslutt(lagret: Lagret): { lagret: Lagret; melding: string | null } {
           dato: lagret.dato,
           stjerne,
           stjerner,
+          oppdrag: dag.oppdragFerdig === true,
           merknad: grunn,
           bygget: dag.byggetIDag,
           former: dag.formerIDag,

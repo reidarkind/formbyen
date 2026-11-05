@@ -171,6 +171,36 @@ describe("avtaler", () => {
     expect(slutt.lagret.dagbok.at(-1)?.stjerner).toBe(2);
   });
 
+  it("gir den tredje stjernen bare når oppdraget er gjort, og ingen del", () => {
+    let lagret = utfor(standardLagret(), { slag: "start" }).lagret;
+    const dag = lagret.aktivDag;
+    if (!dag) throw new Error("mangler dag");
+    const forKurv = { ...lagret.kurv };
+    const forMynt = lagret.mynter;
+    const startet = utfor(lagret, { slag: "oppdrag" });
+    const oppgave = startet.lagret.aktivDag?.ko[0];
+    expect(oppgave?.oppdrag).toBe(true);
+    expect(oppgave?.ovelse).toBe(true);
+    lagret = utfor(startet.lagret, { slag: "svar", svar: oppgave?.fasit ?? "" }).lagret;
+    expect(lagret.aktivDag?.oppdragFerdig).toBe(true);
+    expect(lagret.mynter).toBe(forMynt + 2);
+    expect(lagret.kurv).toEqual(forKurv);
+    lagret = {
+      ...lagret,
+      aktivDag: {
+        ...lagret.aktivDag!,
+        tid: 20 * 60,
+        sted: "hjemme",
+        forsteRett: 4,
+        svarTotalt: 4,
+        besokt: lagret.aktivDag!.plan.avtaler.map((avtale) => avtale.id),
+      },
+    };
+    const slutt = utfor(lagret, { slag: "avslutt" });
+    expect(slutt.lagret.dagbok.at(-1)?.stjerner).toBe(3);
+    expect(slutt.lagret.dagbok.at(-1)?.stjerne).toBe(true);
+  });
+
   it("krysser ikke av en avtale som ikke pågår", () => {
     let lagret = utfor(standardLagret(), { slag: "start" }).lagret;
     const dag = lagret.aktivDag;
