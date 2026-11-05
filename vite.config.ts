@@ -37,5 +37,8 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.test.ts"],
+    alias: {
+      "virtual:pwa-register": new URL("./src/test/pwa-stub.ts", import.meta.url).pathname,
+    },
   },
 });

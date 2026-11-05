@@ -307,7 +307,7 @@ function gaa(lagret: Lagret, sted: StedId): { lagret: Lagret; melding: string | 
   const tid = leggTil(dag.tid, gangMinutter(dag.sted, sted, lagret.innstillinger.nivaa));
   const fase = sted === "butikk" ? "handel" : "aktivitet";
   const fremme = Math.min(tid, dag.plan.leggetid);
-  let neste = merkTid({ ...lagret, aktivDag: { ...dag, sted, fase, ko: [], aktiv: 0, forklaring: null } }, fremme);
+  let neste = merkTid({ ...lagret, aktivDag: { ...dag, sted, fase, ko: [], aktiv: 0, forklaring: null, feil: 0 } }, fremme);
   const tekst = neste.aktivDag?.melding ?? null;
   if (tekst && neste.aktivDag) neste = { ...neste, aktivDag: { ...neste.aktivDag, melding: null } };
   return { lagret: neste, melding: tekst };
@@ -338,7 +338,7 @@ function dor(lagret: Lagret): { lagret: Lagret; melding: string | null } {
   const oppgave = dorOppgave(lagret);
   return {
     lagret: huskOppgave(
-      { ...lagret, aktivDag: { ...dag, fase: "dor", ko: [oppgave], aktiv: 0, forklaring: null } },
+      { ...lagret, aktivDag: { ...dag, fase: "dor", ko: [oppgave], aktiv: 0, forklaring: null, feil: 0 } },
       oppgave,
     ),
     melding: null,
@@ -373,7 +373,7 @@ function handle(lagret: Lagret): { lagret: Lagret; melding: string | null } {
   });
   const oppgave: Oppgave = { ...trukket, hvem: si(lagret, "ekspeditøren", "ekspeditøren"), vare };
   return {
-    lagret: huskOppgave({ ...lagret, aktivDag: { ...dag, fase: "handel", ko: [oppgave], aktiv: 0, forklaring: null, melding: null } }, oppgave),
+    lagret: huskOppgave({ ...lagret, aktivDag: { ...dag, fase: "handel", ko: [oppgave], aktiv: 0, forklaring: null, melding: null, feil: 0 } }, oppgave),
     melding: null,
   };
 }
@@ -383,7 +383,7 @@ function svar(lagret: Lagret, gitt: string): { lagret: Lagret; melding: string |
   const oppgave = aktivOppgave(lagret);
   if (!dag || !oppgave) return { lagret, melding: null };
   const riktig = sjekkSvar(oppgave, gitt);
-  const erDor = dag.fase === "dor" || (dag.fase === "forklaring" && dag.ko.length === 1 && dag.ko[0]?.type === "apningstider");
+  const erDor = oppgave.id.startsWith("dor-");
   let neste = erDor ? lagret : oppdaterMestring(lagret, oppgave, riktig);
   if (!riktig) {
     const feil = (dag.feil ?? 0) + 1;
@@ -456,7 +456,7 @@ function hoppOver(lagret: Lagret): { lagret: Lagret; melding: string | null } {
   const dag = lagret.aktivDag;
   const oppgave = aktivOppgave(lagret);
   if (!dag || !oppgave) return { lagret, melding: null };
-  if (dag.fase === "dor" || oppgave.type === "apningstider") {
+  if (oppgave.id.startsWith("dor-")) {
     const medDor = { ...lagret, aktivDag: { ...dag, dorLest: true, fase: "ute" as const, ko: [], forklaring: null, feil: 0 } };
     return { lagret: medDor, melding: apningTekst(medDor) };
   }
@@ -484,7 +484,7 @@ function fortsett(lagret: Lagret): { lagret: Lagret; melding: string | null } {
     valg: stokk(bland, oppgave.valg),
     varer: oppgave.varer ? stokk(bland, oppgave.varer) : oppgave.varer,
   };
-  const fase = dag.fase === "forklaring" ? (oppgave.type === "apningstider" ? "dor" : oppgave.nokkel.startsWith("avtale:") ? "aktivitet" : "handel") : dag.fase;
+  const fase = dag.fase === "forklaring" ? (oppgave.id.startsWith("dor-") ? "dor" : oppgave.nokkel.startsWith("avtale:") ? "aktivitet" : "handel") : dag.fase;
   const ko = dag.ko.map((rad, indeks) => (indeks === dag.aktiv ? omstokket : rad));
   return { lagret: { ...lagret, aktivDag: { ...dag, ko, forklaring: null, fase } }, melding: null };
 }

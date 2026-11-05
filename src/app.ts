@@ -161,12 +161,12 @@ function gjor(handling: Handling): void {
   lagret = ut.lagret;
   melding = ut.melding;
   const ny = aktivOppgave(lagret);
-  if (ny && ny.id !== forrigeOppgave) {
+  if (handling.slag === "fortsett" || (ny && ny.id !== forrigeOppgave)) {
     valgte = new Set();
     sorter = {};
     valgtVare = "";
-    if (ny.maalKlokke !== undefined) pekerTid = 12 * 60;
   }
+  if (ny && ny.id !== forrigeOppgave && ny.maalKlokke !== undefined) pekerTid = 12 * 60;
   if (handling.slag === "svar") svarLase = Date.now();
   if (handling.slag === "svar" && ut.melding && !lagret.aktivDag?.forklaring) {
     klikk(lagret.innstillinger.lydPa, "riktig");
@@ -175,9 +175,6 @@ function gjor(handling: Handling): void {
       reaksjon = null;
       tegn();
     }, 600);
-  }
-  if (handling.slag === "svar" && lagret.aktivDag?.forklaring) {
-    reaksjon = { riktig: false, tekst: lagret.aktivDag.forklaring };
   }
   if (handling.slag === "fortsett" || handling.slag === "start") reaksjon = null;
   if (handling.slag === "steg") klikk(lagret.innstillinger.lydPa, "hammer");
@@ -196,7 +193,7 @@ function startGange(maal: { sted: StedId; x: number; y: number; instans?: string
   if (!dag || gar) return;
   if (dag.sted === maal.sted && !maal.tomt && (!maal.instans || dag.valgtInstans === maal.instans)) {
     const fase = maal.sted === "butikk" ? "handel" : "aktivitet";
-    lagret = { ...lagret, aktivDag: { ...dag, fase, ko: [], forklaring: null } };
+    lagret = { ...lagret, aktivDag: { ...dag, fase, ko: [], forklaring: null, feil: 0 } };
     lagre();
     tegn();
     return;
@@ -615,14 +612,16 @@ function verdenHtml(): string {
   const klokkeOppgave = oppgave !== null && ["les-klokka", "still-klokka", "hvor-lenge", "rekker-jeg", "koble", "apningstider"].includes(oppgave.type);
   const antall = Object.values(lagret.kurv).reduce((sum, n) => sum + (n ?? 0), 0);
   const viserScene = !gar && dag.fase !== "ute" && !oppgave;
+  const riktigKort = reaksjon?.riktig === true;
+  const viserOppgave = oppgave !== null && !riktigKort;
   return `<div class="verden"><header class="hud"><button type="button" data-skjerm="pause" aria-label="${si(spraak(), "Pause", "Pause")}">≡</button><button type="button" data-skjerm="kurv" aria-label="${si(spraak(), "Kurven", "Korga")}">${ikon("kurv")}<span>${antall}</span></button><span class="mynt" aria-label="${si(spraak(), "Mynter", "Myntar")}">${lagret.mynter}</span>${klokkeOppgave ? "" : `<button type="button" class="klokke" data-klokke="1" aria-label="${esc(tidTilOrd(dag.tid, spraak()))}">${urHtml(dag.tid, true, false, "hud")}</button>`}</header>
     ${stripeHtml()}
     ${melding ? `<p class="banner">${esc(melding)}</p>` : ""}
-    ${reaksjon ? `<article class="reaksjon ${reaksjon.riktig ? "riktig" : "feil"}"><p>${esc(reaksjon.tekst)}</p></article>` : ""}
-    <div class="verden-midten">${visPlan ? planHtml() : oppgave || reaksjon ? "" : viserScene ? sceneHtml() : bybilde()}
+    ${riktigKort && reaksjon ? `<article class="reaksjon riktig"><p>${esc(reaksjon.tekst)}</p></article>` : ""}
+    <div class="verden-midten">${visPlan ? planHtml() : viserOppgave || riktigKort ? "" : viserScene ? sceneHtml() : bybilde()}
     ${visUr && !oppgave ? urHtml(dag.tid) : ""}
-    ${oppgave && !reaksjon ? oppgaveHtml(oppgave) : ""}</div>
-    <div class="verden-bunn">${oppgave || reaksjon ? "" : `<div class="boble">${kjaeledyr(lagret.innstillinger.kjaeledyr)}<p>${esc(raad())}</p></div>`}
+    ${viserOppgave && oppgave ? oppgaveHtml(oppgave) : ""}</div>
+    <div class="verden-bunn">${viserOppgave || riktigKort ? "" : `<div class="boble">${kjaeledyr(lagret.innstillinger.kjaeledyr)}<p>${esc(raad())}</p></div>`}
     ${enHandling()}</div></div>`;
 }
 
@@ -1250,7 +1249,7 @@ rot.addEventListener("click", (hendelse) => {
   }
   if (knapp.dataset.ute) {
     if (lagret.aktivDag) {
-      lagret = { ...lagret, aktivDag: { ...lagret.aktivDag, fase: "ute", ko: [], forklaring: null } };
+      lagret = { ...lagret, aktivDag: { ...lagret.aktivDag, fase: "ute", ko: [], forklaring: null, feil: 0 } };
       lagre();
     }
     tegn();
