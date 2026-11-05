@@ -1,6 +1,6 @@
 import { froTilfeldig, heltall, trekk, type Tilfeldig } from "../felles/tilfeldig";
 import type { ByggId, Dagsplan, Dato, FastAvtale, Nivaa, Spraak, Ukedag, Avtale, Arstid } from "../typer";
-import { apneAktiviteter, SKOLEFAG, visNavn, type Aktivitet } from "./aktiviteter";
+import { apneAktiviteter, SKOLEFAG, type Aktivitet } from "./aktiviteter";
 
 export const STARTDATO: Dato = { aar: 2026, maned: 8, dag: 17 };
 
@@ -179,7 +179,8 @@ function byggPlan(inn: PlanInn, tilfeldig: Tilfeldig): Dagsplan | null {
   avtaler.push({
     id: "middag",
     slag: "middag",
-    navn: visNavn("middag", inn.spraak),
+    navn: "middag",
+    aktivitet: "middag",
     start: middagStart,
     varighet: 30,
     sted: "hjemme",
@@ -190,7 +191,8 @@ function byggPlan(inn: PlanInn, tilfeldig: Tilfeldig): Dagsplan | null {
     avtaler.push({
       id: "bursdag",
       slag: "hjemme",
-      navn: visNavn("bursdag", inn.spraak),
+      navn: "bursdag",
+      aktivitet: "bursdag",
       start: 15 * 60,
       varighet: 60,
       sted: "hjemme",
@@ -211,7 +213,7 @@ function byggPlan(inn: PlanInn, tilfeldig: Tilfeldig): Dagsplan | null {
     let startTid = fast.start;
     if (!passerMinutt(startTid, lovlige)) startTid = startTid - (startTid % 30);
     if (!ledig(avtaler, startTid, meta.varighet) || startTid + meta.varighet > leggetid) continue;
-    avtaler.push(avtaleFra(meta, startTid, inn.spraak, false));
+    avtaler.push(avtaleFra(meta, startTid));
   }
 
   const hjemmevalg = apne.filter((aktivitet) => !aktivitet.krever && !avtaler.some((a) => a.aktivitet === aktivitet.id));
@@ -231,7 +233,7 @@ function byggPlan(inn: PlanInn, tilfeldig: Tilfeldig): Dagsplan | null {
     const startTid = trekk(tilfeldig, tider);
     if (!ledig(avtaler, startTid, varighet)) continue;
     if (avtaler.some((avtale) => avtale.aktivitet === meta.id)) continue;
-    avtaler.push(avtaleFra(meta, startTid, inn.spraak, false));
+    avtaler.push(avtaleFra(meta, startTid));
   }
 
   if (tilfeldig() < 0.4 && avtaler.length < 4) {
@@ -242,7 +244,8 @@ function byggPlan(inn: PlanInn, tilfeldig: Tilfeldig): Dagsplan | null {
       avtaler.push({
         id,
         slag: "hendelse",
-        navn: visNavn(id, inn.spraak),
+        navn: id,
+        aktivitet: id,
         start: startTid,
         varighet: 0,
         sted: id === "levering" ? "butikk" : "hjemme",
@@ -262,7 +265,7 @@ function byggPlan(inn: PlanInn, tilfeldig: Tilfeldig): Dagsplan | null {
     hoytid: hoytidFor(inn.dato),
     bursdag: bursdag?.hvem,
     skoleslutt,
-    sisteTime: skole ? visNavn(trekk(tilfeldig, SKOLEFAG), inn.spraak) : null,
+    sisteTime: skole ? trekk(tilfeldig, SKOLEFAG) : null,
     sfo,
     butikk,
     avtaler,
@@ -275,12 +278,22 @@ function byggPlan(inn: PlanInn, tilfeldig: Tilfeldig): Dagsplan | null {
   return { ...utkast, nokkel };
 }
 
-function avtaleFra(meta: Aktivitet, start: number, spraak: Spraak, hjemme: boolean): Avtale {
-  const sted = meta.krever ?? "hjemme";
+const PAA_TORGET = new Set(["dans", "speider", "sjakk", "ski", "skoyter"]);
+
+export function stedForAktivitet(id: string, krever: string | null): string {
+  if (id === "tannlege") return "tannlege";
+  if (id === "svomming") return "svommehall";
+  if (krever) return krever;
+  if (PAA_TORGET.has(id)) return "torg";
+  return "hjemme";
+}
+
+function avtaleFra(meta: Aktivitet, start: number): Avtale {
+  const sted = stedForAktivitet(meta.id, meta.krever);
   return {
     id: `${meta.id}-${start}`,
-    slag: hjemme || !meta.krever ? "hjemme" : "fritid",
-    navn: visNavn(meta.id, spraak),
+    slag: sted === "hjemme" ? "hjemme" : "fritid",
+    navn: meta.id,
     start,
     varighet: meta.varighet,
     sted,
@@ -305,7 +318,8 @@ function byggNodplan(inn: PlanInn): Dagsplan {
     {
       id: "middag",
       slag: "middag",
-      navn: visNavn("middag", inn.spraak),
+      navn: "middag",
+      aktivitet: "middag",
       start: 16 * 60 + 30,
       varighet: 30,
       sted: "hjemme",
@@ -313,7 +327,7 @@ function byggNodplan(inn: PlanInn): Dagsplan {
     {
       id: "hund-nod",
       slag: "hjemme",
-      navn: visNavn("hund", inn.spraak),
+      navn: "hund",
       start: 17 * 60 + 30,
       varighet: 30,
       sted: "hjemme",

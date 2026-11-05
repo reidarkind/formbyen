@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { nesteDato, STARTDATO } from "./plan";
-import { harReeltValg, lagDagsplan, lagStartRytme, ukedagFor, utvidRytme } from "./plan";
+import { SKOLEFAG, visNavn } from "./aktiviteter";
+import { harReeltValg, lagDagsplan, lagStartRytme, nesteDato, STARTDATO, ukedagFor, utvidRytme } from "./plan";
 
 function grunn(over: Partial<Parameters<typeof lagDagsplan>[0]> = {}) {
   return {
@@ -90,6 +90,31 @@ describe("dagsplan", () => {
     );
     expect(plan.ukedag).toBe("tirsdag");
     expect(plan.avtaler.some((avtale) => avtale.aktivitet === "korps" && avtale.start === 18 * 60)).toBe(true);
+  });
+
+  it("gir svømming, tannlege og torget et sted, og lagrer navn som id", () => {
+    const sett = new Set<string>();
+    let dato = STARTDATO;
+    for (let i = 0; i < 80; i++) {
+      const plan = lagDagsplan(grunn({ fro: 900 + i, dato, spraak: "en" }));
+      if (plan.sisteTime) {
+        expect(SKOLEFAG).toContain(plan.sisteTime);
+        expect(visNavn(plan.sisteTime, "nn")).not.toMatch(/PE|English|math/);
+      }
+      for (const avtale of plan.avtaler) {
+        sett.add(avtale.aktivitet ?? avtale.navn);
+        expect(avtale.navn).not.toMatch(/Homework|Dinner|Swimming|Dentist|Delivery|Dance|Scouts/);
+        const vist = visNavn(avtale.aktivitet ?? avtale.navn, "nn");
+        expect(vist).not.toMatch(/Homework|Dinner|Swimming|Dentist|Delivery/);
+        if (avtale.aktivitet === "svomming") expect(avtale.sted).toBe("svommehall");
+        if (avtale.aktivitet === "tannlege") expect(avtale.sted).toBe("tannlege");
+        if (avtale.aktivitet === "lekser" || avtale.aktivitet === "hund") expect(avtale.sted).toBe("hjemme");
+        if (avtale.aktivitet === "dans" || avtale.aktivitet === "sjakk" || avtale.aktivitet === "speider") expect(avtale.sted).toBe("torg");
+      }
+      dato = nesteDato(dato);
+    }
+    expect(sett.has("svomming")).toBe(true);
+    expect(sett.has("tannlege")).toBe(true);
   });
 
   it("legger til en ny fast avtale når et bygg åpner", () => {

@@ -141,7 +141,7 @@ export type VareId =
   | "pynt-benk"
   | "pynt-lykt";
 
-export type StedId = "hjemme" | "butikk" | "torg" | "byggeplass" | "aktivitet";
+export type StedId = "hjemme" | "butikk" | "torg" | "byggeplass" | "aktivitet" | "tannlege" | "svommehall";
 export type Omrade = "dalen" | "bekken" | "asen" | "havna";
 export type Hylle = "form" | "kloss" | "mal" | "vekt";
 

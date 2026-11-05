@@ -31,6 +31,7 @@ Formbyen er et norsk byggespill om former og klokka for 1. og 2. klasse. Det er 
 ## Avklarte valg
 
 - Én by per telefon. Eksport og import flytter den. Ingen flere byer.
+- Kartet er spillet. Hjem, butikk, torg, tannlege og svømmehall står fast. Gange tar 15 minutter, 30 til tannlegen og svømmehallen. Én handletur om dagen. Avtaler lagres som id og vises på språket som er valgt nå.
 - Digital klokke er alltid 24 timer, også i 1. klasse. Ordene står ved siden av. «Halv tre» er 02:30 og 14:30.
 - Avtalene er oppdiktet og følger en fast ukerytme. Voksensiden kan feste ekte avtaler, for eksempel korps tirsdag 18:00.
 - Kompetansemålene ligger på voksensiden i appen.

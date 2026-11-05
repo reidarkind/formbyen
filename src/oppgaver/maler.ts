@@ -29,6 +29,7 @@ export const MALER: Mal[] = [
   ...mange("ukeplan", "ukedager", 0, "uke"),
   ...mange("kalender", "ukedager", 0, "kal"),
   ...mange("finn-formen", "former-grunn", 0, "finn"),
+  ...mange("finn-formen", "former-3d", 0, "kloss", 6),
   ...mange("hvem-passer-ikke", "sortere", 0, "odd"),
   ...mange("sorter", "sortere", 0, "sort"),
   ...mange("tegn", "tegne", 0, "tegn"),

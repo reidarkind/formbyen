@@ -26,7 +26,7 @@ export interface OppgaveKontekst {
 
 const HYLLE: Record<Hylle, OppgaveType[]> = {
   form: ["finn-formen", "hvem-passer-ikke", "sorter", "tegn", "monster", "tell"],
-  kloss: ["stempel", "tell"],
+  kloss: ["stempel", "tell", "finn-formen"],
   mal: ["lengde"],
   vekt: ["masse", "likevekt"],
 };
@@ -67,6 +67,7 @@ export function malPassert(mal: Mal, ctx: OppgaveKontekst): boolean {
   if (ctx.tidsromPa === false && (mal.type === "rekker-jeg" || mal.type === "hvor-lenge")) return false;
   if (ctx.hylle && !HYLLE[ctx.hylle].includes(mal.type)) return false;
   if (ctx.hylle === "kloss" && mal.type === "tell" && justert.ferdighet === "telle-2d") return false;
+  if (ctx.hylle === "kloss" && justert.ferdighet === "former-grunn") return false;
   if (ctx.hylle === "form" && mal.type === "tell" && justert.ferdighet !== "telle-2d" && justert.ferdighet !== "rette-vinkler") {
     return false;
   }
@@ -421,6 +422,23 @@ function formerFor(ctx: OppgaveKontekst): Form2dId[] {
 }
 
 function lagFinn(mal: Mal, ctx: OppgaveKontekst): Oppgave {
+  if (mal.ferdighet === "former-3d") {
+    const former = ["kule", "kube", "sylinder", "kjegle"] as const;
+    const maal = trekk(ctx.tilfeldig, former);
+    const andre = former.filter((id) => id !== maal);
+    const figurer = [
+      { id: "f0", form: maal },
+      { id: "f1", form: maal },
+      { id: "f2", form: andre[0] ?? "kube" },
+      { id: "f3", form: andre[1] ?? "kjegle" },
+    ];
+    const vare = maal === "kule" ? "kloss-kule" : maal === "kube" ? "kloss-kube" : maal === "sylinder" ? "kloss-sylinder" : "kloss-kjegle";
+    const oppgave = basis(mal, ctx, si(ctx.spraak, "Trykk på alle som har samme form.", "Trykk på alle som har same form."), `form3d:${maal}`, "f0,f1", vare);
+    oppgave.form = maal;
+    oppgave.form3d = maal;
+    oppgave.varer = figurer;
+    return oppgave;
+  }
   const liste = formerFor(ctx);
   const maal = formUnnga(ctx, liste) as Form2dId;
   const figurer: { id: string; form: string }[] = [];
@@ -491,13 +509,19 @@ function lagSorter(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   return oppgave;
 }
 
+function artikkel(form: string): { nb: string; nn: string } {
+  const intet = form === "kvadrat" || form === "rektangel" || form === "prisme";
+  return intet ? { nb: "Tegn et {form}.", nn: "Teikn eit {form}." } : { nb: "Tegn en {form}.", nn: "Teikn ein {form}." };
+}
+
 function lagTegn(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const lov = nivaTall(ctx.nivaa) === 0 ? (["sirkel", "trekant", "kvadrat"] as Form2dId[]) : formerFor(ctx);
   const form = formUnnga(ctx, lov);
+  const ledd = artikkel(form);
   const oppgave = basis(
     mal,
     ctx,
-    si(ctx.spraak, "Tegn en {form}.", "Teikn ein {form}.", { form: formNavn(form, ctx.spraak) }),
+    si(ctx.spraak, ledd.nb, ledd.nn, { form: formNavn(form, ctx.spraak) }),
     `form:${form}`,
     "ok",
     vareForForm(form),

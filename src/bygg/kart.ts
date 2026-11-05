@@ -1,5 +1,6 @@
 import type { ByggId, ByTilstand, Omrade, PlassertBygg } from "../typer";
 import { BYGG, HJEM_FOR_NIVAA, byggDef } from "./katalog";
+import { erLandemerke } from "./landemerker";
 
 export interface Rute {
   x: number;
@@ -62,6 +63,7 @@ function dekker(bygg: PlassertBygg, x: number, y: number): boolean {
 }
 
 export function opptatt(by: ByTilstand, x: number, y: number, unntatt?: string): boolean {
+  if (erLandemerke(x, y)) return true;
   return by.bygg.some((bygg) => bygg.instans !== unntatt && dekker(bygg, x, y));
 }
 
@@ -99,7 +101,26 @@ export function ledigeTomter(by: ByTilstand, id: ByggId): { x: number; y: number
       if (kanPlassere(by, id, x, y)) funnet.push({ x, y, areal: def.bredde * def.dybde });
     }
   }
+  const hjem = by.bygg.find((bygg) => byggDef(bygg.bygg).hjem && !bygg.uthus);
+  const hx = hjem?.x ?? 2;
+  const hy = hjem?.y ?? 4;
+  funnet.sort((a, b) => {
+    const an = vedSidenAv(by, a.x, a.y, def.bredde, def.dybde) ? 0 : 1;
+    const bn = vedSidenAv(by, b.x, b.y, def.bredde, def.dybde) ? 0 : 1;
+    if (an !== bn) return an - bn;
+    return Math.abs(a.x - hx) + Math.abs(a.y - hy) - (Math.abs(b.x - hx) + Math.abs(b.y - hy));
+  });
   return funnet;
+}
+
+function vedSidenAv(by: ByTilstand, x: number, y: number, w: number, d: number): boolean {
+  for (let cx = x - 1; cx <= x + w; cx++) {
+    for (let cy = y - 1; cy <= y + d; cy++) {
+      if (cx >= x && cx < x + w && cy >= y && cy < y + d) continue;
+      if (erLandemerke(cx, cy) || by.bygg.some((bygg) => dekker(bygg, cx, cy))) return true;
+    }
+  }
+  return false;
 }
 
 export function tomterMedPlass(by: ByTilstand, ruter: number): { id: string; x: number; y: number; areal: number }[] {
