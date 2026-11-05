@@ -145,9 +145,9 @@ function klokkeValg(
 }
 
 function tallValg(riktig: number, tilfeldig: Tilfeldig): { valg: Valg[]; fasit: string } {
-  const andre = [riktig + 2, riktig + 3, Math.max(0, riktig - 2)].filter(
-    (tall, indeks, liste) => tall !== riktig && tall >= 0 && liste.indexOf(tall) === indeks,
-  );
+  const under = riktig > 1 ? riktig - 1 : riktig + 3;
+  const over = riktig + 2;
+  const andre = [under, over].filter((tall, indeks, liste) => tall !== riktig && tall >= 0 && liste.indexOf(tall) === indeks);
   while (andre.length < 2) andre.push(riktig + andre.length + 4);
   const tallene = stokk(tilfeldig, [riktig, andre[0] ?? 0, andre[1] ?? 1]);
   return {
@@ -185,6 +185,10 @@ function lagStill(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const v = variant(mal.id);
   const lovlige = tillatteMinutter(ctx.nivaa, ctx.mestring);
   let tid = tidUnnga(ctx, lovlige.length ? lovlige : [0]);
+  if (v === 2 && ctx.plan && !ctx.plan.butikk.stengtHele) tid = ctx.plan.butikk.apner;
+  if (v === 3) tid = ctx.plan?.avtaler.find((rad) => rad.slag === "middag")?.start ?? tid;
+  if (v === 4 && ctx.plan) tid = ctx.plan.leggetid;
+  if (v === 5) tid = ctx.plan?.avtaler.find((rad) => rad.varighet > 0 && rad.slag !== "middag")?.start ?? tid;
   if (v === 6 && lovlige.includes(30)) tid = klokke(14, 30);
   if (v === 7 && lovlige.includes(25)) tid = klokke(14, 25);
   if (v === 8 && lovlige.includes(15)) tid = klokke(16, 15);
@@ -234,7 +238,7 @@ function lagLes(mal: Mal, ctx: OppgaveKontekst): Oppgave {
     ["Hva er klokka om en time?", "Kva er klokka om ein time?"],
     ["Når stenger butikken?", "Når stengjer butikken?"],
     ["Når er middagen?", "Når er middagen?"],
-    ["Tårnuret viser feil. Hvilken er rett?", "Tårnuret viser feil. Kva for ei er rett?"],
+    ["Hvilken tid er rett?", "Kva for tid er rett?"],
     ["Hvilken tid på dagen er dette?", "Kva for tid på dagen er dette?"],
   ];
   const lesValgt = lesMaler[v - 1] ?? lesMaler[0]!;
@@ -263,7 +267,7 @@ function lagLes(mal: Mal, ctx: OppgaveKontekst): Oppgave {
     oppgave.valg = stokk(ctx.tilfeldig, [
       { id: "a", klokke: tid, tekst: `${tidTilOrd(tid, ctx.spraak)} · ${tidTilDigital24(tid)}` },
       { id: "b", klokke: tid, tekst: tidTilOrd(tid, ctx.spraak) },
-      { id: "c", klokke: annen, tekst: `${tidTilOrd(tid, ctx.spraak)} · ${tidTilDigital24(annen)}` },
+      { id: "c", klokke: annen, tekst: `${tidTilOrd(annen, ctx.spraak)} · ${tidTilDigital24(annen)}` },
     ]);
     oppgave.fasit = "c";
     oppgave.maalKlokke = tid;
@@ -291,7 +295,8 @@ function lagLes(mal: Mal, ctx: OppgaveKontekst): Oppgave {
     );
   }
   if (v === 12) {
-    const time = Math.floor(tid / 60);
+    const time = [9, 14, 19][heltall(ctx.tilfeldig, 0, 2)] ?? 14;
+    const vist = klokke(time, 0);
     const periode = time < 11 ? "formiddag" : time < 17 ? "ettermiddag" : "kveld";
     oppgave.valg = stokk(ctx.tilfeldig, [
       { id: "formiddag", tekst: si(ctx.spraak, "formiddag", "formiddag") },
@@ -299,7 +304,7 @@ function lagLes(mal: Mal, ctx: OppgaveKontekst): Oppgave {
       { id: "kveld", tekst: si(ctx.spraak, "kveld", "kveld") },
     ]);
     oppgave.fasit = periode;
-    oppgave.maalKlokke = tid;
+    oppgave.maalKlokke = vist;
     oppgave.prompt = si(ctx.spraak, "Hvilken tid på dagen er dette?", "Kva for tid på dagen er dette?");
   }
   return oppgave;
@@ -412,10 +417,10 @@ function lagApen(mal: Mal, ctx: OppgaveKontekst): Oppgave {
 }
 
 function lagUke(mal: Mal, ctx: OppgaveKontekst): Oppgave {
-  const dager = ["mandag", "tirsdag", "onsdag", "torsdag", "fredag", "lordag", "sondag"];
+  const dager = ["mandag", "tirsdag", "onsdag", "torsdag", "fredag"];
   const ukedag = ctx.plan?.ukedag;
   const riktig = ukedag && dager.includes(ukedag) ? ukedag : "tirsdag";
-  const andre = dager.filter((dag) => dag !== riktig).slice(0, 2);
+  const andre = stokk(ctx.tilfeldig, dager.filter((dag) => dag !== riktig)).slice(0, 2);
   const navn = (dag: string) => ctx.ukedagNavn?.(dag) ?? dag;
   const valg = stokk(ctx.tilfeldig, [riktig, ...andre]).map((dag) => ({ id: dag, tekst: navn(dag) }));
   const avtale = ctx.plan?.avtaler.find((rad) => rad.varighet > 0 && rad.aktivitet);
@@ -548,9 +553,14 @@ function lagFinn(mal: Mal, ctx: OppgaveKontekst): Oppgave {
 
 function lagOdd(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const v = variant(mal.id);
-  const rund = v % 2 === 0;
-  const inn = rund ? (["sirkel", "oval", "sirkel"] as Form2dId[]) : (["trekant", "kvadrat", "rektangel"] as Form2dId[]);
-  const ut = rund ? "trekant" : "sirkel";
+  const par = [
+    { like: "sirkel" as Form2dId, ulik: "trekant" as Form2dId },
+    { like: "trekant" as Form2dId, ulik: "sirkel" as Form2dId },
+    { like: "kvadrat" as Form2dId, ulik: "sirkel" as Form2dId },
+    { like: "rektangel" as Form2dId, ulik: "trekant" as Form2dId },
+  ][v % 4] ?? { like: "sirkel" as Form2dId, ulik: "trekant" as Form2dId };
+  const inn = [par.like, par.like, par.like];
+  const ut = par.ulik;
   const figurer = [
     { id: "a", form: inn[0] ?? "sirkel" },
     { id: "b", form: inn[1] ?? "sirkel" },
@@ -636,7 +646,8 @@ function artikkel(form: string): { nb: string; nn: string } {
 
 function lagTegn(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const lov = nivaTall(ctx.nivaa) === 0 ? (["sirkel", "trekant", "kvadrat"] as Form2dId[]) : formerFor(ctx);
-  const form = formUnnga(ctx, lov);
+  const onsket = ctx.maalForm && lov.includes(ctx.maalForm as Form2dId) ? (ctx.maalForm as Form2dId) : undefined;
+  const form = onsket ?? formUnnga(ctx, lov);
   const ledd = artikkel(form);
   const oppgave = basis(
     mal,
@@ -688,25 +699,21 @@ function lagTell(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   return oppgave;
 }
 
-function lagMonster(mal: Mal, ctx: OppgaveKontekst): Oppgave {
-  const v = variant(mal.id);
+function monsterPar(v: number): { sekvens: string[]; neste: string } {
   const a = "kvadrat";
   const b = "sirkel";
   const c = "trekant";
-  let sekvens: string[] = [a, b, a, b];
-  let neste = a;
-  if (v % 3 === 2) {
-    sekvens = [a, a, b, a, a];
-    neste = b;
-  } else if (v % 3 === 0) {
-    sekvens = [a, b, c, a, b];
-    neste = c;
-  }
-  if (v >= 9) {
-    sekvens = [a, a, b, a, b, c];
-    neste = a;
-  }
-  const pakkeFormer = stokk(ctx.tilfeldig, [neste, neste === a ? b : a, c]).slice(0, 3);
+  const m = v % 4;
+  if (m === 1) return { sekvens: [a, a, b, a, a, b], neste: a };
+  if (m === 2) return { sekvens: [a, b, c, a, b, c], neste: a };
+  if (m === 3) return { sekvens: [a, b, b, a, b, b], neste: a };
+  return { sekvens: [a, b, a, b], neste: a };
+}
+
+function lagMonster(mal: Mal, ctx: OppgaveKontekst): Oppgave {
+  const v = variant(mal.id);
+  const { sekvens, neste } = monsterPar(v);
+  const pakkeFormer = stokk(ctx.tilfeldig, [neste, neste === "kvadrat" ? "sirkel" : "kvadrat", "trekant"]).slice(0, 3);
   const unike = [...new Set(pakkeFormer)];
   while (unike.length < 3) unike.push(unike.length === 1 ? "rektangel" : "femkant");
   const oppgave = basis(
@@ -822,10 +829,11 @@ function lagMasse(mal: Mal, ctx: OppgaveKontekst): Oppgave {
 
 function lagAreal(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const trenger = 4 + heltall(ctx.tilfeldig, 0, 3);
+  const roller = stokk(ctx.tilfeldig, ["A1", "B2", "C3"]);
   const tomter = [
-    { id: "A1", ruter: trenger - 2 },
-    { id: "B2", ruter: trenger },
-    { id: "C3", ruter: trenger + 2 },
+    { id: roller[0] ?? "A1", ruter: trenger - 2 },
+    { id: roller[1] ?? "B2", ruter: trenger },
+    { id: roller[2] ?? "C3", ruter: trenger + 2 },
   ];
   const storst = variant(mal.id) % 2 === 0;
   const oppgave = basis(
@@ -838,7 +846,7 @@ function lagAreal(mal: Mal, ctx: OppgaveKontekst): Oppgave {
       { n: String(trenger) },
     ),
     `areal:${trenger}`,
-    storst ? "C3" : "B2",
+    storst ? (roller[2] ?? "C3") : (roller[1] ?? "B2"),
     "jord",
   );
   oppgave.ruter = tomter;

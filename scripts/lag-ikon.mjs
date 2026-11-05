@@ -9,11 +9,12 @@ mkdirSync(rot, { recursive: true });
 const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <rect width="64" height="64" fill="#BFE3F2"/>
-  <rect y="46" width="64" height="18" fill="#8CC47A"/>
-  <polygon points="8,32 32,12 56,32" fill="#C8553D" stroke="#3B2F2A" stroke-width="2" stroke-linejoin="round"/>
-  <rect x="18" y="32" width="28" height="20" fill="#E8B27A" stroke="#3B2F2A" stroke-width="2"/>
-  <rect x="28" y="40" width="8" height="12" fill="#3B2F2A"/>
-  <rect x="22" y="36" width="6" height="6" fill="#FFD66B" stroke="#3B2F2A" stroke-width="1"/>
+  <rect y="50" width="64" height="14" fill="#8CC47A"/>
+  <rect x="4" y="36" width="10" height="6" fill="#6FB1D8" transform="rotate(-8 9 39)"/>
+  <rect x="50" y="36" width="10" height="6" fill="#FFD66B" transform="rotate(8 55 39)"/>
+  <polygon points="20,18 32,6 44,18" fill="#C8553D" stroke="#3B2F2A" stroke-width="2" stroke-linejoin="round"/>
+  <rect x="22" y="18" width="20" height="32" fill="#E8B27A" stroke="#3B2F2A" stroke-width="2"/>
+  <circle cx="32" cy="30" r="7" fill="#FFF8EA" stroke="#3B2F2A" stroke-width="2"/>
 </svg>
 `;
 writeFileSync(join(rot, "ikon.svg"), svg);
@@ -36,7 +37,7 @@ function chunk(type, data) {
   return Buffer.concat([lengde, navn, data, crc]);
 }
 
-function png(stor) {
+function png(stor, valg = {}) {
   const piksler = Buffer.alloc(stor * stor * 4);
   const sett = (x, y, farge) => {
     if (x < 0 || y < 0 || x >= stor || y >= stor) return;
@@ -46,53 +47,55 @@ function png(stor) {
     piksler[i + 2] = farge[2];
     piksler[i + 3] = 255;
   };
+  const fyll = (x0, y0, x1, y1, farge) => {
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) sett(x, y, farge);
+  };
+  const skive = (cx, cy, r, farge) => {
+    for (let y = cy - r; y <= cy + r; y++) {
+      for (let x = cx - r; x <= cx + r; x++) {
+        if ((x - cx) ** 2 + (y - cy) ** 2 <= r * r) sett(x, y, farge);
+      }
+    }
+  };
   const himmel = [0xbf, 0xe3, 0xf2];
   const gress = [0x8c, 0xc4, 0x7a];
   const tak = [0xc8, 0x55, 0x3d];
   const vegg = [0xe8, 0xb2, 0x7a];
   const kontur = [0x3b, 0x2f, 0x2a];
-  const vindu = [0xff, 0xd6, 0x6b];
-  for (let y = 0; y < stor; y++) {
-    for (let x = 0; x < stor; x++) sett(x, y, y > stor * 0.72 ? gress : himmel);
-  }
-  const topp = Math.round(stor * 0.22);
-  const takBunn = Math.round(stor * 0.5);
-  const venstre = Math.round(stor * 0.18);
-  const hoyre = Math.round(stor * 0.82);
-  for (let y = topp; y <= takBunn; y++) {
-    const t = (y - topp) / (takBunn - topp);
-    const x0 = Math.round(stor * 0.5 - t * (stor * 0.5 - venstre));
-    const x1 = Math.round(stor * 0.5 + t * (hoyre - stor * 0.5));
-    for (let x = x0; x <= x1; x++) sett(x, y, tak);
-  }
-  const veggTopp = takBunn - Math.round(stor * 0.02);
-  const veggBunn = Math.round(stor * 0.82);
-  const vx0 = Math.round(stor * 0.3);
-  const vx1 = Math.round(stor * 0.7);
-  for (let y = veggTopp; y <= veggBunn; y++) {
-    for (let x = vx0; x <= vx1; x++) sett(x, y, vegg);
-  }
-  const ramme = Math.max(2, Math.round(stor * 0.015));
-  for (let t = 0; t < ramme; t++) {
-    for (let x = vx0; x <= vx1; x++) {
-      sett(x, veggTopp + t, kontur);
-      sett(x, veggBunn - t, kontur);
-    }
-    for (let y = veggTopp; y <= veggBunn; y++) {
-      sett(vx0 + t, y, kontur);
-      sett(vx1 - t, y, kontur);
+  const urskive = [0xff, 0xf8, 0xea];
+  const sol = [0xff, 0xd6, 0x6b];
+  const bla = [0x6f, 0xb1, 0xd8];
+  const s = (n) => Math.round(stor * n);
+  for (let y = 0; y < stor; y++) for (let x = 0; x < stor; x++) sett(x, y, y > s(0.78) ? gress : himmel);
+  const inn = valg.tett ? 0.12 : 0.06;
+  if (!valg.bareTårn) {
+    const stabler = [
+      [inn, [bla, sol, gress]],
+      [1 - inn - 0.16, [vegg, tak, sol]],
+    ];
+    for (const [x0, farger] of stabler) {
+      farger.forEach((farge, i) => {
+        const y0 = 0.5 + i * 0.09;
+        fyll(s(x0), s(y0), s(x0 + 0.16), s(y0 + 0.08), farge);
+      });
     }
   }
-  const dorX0 = Math.round(stor * 0.46);
-  const dorX1 = Math.round(stor * 0.54);
-  for (let y = Math.round(stor * 0.62); y <= veggBunn; y++) {
-    for (let x = dorX0; x <= dorX1; x++) sett(x, y, kontur);
+  const takTopp = s(0.1);
+  const takBunn = s(0.28);
+  for (let y = takTopp; y <= takBunn; y++) {
+    const t = (y - takTopp) / Math.max(1, takBunn - takTopp);
+    fyll(s(0.5 - t * 0.22), y, s(0.5 + t * 0.22), y, tak);
   }
-  const vinduY0 = Math.round(stor * 0.56);
-  const vinduY1 = Math.round(stor * 0.64);
-  for (let y = vinduY0; y <= vinduY1; y++) {
-    for (let x = Math.round(stor * 0.36); x <= Math.round(stor * 0.42); x++) sett(x, y, vindu);
-  }
+  fyll(s(0.3), takBunn, s(0.7), s(0.78), vegg);
+  fyll(s(0.3), takBunn, s(0.7), takBunn + s(0.015), kontur);
+  fyll(s(0.3), s(0.78) - s(0.015), s(0.7), s(0.78), kontur);
+  fyll(s(0.3), takBunn, s(0.3) + s(0.015), s(0.78), kontur);
+  fyll(s(0.7) - s(0.015), takBunn, s(0.7), s(0.78), kontur);
+  skive(s(0.5), s(0.48), s(0.13), urskive);
+  skive(s(0.5), s(0.48), s(0.13), kontur);
+  skive(s(0.5), s(0.48), s(0.11), urskive);
+  fyll(s(0.49), s(0.4), s(0.51), s(0.48), kontur);
+  fyll(s(0.5), s(0.47), s(0.58), s(0.49), kontur);
   const rader = [];
   for (let y = 0; y < stor; y++) {
     rader.push(Buffer.concat([Buffer.from([0]), piksler.subarray(y * stor * 4, (y + 1) * stor * 4)]));
@@ -110,6 +113,8 @@ function png(stor) {
   ]);
 }
 
+writeFileSync(join(rot, "ikon-32.png"), png(32, { bareTårn: true }));
 writeFileSync(join(rot, "ikon-192.png"), png(192));
 writeFileSync(join(rot, "ikon-512.png"), png(512));
+writeFileSync(join(rot, "ikon-maskable-512.png"), png(512, { tett: true }));
 writeFileSync(join(rot, "apple-touch-icon.png"), png(180));

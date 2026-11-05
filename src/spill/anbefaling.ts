@@ -1,7 +1,7 @@
 import { aktivitetKnapp, aktivitetNa, visNavn } from "../dag/aktiviteter";
 import { maalBygg, manglendeDeler } from "../bygg/handleliste";
 import { byggDef } from "../bygg/katalog";
-import { ferdigeBygg, ledigeTomter } from "../bygg/kart";
+import { ferdigeBygg, ledigeTomter, nesteByggId } from "../bygg/kart";
 import { morgendagensApning } from "../dag/plan";
 import { mal, navnVare, vareBestemt } from "../tekst/ordbok";
 import { erApen, tidTilDigital24, tidTilOrd } from "../tid/tid";
@@ -45,6 +45,7 @@ export type Anbefaling =
   | { slag: "vent"; tid: number }
   | { slag: "legg" }
   | { slag: "klokke" }
+  | { slag: "ekstra" }
   | { slag: "byplan" }
   | { slag: "se" };
 
@@ -53,6 +54,7 @@ export interface NesteSteg {
   knapp: string;
   grunn: string;
   puls: string | null;
+  nei?: string;
 }
 
 export function anbefalt(lagret: Lagret): Anbefaling {
@@ -228,6 +230,9 @@ function gaaSetning(lagret: Lagret, sted: StedId, navn: string, tid: string): st
   if (sted === "hjemme") {
     return si(lagret, "Gå hjem. {navn} starter kl. {tid}.", "Gå heim. {navn} startar kl. {tid}.", { navn, tid });
   }
+  if (navn.toLowerCase().includes("tann")) {
+    return si(lagret, "Tannlegetimen begynner {tid}.", "Tannlegetimen byrjar {tid}.", { tid });
+  }
   return si(lagret, "Gå til {sted}. {navn} starter kl. {tid}.", "Gå til {sted}. {navn} startar kl. {tid}.", {
     sted: maalNavn(lagret, sted),
     navn,
@@ -263,6 +268,34 @@ function delTekst(lagret: Lagret, vare: VareId): string {
 function klarOrd(vare: VareId): string {
   if (vare.startsWith("tak") || vare.startsWith("vindu") || vare === "kloss-prisme") return "klart";
   return "klar";
+}
+
+function byggBestemt(lagret: Lagret, id: ByggId): string {
+  const tabell: Partial<Record<ByggId, [string, string]>> = {
+    bronn: ["brønnen", "brunnen"],
+    gjerde: ["gjerdet", "gjerdet"],
+    vedskjul: ["vedskjulet", "vedskjulet"],
+    hytte: ["hytta", "hytta"],
+    hus: ["huset", "huset"],
+    slott: ["slottet", "slottet"],
+    lekeplass: ["lekeplassen", "leikeplassen"],
+    ronne: ["rønna", "rønna"],
+    bakeri: ["bakeriet", "bakeriet"],
+    bro: ["broa", "brua"],
+    skole: ["skolen", "skulen"],
+    villa: ["villaen", "villaen"],
+    borg: ["borgen", "borga"],
+  };
+  const par = tabell[id] ?? [id, id];
+  return si(lagret, par[0], par[1]);
+}
+
+function ferdigDagens(lagret: Lagret): boolean {
+  const id = lagret.aktivDag?.dagensBygg;
+  if (!id || lagret.aktivDag?.ekstraNei) return false;
+  const ferdig = lagret.by.bygg.some((bygg) => bygg.bygg === id && bygg.ferdig);
+  const apen = lagret.by.bygg.some((bygg) => bygg.bygg === id && !bygg.ferdig);
+  return ferdig && !apen;
 }
 
 function kjopTak(nivaa: Nivaa): number {
@@ -370,7 +403,10 @@ export function nesteSteg(lagret: Lagret): NesteSteg {
     return {
       handling: { slag: "handle" },
       knapp: si(lagret, "Kjøp {del}", "Kjøp {del}", { del: navnVare(vare, spraak) }),
-      grunn: si(lagret, "Vi trenger {del}.", "Vi treng {del}.", { del: navnVare(vare, spraak) }),
+      grunn: si(lagret, "{bygg} trenger en {del}.", "{bygg} treng ein {del}.", {
+        bygg: byggBestemt(lagret, maalBygg(lagret)?.id ?? "bronn"),
+        del: navnVare(vare, spraak),
+      }),
       puls: "butikk",
     };
   }
@@ -424,21 +460,15 @@ export function nesteSteg(lagret: Lagret): NesteSteg {
       return gaaKnapp(
         lagret,
         "butikk",
-        si(lagret, "{del} finnes i butikken. Gå til butikken.", "{del} finst i butikken. Gå til butikken.", {
-          del: delTekst(lagret, vare),
+        si(lagret, "{bygg} trenger {del}. Gå til butikken.", "{bygg} treng {del}. Gå til butikken.", {
+          bygg: byggBestemt(lagret, maalBygg(lagret)?.id ?? "bronn"),
+          del: navnVare(vare, spraak),
         }),
       );
     }
   }
 
-  const apnerSenere = nesteApneTid(lagret);
-  const butikkForTidlig =
-    tidlig !== undefined &&
-    mangler.length > 0 &&
-    !stans &&
-    apnerSenere !== null &&
-    apnerSenere + gang(lagret, "butikk", stedFor(tidlig)) <= tidlig.start;
-  if (tidlig && !butikkForTidlig && !(del && rekkerMotFrist(lagret, "byggeplass", 0))) {
+  if (tidlig) {
     return ventHer(
       lagret,
       tidlig.start,
@@ -451,25 +481,53 @@ export function nesteSteg(lagret: Lagret): NesteSteg {
     );
   }
 
+  const nesteBygg = nesteByggId(lagret.by);
+  if (ferdigDagens(lagret) && nesteBygg && lagret.innstillinger.nivaa !== "utfordrende") {
+    const oppskrift = byggDef(nesteBygg).oppskrift;
+    const forsteDel = oppskrift[0]?.vare ?? "planke";
+    return {
+      handling: { slag: "ekstra" },
+      knapp: si(lagret, "Ja, gå til butikken", "Ja, gå til butikken"),
+      nei: si(lagret, "Nei, ikke i dag", "Nei, ikkje i dag"),
+      grunn: si(
+        lagret,
+        "{ferdig} er ferdig! Vil du begynne på {neste} også? Det trenger {antall} {del}.",
+        "{ferdig} er ferdig! Vil du byrje på {neste} også? Det treng {antall} {del}.",
+        {
+          ferdig: byggBestemt(lagret, dag.dagensBygg ?? "bronn"),
+          neste: byggBestemt(lagret, nesteBygg),
+          antall: String(oppskrift.length),
+          del: navnVare(forsteDel, spraak),
+        },
+      ),
+      puls: "butikk",
+    };
+  }
+
   const apneIgjen = nesteApneTid(lagret);
   if (mangler.length > 0 && !stans && apneIgjen !== null) {
     const dit = dag.sted === "butikk" ? 0 : gang(lagret, dag.sted, "butikk");
-    const avreise = Math.max(dag.tid, apneIgjen - dit);
+    const tidligSteg = lagret.innstillinger.nivaa === "forste" ? 30 : 15;
+    const tidlig = lagret.fro % 5 === 0 && dag.sted !== "butikk" && apneIgjen - dit - tidligSteg >= dag.tid;
+    const avreise = Math.max(dag.tid, apneIgjen - dit - (tidlig ? tidligSteg : 0));
     const venterHer = dag.sted === "hjemme" || dag.sted === "butikk";
     const fr = frist(lagret);
     const fremme = apneIgjen + gang(lagret, "butikk", fr.sted);
     const hjemmeEtter = apneIgjen + gang(lagret, "butikk", "hjemme");
-    if (venterHer && avreise >= dag.tid && fremme <= fr.tid && hjemmeEtter < dag.plan.leggetid) {
+    if (venterHer && avreise > dag.tid && fremme <= fr.tid && hjemmeEtter < dag.plan.leggetid) {
       const tidTekst = tidTilDigital24(avreise);
       const fremmeTekst = tidTilDigital24(apneIgjen);
       const tekst =
         dag.sted === "butikk"
           ? si(lagret, "Vent til {tid}. Butikken åpner.", "Vent til {tid}. Butikken opnar.", { tid: fremmeTekst })
-          : si(lagret, "Vi går kl. {tid}, så er vi i butikken kl. {fremme}.", "Vi går kl. {tid}, så er vi i butikken kl. {fremme}.", {
-              tid: tidTekst,
-              fremme: fremmeTekst,
-            });
-      return ventHer(lagret, avreise, si(lagret, "butikken åpner", "butikken opnar"), tekst, dag.sted === "butikk" ? "butikk" : "hjemme");
+          : tidlig
+            ? si(lagret, "Vi er tidlig ute. Les skiltet. Vi går kl. {tid}.", "Vi er tidleg ute. Les skiltet. Vi går kl. {tid}.", { tid: tidTekst })
+            : si(lagret, "Vi går kl. {tid}, så er vi i butikken kl. {fremme}.", "Vi går kl. {tid}, så er vi i butikken kl. {fremme}.", {
+                tid: tidTekst,
+                fremme: fremmeTekst,
+              });
+      const kort = dag.sted === "butikk" ? si(lagret, "butikken åpner", "butikken opnar") : si(lagret, "så går vi", "så går vi");
+      return ventHer(lagret, avreise, kort, tekst, dag.sted === "butikk" ? "butikk" : "hjemme");
     }
   }
 
@@ -486,7 +544,7 @@ export function nesteSteg(lagret: Lagret): NesteSteg {
             navn: navn(lagret, neste),
             tid: tidTilOrd(neste.start, spraak),
           })
-        : si(lagret, "Vi går kl. {tid}, så er vi {sted} {start}.", "Vi går kl. {tid}, så er vi {sted} {start}.", {
+        : si(lagret, "Vi går kl. {tid}, så er vi {sted} klokka {start}.", "Vi går kl. {tid}, så er vi {sted} klokka {start}.", {
             tid: tidTilDigital24(avreise),
             sted: stedFrase(lagret, sted),
             start: tidTilOrd(neste.start, spraak),
@@ -531,10 +589,9 @@ export function nesteSteg(lagret: Lagret): NesteSteg {
   if (igjen <= 30) return leggKnapp(lagret, si(lagret, "Snart leggetid.", "Snart leggetid."));
   if (!dag.klokkeLekt) return klokkeKnapp(lagret);
   const ventTil = dag.plan.leggetid - 30;
-  const butikkStengt = dag.plan.butikk.stengtHele || dag.tid >= dag.plan.butikk.stenger || stengtResten(lagret);
   const kveldTekst =
-    mangler.length > 0 && butikkStengt
-      ? si(lagret, "Butikken er stengt. I morgen kjøper vi {del}. Vi venter til kl. {tid}.", "Butikken er stengt. I morgon kjøper vi {del}. Vi ventar til kl. {tid}.", {
+    mangler.length > 0
+      ? si(lagret, "Butikken stenger før vi rekker dit. Vi kjøper {del} i morgen. Vi venter til kl. {tid}.", "Butikken stengjer før vi rekk dit. Vi kjøper {del} i morgon. Vi ventar til kl. {tid}.", {
           del: navnVare(mangler[0] ?? "planke", spraak),
           tid: tidTilDigital24(ventTil),
         })

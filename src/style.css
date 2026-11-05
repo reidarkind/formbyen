@@ -189,13 +189,17 @@ p { margin: 0 0 10px; line-height: 1.35; }
   padding: max(8px, env(safe-area-inset-top)) 12px max(8px, env(safe-area-inset-bottom));
   box-sizing: border-box;
 }
-.verden-midten { position: relative; flex: 1; min-height: 0; overflow: hidden; }
+.verden-midten { position: relative; flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .oppdrag-merke { position: absolute; top: 8px; left: 8px; z-index: 2; min-height: 40px; padding: 4px 10px; }
 .formalbum { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .formkort { text-align: center; }
 .formkort.ukjent { opacity: 0.35; }
 .formkort p { margin: 0; font-size: 0.85rem; }
-.verden .bykart, .verden .scene { max-height: none; }
+.verden-midten > .bykart, .verden-midten > .scene { flex: 1 1 auto; min-height: 0; max-height: 100%; width: 100%; display: flex; align-items: center; justify-content: center; }
+.verden-midten .brett { height: 100%; max-height: 100%; width: min(100%, 70vh); display: flex; flex-direction: column; }
+.verden-midten .akse-rad { flex: 1; min-height: 0; }
+.verden-midten .kartflate { min-height: 0; height: 100%; }
+.verden-midten .kartflate svg { width: 100%; height: 100%; }
 .verden-bunn { flex: none; background: var(--himmel); padding-top: 8px; z-index: 3; }
 .ikon-s, .ikon-s svg, svg.ikon-s { width: 20px; height: 20px; }
 .ikon-m, svg.ikon-m { width: 24px; height: 24px; }
@@ -206,7 +210,7 @@ p { margin: 0 0 10px; line-height: 1.35; }
 .ur-160 { width: 160px; }
 .ur-200 { width: 200px; }
 .ur-96 .tall, .ur-120 .tall, .ur-160 .tall, .ur-200 .tall { width: max-content; height: 14px; font-size: 14px; line-height: 14px; }
-.skilt { display: flex; gap: 8px; align-items: center; justify-content: center; }
+.dorskilt { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; }
 .skilt-tider { display: flex; flex-direction: column; gap: 4px; }
 .skilt-rad { display: flex; align-items: center; gap: 4px; font-weight: 800; }
 .sammenlign { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -231,7 +235,8 @@ p { margin: 0 0 10px; line-height: 1.35; }
   25% { transform: translateX(-8px); }
   75% { transform: translateX(8px); }
 }
-.valg { touch-action: none; }
+.valg { touch-action: manipulation; }
+.kasse, .valg [data-vare] { touch-action: none; }
 .forside { flex: 1; min-height: 0; max-height: 100%; overflow: hidden; }
 .forside .brett, .forside svg { max-height: 42dvh; }
 .delrad .del { display: inline-flex; align-items: center; gap: 4px; }
@@ -262,13 +267,13 @@ p { margin: 0 0 10px; line-height: 1.35; }
   .forside .bykart svg { max-height: 86dvh; }
   .inn-midten .liste { grid-template-columns: 1fr 1fr; }
   .nivaa-kort { padding: 4px 8px; min-height: 0; }
-  .verden { display: grid; grid-template-columns: minmax(150px, 36%) 1fr; align-content: start; }
+  .verden { display: grid; grid-template-columns: minmax(150px, 36%) 1fr; grid-template-rows: auto auto 1fr auto; align-content: stretch; }
   .verden > .hud, .verden > .tidslinje, .verden > .stripe { grid-column: 1; }
-  .verden .bykart, .verden .scene, .verden .kort { grid-column: 2; grid-row: 1 / span 4; max-height: 70dvh; }
+  .verden > .verden-midten { grid-column: 2; grid-row: 1 / span 3; min-height: 0; }
   .verden-bunn { grid-column: 1 / -1; }
 }
 @media (max-width: 360px) {
-  .skilt { font-size: 10px; max-width: 64px; overflow: hidden; }
+  .kartflate .skilt { font-size: 10px; max-width: 64px; overflow: hidden; }
   body { overflow-x: hidden; }
 }
 
@@ -303,9 +308,9 @@ p { margin: 0 0 10px; line-height: 1.35; }
 
 .kart-bilde svg { width: 100%; height: auto; transform-origin: center; }
 
-.lerret-boks { position: relative; width: 240px; height: 240px; margin: 0 auto; background: var(--papir); border: 3px solid var(--kontur); }
+.lerret-boks { position: relative; width: min(240px, calc(100vw - 32px), calc(100dvh - 180px)); aspect-ratio: 1; margin: 0 auto; background: var(--papir); border: 3px solid var(--kontur); }
 
-.lerret-boks canvas { position: absolute; inset: 0; width: 240px; height: 240px; touch-action: none; }
+.lerret-boks canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
 
 .skjult { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
@@ -379,7 +384,7 @@ button.stor { min-height: 64px; font-size: 1.4rem; padding-inline: 32px; }
 .plass { width: 56px; height: 56px; border: 3px dashed var(--kontur); display: inline-flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800; }
 .brett { width: 100%; }
 .kartflate { position: relative; flex: 1; }
-.skilt { position: absolute; transform: translate(-50%, -100%); font-size: 12px; font-weight: 800; background: var(--papir); padding: 0 3px; border-radius: 4px; pointer-events: none; line-height: 1.1; }
+.kartflate .skilt { position: absolute; transform: translate(-50%, -100%); font-size: 12px; font-weight: 800; background: var(--papir); padding: 0 3px; border-radius: 4px; pointer-events: none; line-height: 1.1; }
 .malform { display: grid; justify-items: center; gap: 4px; border: 3px solid var(--kontur); width: fit-content; margin: 0 auto; padding: 6px; background: var(--papir); }
 .malform p { margin: 0; font-size: 0.9rem; }
 .reaksjon { border: 4px solid var(--gronn); border-radius: 16px; padding: 12px; background: var(--papir); }
@@ -447,4 +452,26 @@ select.spraak { min-height: 48px; width: 100%; border: 3px solid var(--kontur); 
   .valg svg:not(.ur-96):not(.ur-120):not(.ur-160):not(.ur-200) { width: 40px; height: 40px; }
   .valg .ur-96, .valg .ur-96 svg { width: 96px; height: 96px; }
   .hud .ur { width: 44px; }
+}
+
+.kveld { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.kveld-midt { flex: 1; min-height: 0; overflow: hidden; }
+.kveld-kart { max-height: 45%; }
+.kveld-kart svg { width: 100%; height: auto; max-height: 40dvh; }
+.kveld-bunn { flex: none; }
+.voksen { display: flex; flex-direction: column; min-height: 0; overflow: hidden; gap: 6px; }
+.voksen-innhold { overflow: hidden; }
+.planliste .dagrad { display: grid; height: 40px; align-items: center; }
+.monster { display: flex; flex-wrap: nowrap; align-items: center; justify-content: center; gap: 4px; }
+.valg button { min-width: 64px; min-height: 64px; flex: 1 1 64px; }
+.oppdrag-merke { width: 48px; height: 48px; border-radius: 50%; padding: 0; bottom: 8px; top: auto; font-size: 1.2rem; }
+@media (max-height: 700px) {
+  .boble svg, .figurer svg, .liste svg, .inn-midten svg { width: 44px; height: auto; }
+  .inn-midten h2 { margin: 0; font-size: 1rem; }
+  .innstillinger { gap: 4px; }
+}
+@media (max-height: 430px), (max-width: 340px) {
+  .inn-midten .figurer svg, .inn-midten svg { width: 32px; height: auto; }
+  .innstillinger button { min-height: 40px; padding: 4px 8px; }
+  .innstillinger h1 { font-size: 1.2rem; }
 }

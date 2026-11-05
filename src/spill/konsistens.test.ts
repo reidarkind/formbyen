@@ -102,6 +102,7 @@ function gjorAnbefalt(lagret: Lagret, steg: NesteSteg): Lagret {
   if (valg.slag === "bygg") return byggEtt(lagret, valg.bygg, valg.instans);
   if (valg.slag === "handle" || valg.slag === "mot" || valg.slag === "spis") return utfor(lagret, { slag: valg.slag }).lagret;
   if (valg.slag === "klokke") return utfor(lagret, { slag: "klokke" }).lagret;
+  if (valg.slag === "ekstra") return utfor(lagret, { slag: "ekstra", ja: true }).lagret;
   if (valg.slag === "legg" || valg.slag === "se") return utfor(lagret, { slag: "avslutt" }).lagret;
   return lagret;
 }

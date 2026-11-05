@@ -12,17 +12,17 @@ async function ingenRulling(page: Page): Promise<void> {
     const funn: string[] = [];
     if (document.documentElement.scrollHeight > window.innerHeight + 1) funn.push("dokument");
     for (const el of document.querySelectorAll<HTMLElement>("*")) {
-      const stil = getComputedStyle(el);
-      if ((stil.overflowY === "auto" || stil.overflowY === "scroll") && el.scrollHeight > el.clientHeight + 1) {
-        funn.push(String(el.className || el.tagName));
-      }
+      if (!el.querySelector("button, [data-svar]")) continue;
+      if (el.scrollHeight > el.clientHeight + 1) funn.push(`klipp ${el.className || el.tagName}`);
     }
-    for (const knapp of document.querySelectorAll("button")) {
+    for (const knapp of document.querySelectorAll<HTMLElement>("button, [data-svar]")) {
       const r = knapp.getBoundingClientRect();
       if (r.width === 0 || r.height === 0) continue;
       if (r.bottom > window.innerHeight + 1 || r.right > window.innerWidth + 1 || r.top < -1 || r.left < -1) {
         funn.push((knapp.textContent ?? "knapp").trim().slice(0, 40));
       }
+      const treff = document.elementFromPoint(r.left + r.width / 2, r.top + Math.min(r.height / 2, 12));
+      if (treff && treff !== knapp && !knapp.contains(treff)) funn.push(`dekket ${(knapp.textContent ?? "knapp").trim().slice(0, 24)}`);
     }
     return funn;
   });

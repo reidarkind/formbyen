@@ -40,6 +40,7 @@ type Skjerm = "intro" | "velg" | "meny" | "pause" | "dagstart" | "verden" | "kar
 let lagret: Lagret = lesLagring(lager);
 let skjerm: Skjerm = lagret.startet ? (lagret.aktivDag ? "verden" : "meny") : "intro";
 let melding: string | null = null;
+let bannerTimer = 0;
 let visPlan = false;
 let visUr = false;
 let reaksjon: { riktig: boolean; tekst: string } | null = null;
@@ -60,7 +61,9 @@ let voksenInne = false;
 let voksenFelt = "";
 let visOppdater = false;
 let statusOppdater = "";
-let bekreftNull = false;
+let nullSteg = 0;
+let voksenFane: "mestring" | "avtaler" | "data" | "om" = "mestring";
+let voksenStolpe = "";
 let bekreftAvslutt = false;
 let bekreftNyBy = false;
 let innFane: "figur" | "nivaa" | "sprak" | "voksen" = "figur";
@@ -79,9 +82,9 @@ const oppdaterSW = registerSW({
 void beVarigLagring();
 
 function dyrNavn(dyr: string): string {
-  if (dyr === "hund") return si(spraak(), "Hund", "Hund");
-  if (dyr === "katt") return si(spraak(), "Katt", "Katt");
-  return si(spraak(), "Kanin", "Kanin");
+  if (dyr === "hund") return si(spraak(), "Pelle", "Pelle");
+  if (dyr === "katt") return si(spraak(), "Mons", "Mons");
+  return si(spraak(), "Trine", "Trine");
 }
 
 function spraak(): Spraak {
@@ -147,6 +150,11 @@ function bestemtBygg(id: ByggId): string {
     slott: ["Slottet", "Slottet"],
     lekeplass: ["Lekeplassen", "Leikeplassen"],
     ronne: ["Rønna", "Rønna"],
+    bakeri: ["Bakeriet", "Bakeriet"],
+    bro: ["Broa", "Brua"],
+    skole: ["Skolen", "Skulen"],
+    villa: ["Villaen", "Villaen"],
+    borg: ["Borgen", "Borga"],
   };
   const par = tabell[id];
   if (par) return mal(spraak(), par[0], par[1]);
@@ -196,6 +204,16 @@ function gjor(handling: Handling): void {
   const forrigeOppgave = aktivOppgave(lagret)?.id;
   lagret = ut.lagret;
   melding = ut.melding;
+  window.clearTimeout(bannerTimer);
+  if (melding) {
+    const tekst = melding;
+    bannerTimer = window.setTimeout(() => {
+      if (melding === tekst) {
+        melding = null;
+        tegn();
+      }
+    }, 1500);
+  }
   const ny = aktivOppgave(lagret);
   if (handling.slag === "fortsett" && ny && ny.id === forrigeOppgave && ny.type === "sorter") {
     const fasit = new Set(ny.fasit.split(","));
@@ -288,6 +306,10 @@ function minuttSteg(): number {
   return 5;
 }
 
+function sammeUrskive(a: number, b: number): boolean {
+  return timer(a) % 12 === timer(b) % 12 && minutt(a) === minutt(b);
+}
+
 function snapTilSteg(tid: number): number {
   const steg = minuttSteg();
   const avrundet = Math.round(minutt(tid) / steg) * steg;
@@ -334,7 +356,7 @@ function skiltHtml(skilt: SkiltTid): string {
       : skilt.apner !== skilt.stenger
         ? rad(skilt.apner, skilt.stenger)
         : "";
-  return `<div class="skilt"><div class="skilt-tider">${tider}</div>${urHtml(skilt.naa, false, false, "analog", 160)}</div>`;
+  return `<div class="dorskilt"><div class="skilt-tider"><p class="ord">${si(spraak(), "Nå", "No")}</p>${urHtml(skilt.naa, false, false, "analog", 120)}</div><div class="skilt-tider">${tider}</div></div>`;
 }
 
 function oppgaveBilde(oppgave: Oppgave): string {
@@ -357,7 +379,8 @@ function oppgaveBilde(oppgave: Oppgave): string {
   if (oppgave.koordinat) return koordinatBilde(oppgave.koordinat);
   if (oppgave.type === "ukeplan" || oppgave.type === "kalender") return ukeBilde();
   if (oppgave.monster) {
-    return `<div class="monster">${oppgave.monster.map((form, indeks) => formSvg(form, 56, -Math.PI / 2, DELFARGE[indeks % DELFARGE.length])).join("")}<span class="plass">?</span></div>`;
+    const bredde = Math.max(28, Math.min(56, Math.floor(280 / (oppgave.monster.length + 1))));
+    return `<div class="monster">${oppgave.monster.map((form) => formSvg(form, bredde, -Math.PI / 2, FARGER.takBlatt)).join("")}<span class="plass">?</span></div>`;
   }
   if (oppgave.varer) {
     const malform = oppgave.type === "finn-formen" && oppgave.form ? `<div class="malform">${formSvg(oppgave.form, 72)}<p>${si(spraak(), "Fargen betyr ikke noe. Se på formen.", "Fargen betyr ikkje noko. Sjå på forma.")}</p></div>` : "";
@@ -410,12 +433,12 @@ function oppgaveBilde(oppgave: Oppgave): string {
 function plankeBilde(tall: number): string {
   const enheter = tall > 12 ? Math.max(2, Math.round(tall / 10)) : tall;
   const b = 16 + enheter * 28;
-  const biter = Array.from({ length: enheter }, (_, i) => `<rect x="${8 + i * 28}" y="8" width="24" height="16" fill="${FARGER.tre}" stroke="${FARGER.kontur}" stroke-width="2"/><text x="${20 + i * 28}" y="36" text-anchor="middle" font-size="12" font-weight="700" fill="${FARGER.kontur}">${i + 1}</text>`).join("");
-  return `<svg viewBox="0 0 ${b} 42" width="${b}" height="42">${biter}<text x="${b - 4}" y="14" text-anchor="end" font-size="12" font-weight="700" fill="${FARGER.kontur}">${tall}</text></svg>`;
+  const biter = Array.from({ length: enheter }, (_, i) => `<rect x="${8 + i * 28}" y="8" width="24" height="16" fill="${FARGER.tre}" stroke="${FARGER.kontur}" stroke-width="2"/>`).join("");
+  return `<svg viewBox="0 0 ${b} 32" width="${b}" height="32">${biter}</svg>`;
 }
 
-function sekkBilde(vekt: boolean, kilo?: number): string {
-  const merke = kilo !== undefined ? `<text x="58" y="28" text-anchor="middle" font-size="12" font-weight="700" fill="${FARGER.kontur}">${kilo} kg</text>` : "";
+function sekkBilde(vekt: boolean, _kilo?: number): string {
+  const merke = "";
   const liten = `<ellipse cx="18" cy="28" rx="10" ry="8" fill="${FARGER.mur}" stroke="${FARGER.kontur}" stroke-width="2"/>`;
   const stor = `<ellipse cx="58" cy="24" rx="16" ry="14" fill="${FARGER.tre}" stroke="${FARGER.kontur}" stroke-width="2"/>${merke}`;
   return `<svg viewBox="0 0 80 44" width="160" height="88">${vekt ? `${liten}${stor}` : stor}</svg>`;
@@ -545,7 +568,8 @@ function oppgaveHtml(oppgave: Oppgave): string {
     const klokke = visTid !== undefined ? urHtml(visTid, false, false, "analog", 120) : "";
     const kasser = videre && oppgave.type === "sorter" ? sorterFasit(oppgave) : "";
     const fasitForm = videre ? (oppgave.type === "monster" ? oppgave.fasit : oppgave.form ?? rett?.form) : undefined;
-    return `<article class="kort feil">${prikker}<p>${esc(forklaring)}</p>${klokke}${kasser}${videre && rett?.tekst ? `<p class="valgt-svar">${esc(rett.tekst)}</p>` : ""}${fasitForm ? formSvg(fasitForm, 96) : ""}<button type="button" class="hoved" data-handling="fortsett">${videre ? si(spraak(), "Fortsett", "Hald fram") : si(spraak(), "Prøv igjen", "Prøv igjen")}</button></article>`;
+    const svarTekst = videre && rett?.tekst && oppgave.type !== "tell" ? `<p class="valgt-svar">${esc(rett.tekst)}</p>` : "";
+    return `<article class="kort feil">${prikker}<p>${esc(forklaring)}</p>${klokke}${kasser}${svarTekst}${fasitForm ? formSvg(fasitForm, 96) : ""}<button type="button" class="hoved" data-handling="fortsett">${videre ? si(spraak(), "Fortsett", "Hald fram") : si(spraak(), "Prøv igjen", "Prøv igjen")}</button></article>`;
   }
   const skilt = oppgave.skilt && oppgave.id.startsWith("dor-") ? skiltHtml(oppgave.skilt) : "";
   const ut = dag && dag.ko.length > 1 && dag.fase === "handel" && !oppgave.id.startsWith("dor-") ? `<button type="button" data-ute="1">${si(spraak(), "Gå ut", "Gå ut")}</button>` : "";
@@ -629,8 +653,9 @@ function stripeHtml(): string {
   const dag = lagret.aktivDag;
   if (!dag) return "";
   const punkter = planPunkter();
-  const naa = [...punkter].reverse().find((punkt) => punkt.tid <= dag.tid) ?? punkter[0];
-  return `<button type="button" class="stripe" data-plan="apne" aria-label="${si(spraak(), "Dagens plan", "Dagens plan")}">${punkter
+  const pagar = punkter.find((punkt) => dag.tid >= punkt.tid && dag.tid < punkt.tid + 30);
+  const naa = pagar ?? punkter.find((punkt) => punkt.tid > dag.tid) ?? punkter.at(-1);
+  return `<button type="button" class="stripe" data-plan="${visPlan ? "lukk" : "apne"}" aria-label="${si(spraak(), "Dagens plan", "Dagens plan")}">${punkter
     .map((punkt) => {
       const klasse = punkt === naa ? "punkt naa" : punkt.tid < dag.tid ? "punkt" : "punkt kommende";
       return `<span class="${klasse}">${ikon(ikonNavn(punkt.navn), "ikon-s")}<span class="tid">${tidTilDigital24(punkt.tid)}</span></span>`;
@@ -641,9 +666,9 @@ function stripeHtml(): string {
 function planHtml(): string {
   const dag = lagret.aktivDag;
   if (!dag) return "";
-  return `<div class="tidslinje">${planPunkter()
-    .map((punkt) => `<div class="tidspunkt">${urHtml(punkt.tid, true)}<p>${esc(punkt.navn)} ${tidTilDigital24(punkt.tid)}</p></div>`)
-    .join("")}</div>${skiltKort()}<button type="button" class="hoved" data-plan="lukk">${si(spraak(), "Lukk", "Lukk")}</button>`;
+  return `<button type="button" class="plan-bak" data-plan="lukk" aria-label="${si(spraak(), "Lukk", "Lukk")}"></button><div class="planliste">${planPunkter()
+    .map((punkt) => `<div class="dagrad">${ikon(ikonNavn(punkt.navn))}<span class="dagtid">${tidTilDigital24(punkt.tid)}</span><p>${esc(punkt.navn)}</p></div>`)
+    .join("")}</div>`;
 }
 
 function raad(): string {
@@ -745,8 +770,12 @@ function enHandling(): string {
       return `<button type="button" class="hoved" data-tegn="${esc(oppgave.form)}">${si(spraak(), "Ferdig", "Ferdig")}</button>`;
     }
   }
-  if (!dag || oppgave || visPlan) return "";
+  if (visPlan) return `<button type="button" class="hoved" data-plan="lukk">${si(spraak(), "Lukk", "Lukk")}</button>`;
+  if (!dag || oppgave) return "";
   const steg = nesteSteg(lagret);
+  if (steg.nei) {
+    return `<button type="button" data-handling="ekstra-nei">${esc(steg.nei)}</button><button type="button" class="hoved" data-handling="ekstra-ja">${esc(steg.knapp)}</button>`;
+  }
   const valg = steg.handling;
   const tekst = esc(steg.knapp);
   if (valg.slag === "mot") return `<button type="button" class="hoved" data-handling="mot">${tekst}</button>`;
@@ -814,22 +843,32 @@ function kartHtml(): string {
       .join("")}</div>`;
 }
 
+let valgtPynt: VareId | "" = "";
+
 function pyntHtml(): string {
-  const ferdige = lagret.by.bygg.filter((bygg) => bygg.ferdig);
-  const maal = ferdige[0];
+  const ferdig = lagret.by.bygg.some((bygg) => bygg.ferdig);
   const varer = ["pynt-blomst", "pynt-flagg", "pynt-benk", "pynt-lykt"] as VareId[];
+  const ruter = [
+    [1, 1],
+    [2, 1],
+    [1, 2],
+    [3, 2],
+  ].filter(([x, y]) => !(lagret.by.pynt ?? []).some((pynt) => pynt.x === x && pynt.y === y));
   return `<button type="button" data-skjerm="meny">${si(spraak(), "Tilbake", "Tilbake")}</button>
-    <h1>${si(spraak(), "Pynt byen", "Pynt byen")}</h1>
+    <h1>${si(spraak(), "Pyntebu", "Pyntebu")}</h1>
     <p>${lagret.mynter} ${si(spraak(), "mynter. En pynt koster 2.", "myntar. Ein pynt kostar 2.")}</p>
     ${
-      maal
+      ferdig
         ? `<div class="liste">${varer
-            .map(
-              (vare) =>
-                `<button type="button" data-pynt="${vare}" data-instans="${esc(maal.instans)}">${esc(navnVare(vare, spraak()))}</button>`,
-            )
-            .join("")}</div>`
-        : `<p>${si(spraak(), "Et bygg må være ferdig først.", "Eit bygg må vere ferdig først.")}</p>`
+            .map((vare) => `<button type="button" data-pynt="${vare}" class="${valgtPynt === vare ? "valgt" : ""}">${esc(navnVare(vare, spraak()))}</button>`)
+            .join("")}</div>${
+            valgtPynt
+              ? `<div class="liste">${ruter
+                  .map(([x, y]) => `<button type="button" data-rute="${x},${y}">${esc(ruteNavn(x, y))}</button>`)
+                  .join("")}</div>`
+              : ""
+          }`
+        : `<p>${si(spraak(), "Brønnen må være ferdig først.", "Bronnen må vere ferdig først.")}</p>`
     }`;
 }
 
@@ -880,6 +919,7 @@ function menyHtml(): string {
     <button type="button" class="hoved stor" data-handling="${lagret.aktivDag ? "fortsett-dag" : "start"}">${lagret.aktivDag ? si(spraak(), "Fortsett dagen", "Hald fram") : si(spraak(), "Spill", "Spel")}</button>
     <div class="ikonrad">
       <button type="button" data-skjerm="dagbok">${si(spraak(), "Dagboka", "Dagboka")}</button>
+      ${lagret.by.bygg.some((bygg) => bygg.ferdig) ? `<button type="button" data-skjerm="pynt">${si(spraak(), "Pynt", "Pynt")}</button>` : ""}
       <button type="button" data-skjerm="innstillinger">${si(spraak(), "Innstillinger", "Innstillingar")}</button>
     </div>
   </div>`;
@@ -897,7 +937,11 @@ function fremdriftTekst(): string {
   const maal = maalBygg(lagret);
   const nivaa = String(lagret.by.nivaa);
   if (!maal) return mal(spraak(), "Bynivå {nivaa}.", "Bynivå {nivaa}.", { nivaa });
-  return mal(spraak(), "Bynivå {nivaa}. Du bygger {bygg}.", "Bynivå {nivaa}. Du byggjer {bygg}.", { nivaa, bygg: byggNavn(maal.id).toLowerCase() });
+  const et = ["gjerde", "vedskjul", "hus", "slott", "bakeri"].includes(maal.id);
+  return mal(spraak(), "Bynivå {nivaa}. Du bygger {bygg}.", "Bynivå {nivaa}. Du byggjer {bygg}.", {
+    nivaa,
+    bygg: `${et ? "et" : "en"} ${byggNavn(maal.id).toLowerCase()}`,
+  });
 }
 
 function dagstartHtml(): string {
@@ -921,10 +965,10 @@ function dagstartHtml(): string {
     <div class="dagliste">${planPunkter()
       .map((punkt) => `<div class="dagrad">${ikon(ikonNavn(punkt.navn))}<span class="dagtid">${tidTilDigital24(punkt.tid)}</span><p>${esc(punkt.navn)}</p></div>`)
       .join("")}</div>
-    ${maal ? `<div class="bygg-start"><div class="bygg-lite">${tegnBygg(maal.id, false)}</div><p>${esc(bestemtBygg(maal.id))} ${si(spraak(), "trenger:", "treng:")}</p><div class="delrad">${deler}</div></div>` : ""}
+    ${maal ? `<div class="bygg-start"><div class="bygg-lite">${tegnBygg(maal.id, false)}</div><h2>${esc(si(spraak(), "I dag bygger vi", "I dag byggjer vi"))} ${esc(bestemtBygg(maal.id).toLowerCase())}</h2><p>${esc(bestemtBygg(maal.id))} ${si(spraak(), "trenger:", "treng:")}</p><div class="delrad">${deler}</div></div>` : ""}
     </div>
     <div class="dagstart-bunn">${skiltKort()}
-    <button type="button" class="hoved dagstart-start" data-handling="start-ettermiddag">${si(spraak(), "Start ettermiddagen", "Start ettermiddagen")}</button></div>
+    <button type="button" class="hoved dagstart-start" data-handling="start-ettermiddag">${dag.plan.ukedag === "lordag" || dag.plan.ukedag === "sondag" ? si(spraak(), "Start dagen", "Start dagen") : si(spraak(), "Start ettermiddagen", "Start ettermiddagen")}</button></div>
   </div>`;
 }
 
@@ -1086,40 +1130,51 @@ function voksenHtml(): string {
     koordinater: ["Koordinater", "Koordinatar"],
     likevekt: ["Likevekt", "Likevekt"],
   };
-  return `<button type="button" data-skjerm="innstillinger">${si(spraak(), "Tilbake", "Tilbake")}</button><h1>${si(spraak(), "Mestring", "Mestring")}</h1>
-    ${maal
-      .map(
-        ([tittel, ferdigheter]) =>
-          `<section class="kort"><h2>${si(spraak(), tittel, tittel)}</h2>${ferdigheter
-            .map((id) => {
-              const rad = lagret.mestring[id];
-              const riktige = rad?.riktige ?? 0;
-              const bredde = Math.min(100, Math.round((riktige / 3) * 100));
-              const par = ferdigNavn[id] ?? [id, id];
-              return `<p>${si(spraak(), par[0], par[1])}</p><div class="maal"><span style="width:${bredde}%"></span></div>`;
-            })
-            .join("")}</section>`,
-      )
+  const snitt = (ids: readonly string[]) => {
+    const sum = ids.reduce((antall, id) => antall + (lagret.mestring[id as keyof typeof lagret.mestring]?.riktige ?? 0), 0);
+    return Math.min(100, Math.round((sum / (ids.length * 3)) * 100));
+  };
+  const klokkeIds = maal[0]?.[1] ?? [];
+  const formIds = [...(maal[1]?.[1] ?? []), ...(maal[2]?.[1] ?? [])];
+  const detalj =
+    voksenStolpe === "klokke" ? klokkeIds : voksenStolpe === "former" ? formIds.slice(0, 6) : [];
+  const mestring = `<button type="button" data-stolpe="klokke">${si(spraak(), "Klokke", "Klokke")}</button><div class="maal"><span style="width:${snitt(klokkeIds)}%"></span></div>
+    <button type="button" data-stolpe="former">${si(spraak(), "Former", "Former")}</button><div class="maal"><span style="width:${snitt(formIds)}%"></span></div>
+    ${detalj
+      .map((id) => {
+        const rad = lagret.mestring[id];
+        const bredde = Math.min(100, Math.round(((rad?.riktige ?? 0) / 3) * 100));
+        const par = ferdigNavn[id] ?? [id, id];
+        return `<p>${si(spraak(), par[0], par[1])}</p><div class="maal"><span style="width:${bredde}%"></span></div>`;
+      })
       .join("")}
     <button type="button" data-tidsrom="1" class="${lagret.innstillinger.tidsromPa ? "valgt" : ""}">${si(spraak(), "Tidsrom", "Tidsrom")}</button>
-    <p>${si(spraak(), "Tidsrom er oppgaver om hvor lenge noe varer.", "Tidsrom er oppgåver om kor lenge noko varer.")}</p>
-    <button type="button" data-rekord="1" class="${lagret.innstillinger.rekordlistePa ? "valgt" : ""}">${si(spraak(), "Dagbokliste", "Dagbokliste")}</button>
-    <p>${si(spraak(), "Dagboklisten viser alle dager.", "Dagboklista viser alle dagar.")}</p>
-    <h2>${si(spraak(), "Faste avtaler", "Faste avtalar")}</h2>
-    <div class="rad">
+    <button type="button" data-rekord="1" class="${lagret.innstillinger.rekordlistePa ? "valgt" : ""}">${si(spraak(), "Dagbokliste", "Dagbokliste")}</button>`;
+  const avtaler = `<div class="rad">
       <select id="fast-aktivitet">${(["lekser", "hund", "tannlege", "svomming", "dans", "fotball", "korps", "piano", "kor", "bibliotek"] as const).map((id) => `<option value="${id}">${esc(visNavn(id, spraak()))}</option>`).join("")}</select>
       <select id="fast-dag">${(["mandag", "tirsdag", "onsdag", "torsdag", "fredag"] as const).map((dag) => `<option value="${dag}">${ukedagTekst(spraak(), dag)}</option>`).join("")}</select>
-      <select id="fast-tid">${[15, 16, 16.5, 17, 17.5, 18, 18.5, 19].map((time) => {
-        const minutter = Math.round(time * 60);
-        return `<option value="${minutter}">${tidTilDigital24(minutter)}</option>`;
-      }).join("")}</select>
+      <select id="fast-tid">${[15, 16, 17, 18, 19].map((time) => `<option value="${time * 60}">${tidTilDigital24(time * 60)}</option>`).join("")}</select>
       <button type="button" data-fast="1">${si(spraak(), "Fest avtale", "Fest avtale")}</button>
     </div>
-    ${lagret.innstillinger.fasteAvtaler.map((avtale, indeks) => `<p>${esc(avtale.aktivitet)} ${ukedagTekst(spraak(), avtale.ukedag)} ${tidTilDigital24(avtale.start)} <button type="button" data-fjern="${indeks}">×</button></p>`).join("")}
-    <h2>${si(spraak(), "Data", "Data")}</h2>
-    <button type="button" data-eksport="1">${si(spraak(), "Eksporter byen", "Eksporter byen")}</button>
+    ${lagret.innstillinger.fasteAvtaler.map((avtale, indeks) => `<p>${esc(avtale.aktivitet)} ${ukedagTekst(spraak(), avtale.ukedag)} ${tidTilDigital24(avtale.start)} <button type="button" data-fjern="${indeks}">×</button></p>`).join("")}`;
+  const slett =
+    nullSteg >= 2
+      ? `<p>${si(spraak(), "Slette byen på denne telefonen?", "Slette byen på denne telefonen?")}</p><button type="button" data-null="ja">${si(spraak(), "Slett", "Slett")}</button>`
+      : nullSteg === 1
+        ? `<p>${si(spraak(), "Er du sikker?", "Er du sikker?")}</p><button type="button" data-null="sikker">${si(spraak(), "Er du sikker?", "Er du sikker?")}</button>`
+        : `<button type="button" data-null="spor">${si(spraak(), "Nullstill byen", "Nullstill byen")}</button>`;
+  const data = `<button type="button" data-eksport="1">${si(spraak(), "Eksporter byen", "Eksporter byen")}</button>
     <input id="import-fil" type="file" accept="application/json"/>
-    ${bekreftNull ? `<p>${si(spraak(), "Slette byen på denne telefonen?", "Slette byen på denne telefonen?")}</p><button type="button" data-null="ja">${si(spraak(), "Ja, slett", "Ja, slett")}</button>` : `<button type="button" data-null="spor">${si(spraak(), "Nullstill byen", "Nullstill byen")}</button>`}`;
+    ${slett}`;
+  const om = `<p>Formbyen</p><button type="button" data-oppdater="1">${si(spraak(), "Sjekk for oppdateringer", "Sjekk for oppdateringar")}</button>
+    <p>${si(spraak(), "Barnet øver former og klokka. Ingen konto og ingen analyse.", "Barnet øver former og klokka. Ingen konto og ingen analyse.")}</p>`;
+  const seksjon = (id: "mestring" | "avtaler" | "data" | "om", tittel: string, innhold: string) =>
+    `<button type="button" data-fane="${id}">${tittel}</button>${voksenFane === id ? `<div class="voksen-innhold">${innhold}</div>` : ""}`;
+  return `<div class="voksen"><button type="button" data-skjerm="innstillinger">${si(spraak(), "Tilbake", "Tilbake")}</button><h1>${si(spraak(), "For voksne", "For vaksne")}</h1>
+    ${seksjon("mestring", si(spraak(), "Mestring", "Mestring"), mestring)}
+    ${seksjon("avtaler", si(spraak(), "Faste avtaler", "Faste avtalar"), avtaler)}
+    ${seksjon("data", si(spraak(), "Data", "Data"), data)}
+    ${seksjon("om", si(spraak(), "Om appen", "Om appen"), om)}</div>`;
 }
 
 function omHtml(): string {
@@ -1162,25 +1217,26 @@ function kveldHtml(): string {
       return `<p>${merke} ${esc(navn)} ${tidTilDigital24(avtale.start)}${esc(ekstra)}</p>`;
     })
     .join("");
-  const stjerne =
-    sist?.merknad ??
-    (sist?.stjerne
-      ? si(spraak(), "Stjerne: du rakk alt!", "Stjerne: du rakk alt!")
-      : si(spraak(), "Ingen stjerne i dag, fordi vi ikke rakk alt.", "Inga stjerne i dag, fordi vi ikkje rakk alt."));
-  const formLinje = former.length
-    ? `<p>${esc(si(spraak(), "Ny form i dag:", "Ny form i dag:"))} ${esc(former.map((id) => formNavn(id, spraak())).join(", "))}</p>`
+  const tidligere = new Set(lagret.dagbok.slice(0, -1).flatMap((inn) => inn.former));
+  const nye = former.filter((id) => !tidligere.has(id));
+  const stjerneLinjer = (sist?.merknad ?? "").split("\n").filter(Boolean);
+  const formLinje = nye.length
+    ? `<p>${esc(si(spraak(), "Ny form i dag:", "Ny form i dag:"))} ${esc(nye.map((id) => formNavn(id, spraak())).join(", "))}</p>`
     : "";
   const antall = sist?.stjerner ?? (sist?.stjerne ? 1 : 0);
   const fest = sist && ukedagFor(sist.dato) === "fredag" && fredagsfest(sist.dato) ? `<p>${esc(si(spraak(), "Fredagsfest på torget.", "Fredagsfest på torget."))}</p>` : "";
-  return `<h1>${si(spraak(), "Kvelden kommer", "Kvelden kjem")}</h1>
-    <div class="bykart">${tegnKart(lagret.by, 20 * 60)}</div>
+  const avtaleLinje = (sist?.avtaler?.length ?? 0) > 4
+    ? `<p>${"✓"} ${(sist?.avtaler ?? []).filter((avtale) => avtale.gjort).length} ${si(spraak(), "av", "av")} ${sist?.avtaler?.length ?? 0} ${si(spraak(), "avtaler", "avtalar")}</p>`
+    : linjer;
+  return `<div class="kveld"><div class="kveld-midt"><h1>${si(spraak(), "Kvelden kommer", "Kvelden kjem")}</h1>
+    <div class="kveld-kart">${tegnKart(lagret.by, 20 * 60, 20 * 60, { hele: true })}</div>
     <p class="stjerner">${"★".repeat(antall) || "·"}</p>
-    <p>${esc(stjerne)}</p>
+    ${stjerneLinjer.map((linje) => `<p>${esc(linje)}</p>`).join("")}
     ${fest}
-    ${linjer}
+    ${avtaleLinje}
     <p>${esc(bygget)}</p>
-    ${formLinje}
-    <button type="button" class="hoved" data-skjerm="meny">${si(spraak(), "God natt", "God natt")}</button>`;
+    ${formLinje}</div>
+    <div class="kveld-bunn"><button type="button" class="hoved" data-skjerm="meny">${si(spraak(), "God natt", "God natt")}</button></div></div>`;
 }
 
 function kurvHtml(): string {
@@ -1242,9 +1298,10 @@ function albumHtml(): string {
 function urFriHtml(): string {
   const steg = minuttSteg();
   const maal = urRunde[urStegNr] ?? snapTilSteg(lagret.aktivDag?.tid ?? 12 * 60);
-  const prompt = mal(spraak(), "Still tårnuret til {ord}.", "Still tårnuret til {ord}.", { ord: tidTilOrd(maal, spraak()) });
+  const prompt = mal(spraak(), "I morgen er klokka {ord}. Still tårnuret så folk kommer i tide.", "I morgon er klokka {ord}. Still tårnuret så folk kjem i tide.", { ord: tidTilOrd(maal, spraak()) });
   return `<button type="button" data-skjerm="verden">${si(spraak(), "Tilbake", "Tilbake")}</button><h1>${si(spraak(), "Tårnuret", "Tårnuret")}</h1>
     <p>${esc(prompt)}</p>
+    ${melding ? `<p class="banner">${esc(melding)}</p>` : ""}
     <p>${urStegNr + 1} / ${Math.max(urRunde.length, 1)}</p>
     ${urHtml(pekerTid, false, true)}
     <div class="rad"><button type="button" data-minutt="-${steg}">${mal(spraak(), "− {tall} min", "− {tall} min", { tall: String(steg) })}</button><button type="button" data-minutt="${steg}">${mal(spraak(), "+ {tall} min", "+ {tall} min", { tall: String(steg) })}</button><button type="button" data-time="-1">${si(spraak(), "− 1 time", "− 1 time")}</button><button type="button" data-time="1">${si(spraak(), "+ 1 time", "+ 1 time")}</button></div>
@@ -1307,6 +1364,9 @@ function kobleDra(): void {
     valgtVare = "";
     ristVarer.delete(vare);
     hoppKlikk = true;
+    window.setTimeout(() => {
+      hoppKlikk = false;
+    }, 0);
     tegn();
   });
 }
@@ -1343,7 +1403,8 @@ function justerUr(ur: Element, hendelse: PointerEvent): void {
   const dy = hendelse.clientY - (rect.top + rect.height / 2);
   let grader = (Math.atan2(dx, -dy) * 180) / Math.PI;
   if (grader < 0) grader += 360;
-  const minutter = (Math.round(grader / 30) * 5) % 60;
+  const steg = minuttSteg();
+  const minutter = (Math.round(grader / (6 * steg)) * steg) % 60;
   pekerTid = klokke(timer(pekerTid), minutter);
 }
 
@@ -1382,7 +1443,12 @@ rot.addEventListener("pointerup", () => {
   tegner = false;
   if (!drarUr) return;
   drarUr = false;
-  hoppKlikk = droUr;
+  if (droUr) {
+    hoppKlikk = true;
+    window.setTimeout(() => {
+      hoppKlikk = false;
+    }, 0);
+  }
   droUr = false;
   tegn();
 });
@@ -1602,6 +1668,7 @@ rot.addEventListener("click", (hendelse) => {
     urRunde = iMorgenTider();
     urStegNr = 0;
     pekerTid = snapTilSteg(lagret.aktivDag?.tid ?? 12 * 60);
+    if (urRunde[0] !== undefined && sammeUrskive(pekerTid, urRunde[0])) pekerTid = snapTilSteg(pekerTid + minuttSteg());
     skjerm = "ur";
     gjor({ slag: "klokke" });
     return;
@@ -1609,7 +1676,7 @@ rot.addEventListener("click", (hendelse) => {
   if (handling === "ur-ferdig") {
     const maal = urRunde[urStegNr];
     const dagTid = lagret.aktivDag?.tid;
-    if (maal !== undefined && pekerTid === maal) {
+    if (maal !== undefined && sammeUrskive(pekerTid, maal)) {
       lagret = { ...lagret, mynter: lagret.mynter + 1 };
       urStegNr += 1;
       melding = si(spraak(), "Riktig!", "Riktig!");
@@ -1625,6 +1692,10 @@ rot.addEventListener("click", (hendelse) => {
   if (handling === "dor") {
     skjerm = "verden";
     gjor({ slag: "dor" });
+  }
+  if (handling === "ekstra-ja" || handling === "ekstra-nei") {
+    gjor({ slag: "ekstra", ja: handling === "ekstra-ja" });
+    return;
   }
   if (handling === "handle" || handling === "fortsett" || handling === "steg" || handling === "angre" || handling === "mot" || handling === "spis" || handling === "avslutt" || handling === "oppdrag") {
     bekreftAvslutt = false;
@@ -1671,7 +1742,17 @@ rot.addEventListener("click", (hendelse) => {
     lagre();
     tegn();
   }
+  if (knapp.dataset.pynt && skjerm === "pynt") {
+    valgtPynt = knapp.dataset.pynt as VareId;
+    tegn();
+    return;
+  }
   if (knapp.dataset.pynt) gjor({ slag: "pynt", vare: knapp.dataset.pynt as VareId, instans: knapp.dataset.instans });
+  if (knapp.dataset.rute && valgtPynt) {
+    const [x, y] = knapp.dataset.rute.split(",").map(Number);
+    gjor({ slag: "pynt", vare: valgtPynt, x, y });
+    valgtPynt = "";
+  }
   if (knapp.dataset.kart === "roter") {
     const rotasjon = ((lagret.by.rotasjon + 1) % 4) as 0 | 1 | 2 | 3;
     lagret = { ...lagret, by: { ...lagret.by, rotasjon } };
@@ -1756,13 +1837,26 @@ rot.addEventListener("click", (hendelse) => {
     a.click();
     URL.revokeObjectURL(url);
   }
+  if (knapp.dataset.fane === "mestring" || knapp.dataset.fane === "avtaler" || knapp.dataset.fane === "data" || knapp.dataset.fane === "om") {
+    voksenFane = knapp.dataset.fane;
+    voksenStolpe = "";
+    tegn();
+  }
+  if (knapp.dataset.stolpe) {
+    voksenStolpe = voksenStolpe === knapp.dataset.stolpe ? "" : knapp.dataset.stolpe;
+    tegn();
+  }
   if (knapp.dataset.null === "spor") {
-    bekreftNull = true;
+    nullSteg = 1;
+    tegn();
+  }
+  if (knapp.dataset.null === "sikker") {
+    nullSteg = 2;
     tegn();
   }
   if (knapp.dataset.null === "ja") {
     lagret = standardLagret();
-    bekreftNull = false;
+    nullSteg = 0;
     voksenInne = false;
     skjerm = "velg";
     lagre();

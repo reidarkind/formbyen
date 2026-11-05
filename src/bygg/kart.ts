@@ -143,6 +143,15 @@ export function nesteByggId(by: ByTilstand): ByggId | null {
 }
 
 /** Bydelen som tegnes. Et uferdig bygg vinner. Ellers bydelen der neste bygg får plass. */
+export function heleByen(by: ByTilstand): { x0: number; y0: number; x1: number; y1: number } {
+  return {
+    x0: 0,
+    y0: 0,
+    x1: by.omrader.includes("bekken") || by.omrader.includes("havna") ? 12 : 8,
+    y1: by.omrader.includes("asen") || by.omrader.includes("havna") ? 12 : 8,
+  };
+}
+
 export function kartUtsnitt(by: ByTilstand): { x0: number; y0: number; x1: number; y1: number } {
   if (by.nivaa <= 2) return { ...DALEN };
   const uferdig = by.bygg.find((bygg) => !bygg.ferdig && !bygg.uthus);

@@ -27,7 +27,9 @@ Ark fra toppfeltet: kurven, dagens plan, pause. Byplanen åpnes fra kartet.
 - Ett gult trykk om gangen. Knappen og hjelperen kommer fra samme neste steg. Hjelperen sier hvorfor, ikke en annen ordre.
 - «Sett på [del]» er gul bare når neste steg er å bygge. Ellers viser scenen delen, og den gule knappen er turen som haster.
 - Den gamle byskjermen, den gamle byggeskjermen og det frie tårnuret er ikke en del av denne veien.
-- Ingen skjerm ruller. Toppen er tid og plan, midten skaleres, og bunnen har hjelperen og én gul knapp. Hjelperen er skjult mens en oppgave eller en feilmelding vises.
+- Ingen skjerm ruller, og innhold med knapper eller svar blir aldri klipt. Toppen er tid og plan, midten skaleres, og bunnen har hjelperen og én gul knapp. Dagsplanen lukkes med «Lukk» i bunnen. Hjelperen er skjult mens en oppgave eller en feilmelding vises.
+- Ett bygg om dagen. Når det er ferdig, kan barnet selv velge å begynne på det neste. «Ja, gå til butikken» er gul. «Nei, ikke i dag» er nøytral. Hjelperen sier navnet på bygget.
+- Voksensiden er et trekkspill. Bare én seksjon er åpen: mestring, faste avtaler, data eller om appen. «Nullstill» spør «Er du sikker?» og deretter «Slett».
 - Klokkeleken åpnes med ett trykk når det er minst 30 minutter igjen og ingenting annet å gjøre. Tårnuret starter på tiden i spillet. Knappene flytter viseren med nivåets trinn, og et riktig ur gir en mynt. Tiden og stedet er de samme når barnet kommer tilbake.
 - Ved butikken sier hjelperen «Les skiltet på døra.» Skiltet er et bilde med åpningstidene, pausen og en stor klokke som viser nå. Scenen sier ikke om butikken er åpen før skiltet er lest. Er den stengt, spør spillet «Når åpner butikken?» og ber barnet vente til den åpner. Barnet sendes ikke til en stengt butikk bare for å øve. Hjemmefra kan det lese tidene på kortet «Les åpningstidene før du går».
 - Ett butikkbesøk er en runde: 3 oppgaver i 1. klasse, 4 i 2. klasse og 5 på utfordrende. Prikker viser hvor langt runden er kommet. Bare den første oppgaven gir delen. De andre gir en mynt når svaret er riktig på første forsøk. «Gå ut» beholder delene som allerede er kjøpt. To feil på rad avslutter resten av runden.

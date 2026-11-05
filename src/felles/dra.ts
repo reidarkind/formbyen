@@ -32,6 +32,7 @@ export function bindDra(flate: Element, slipp: (vare: string, kasseId: string | 
     const slippPeker = (e: PointerEvent) => {
       window.removeEventListener("pointermove", flytt);
       window.removeEventListener("pointerup", slippPeker);
+      window.removeEventListener("pointercancel", slippPeker);
       kopi.remove();
       for (const kasse of document.querySelectorAll(".kasse")) kasse.classList.remove("under");
       const under = document.elementFromPoint(e.clientX, e.clientY);
@@ -41,5 +42,6 @@ export function bindDra(flate: Element, slipp: (vare: string, kasseId: string | 
     };
     window.addEventListener("pointermove", flytt);
     window.addEventListener("pointerup", slippPeker);
+    window.addEventListener("pointercancel", slippPeker);
   });
 }

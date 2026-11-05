@@ -11,7 +11,7 @@ export default defineConfig({
   plugins: [
     VitePWA({
       registerType: "prompt",
-      includeAssets: ["ikon-192.png", "ikon-512.png", "apple-touch-icon.png", "ikon.svg"],
+      includeAssets: ["ikon-32.png", "ikon-192.png", "ikon-512.png", "ikon-maskable-512.png", "apple-touch-icon.png", "ikon.svg"],
       manifest: {
         name: "Formbyen",
         short_name: "Formbyen",
@@ -26,7 +26,7 @@ export default defineConfig({
         icons: [
           { src: "ikon-192.png", sizes: "192x192", type: "image/png" },
           { src: "ikon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
-          { src: "ikon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+          { src: "ikon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
         ],
       },
       workbox: {

@@ -36,7 +36,7 @@ describe("skiltet på skjermen", () => {
     const forTekst = `${document.querySelector(".boble")?.textContent ?? ""} ${document.querySelector(".scene")?.textContent ?? ""}`;
     expect(forTekst.toLowerCase()).not.toMatch(/åpen|stengt|åpner/);
     document.querySelector<HTMLButtonElement>("[data-handling='handle']")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    const skilt = document.querySelector(".skilt");
+    const skilt = document.querySelector(".dorskilt");
     const h2 = document.querySelector(".kort h2");
     expect(skilt?.textContent ?? "").not.toMatch(/åpen|stengt|åpner/i);
     expect(skilt?.textContent).toContain("15:00");

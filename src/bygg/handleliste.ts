@@ -3,12 +3,14 @@ import { nesteByggId } from "./kart";
 import { byggDef } from "./katalog";
 
 export function maalBygg(lagret: Lagret): { id: ByggId; steg: number } | null {
+  const dagen = lagret.aktivDag?.dagensBygg;
   const valgt = lagret.by.bygg.find((bygg) => bygg.instans === lagret.aktivDag?.valgtInstans && !bygg.ferdig);
   if (valgt) return { id: valgt.bygg, steg: valgt.steg };
-  const id = nesteByggId(lagret.by);
+  const id = dagen ?? nesteByggId(lagret.by);
   if (!id) return null;
-  const plassert = lagret.by.bygg.find((bygg) => bygg.bygg === id && !bygg.ferdig);
-  return { id, steg: plassert?.steg ?? 0 };
+  const uferdig = lagret.by.bygg.find((bygg) => bygg.bygg === id && !bygg.ferdig);
+  if (!uferdig && lagret.by.bygg.some((bygg) => bygg.bygg === id && bygg.ferdig)) return null;
+  return { id, steg: uferdig?.steg ?? 0 };
 }
 
 /** Delene som gjenstår når kurven er trukket fra oppskriften. */

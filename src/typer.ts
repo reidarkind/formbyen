@@ -236,6 +236,8 @@ export interface Dagsplan {
   start: number;
   /** Når butikken åpner neste dag den er åpen. */
   nesteApning?: number;
+  /** Når den samme dagen stenger. */
+  nesteStenger?: number;
 }
 
 export interface FerdighetsTilstand {
@@ -262,6 +264,13 @@ export interface PlassertBygg {
   uthus: boolean;
   frie: FriDel[];
   pynt: VareId[];
+}
+
+export interface PyntPlassert {
+  id: string;
+  vare: VareId;
+  x: number;
+  y: number;
 }
 
 export interface Foto {
@@ -309,6 +318,11 @@ export interface AktivDag {
   kjopIDag?: number;
   klokkeLekt?: boolean;
   oppdragFerdig?: boolean;
+  /** Oppdraget var riktig på første forsøk. */
+  oppdragForste?: boolean;
+  /** Bygget dagen startet med. Neste bygg krever et ja. */
+  dagensBygg?: ByggId;
+  ekstraNei?: boolean;
   byggetIDag: string[];
   formerIDag: string[];
   klokkerIDag: number[];
@@ -338,6 +352,7 @@ export interface Innstillinger {
 export interface ByTilstand {
   nivaa: 1 | 2 | 3 | 4 | 5 | 6;
   bygg: PlassertBygg[];
+  pynt?: PyntPlassert[];
   rotasjon: 0 | 1 | 2 | 3;
   skala: number;
   panX: number;

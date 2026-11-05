@@ -44,6 +44,15 @@ export function omrissForForm(form: Form2dId, bredde = 48, hoyde = 48): Raster {
         const bue = dy <= 2 && Math.abs(Math.hypot(x - cx, y - cy) - r) <= tykk;
         const bunn = Math.abs(y - (cy + 1)) <= tykk && Math.abs(x - cx) <= r;
         treff = bue || bunn;
+      } else if (form === "kvadrat") {
+        treff = naerKant(x, y, [
+          [cx - r * 0.8, cy - r * 0.8],
+          [cx + r * 0.8, cy - r * 0.8],
+          [cx + r * 0.8, cy + r * 0.8],
+          [cx - r * 0.8, cy + r * 0.8],
+        ], tykk);
+      } else if (form === "trekant") {
+        treff = naerKant(x, y, mangekant(3, cx, cy, r), tykk);
       } else if (form === "rektangel") {
         treff = naerKant(x, y, [
           [cx - r, cy - r * 0.62],
@@ -52,7 +61,7 @@ export function omrissForForm(form: Form2dId, bredde = 48, hoyde = 48): Raster {
           [cx - r, cy + r * 0.62],
         ], tykk);
       } else {
-        const n = form === "trekant" ? 3 : form === "kvadrat" ? 4 : form === "femkant" ? 5 : 6;
+        const n = form === "femkant" ? 5 : 6;
         treff = naerKant(x, y, mangekant(n, cx, cy, r), tykk);
       }
       if (treff) maske[y * bredde + x] = true;

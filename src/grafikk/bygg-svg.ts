@@ -1,6 +1,6 @@
 import type { ByggId, ByTilstand } from "../typer";
 import { byggDef } from "../bygg/katalog";
-import { celle, kartUtsnitt, ruteNavn } from "../bygg/kart";
+import { celle, heleByen, kartUtsnitt, ruteNavn } from "../bygg/kart";
 import { LANDMERKE } from "../bygg/landemerker";
 import { FARGER, himmelFarge } from "./stil";
 import { himmel } from "../tid/tid";
@@ -20,6 +20,7 @@ export interface KartValg {
   puls?: string | null;
   aktivitet?: string | null;
   tomter?: { x: number; y: number }[];
+  hele?: boolean;
 }
 
 function innen(x: number, y: number, ramme: { x0: number; y0: number; x1: number; y1: number }): boolean {
@@ -82,7 +83,7 @@ function figurGruppe(x: number, y: number, fra: { x: number; y: number } | null,
 }
 
 export function tegnKart(by: ByTilstand, tid: number, leggetid = 20 * 60, valg: KartValg = {}): string {
-  const ramme = kartUtsnitt(by);
+  const ramme = valg.hele ? heleByen(by) : kartUtsnitt(by);
   const kolonner = ramme.x1 - ramme.x0;
   const rader = ramme.y1 - ramme.y0;
   const kveld = tid >= 18 * 60 && tid < leggetid;
@@ -138,6 +139,13 @@ export function tegnKart(by: ByTilstand, tid: number, leggetid = 20 * 60, valg: 
     flater.push(
       `<g data-sted="${merke}" class="${klasse}" transform="translate(${px} ${py}) scale(${sx} ${sy})">${fasadeInnhold(plassert.bygg, synlig, kveld && plassert.ferdig)}</g>`,
     );
+  }
+  for (const pynt of by.pynt ?? []) {
+    if (!innen(pynt.x, pynt.y, ramme)) continue;
+    const px = (pynt.x - ramme.x0) * RUTE + RUTE / 2;
+    const py = (pynt.y - ramme.y0) * RUTE + RUTE / 2;
+    const farge = pynt.vare === "pynt-flagg" ? FARGER.takRodt : pynt.vare === "pynt-lykt" ? FARGER.vinduslys : FARGER.takBlatt;
+    flater.push(`<circle data-pynt="${pynt.id}" cx="${px}" cy="${py}" r="8" fill="${farge}" stroke="${FARGER.kontur}" stroke-width="2"/>`);
   }
   if (valg.figur && innen(valg.figur.x, valg.figur.y, ramme)) {
     const vedSiden = figurVedSiden(by, valg.figur.x, valg.figur.y, ramme);

@@ -170,6 +170,7 @@ const VENTER: Record<string, [string, string]> = {
   lillesoster: ["Lillesøster venter. Hent henne nå.", "Lillesyster ventar. Hent henne no."],
   svomming: ["Svømmingen venter. Svøm nå.", "Symjinga ventar. Sym no."],
   tannlege: ["Tannlegen venter. Gå inn nå.", "Tannlækjaren ventar. Gå inn no."],
+  dans: ["Dansen venter. Gå nå.", "Dansen ventar. Gå no."],
 };
 
 export function aktivitetNa(id: string, spraak: Spraak, sen = false): string {
@@ -177,8 +178,7 @@ export function aktivitetNa(id: string, spraak: Spraak, sen = false): string {
   const rad = tabell[id];
   if (rad) return mal(spraak, rad[0], rad[1]);
   const navn = visNavn(id, spraak);
-  const liten = navn.charAt(0).toLowerCase() + navn.slice(1);
   return sen
-    ? mal(spraak, "{navn} venter. Gjør det nå.", "{navn} ventar. Gjer det no.", { navn: liten })
-    : mal(spraak, "Nå er det tid for {navn}.", "No er det tid for {navn}.", { navn: liten });
+    ? mal(spraak, "{navn} venter. Gå nå.", "{navn} ventar. Gå no.", { navn })
+    : mal(spraak, "Nå er det tid for {navn}.", "No er det tid for {navn}.", { navn: navn.toLowerCase() });
 }
