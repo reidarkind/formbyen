@@ -192,6 +192,13 @@ export interface Oppgave {
   ovelse?: boolean;
   oppdrag?: boolean;
   monster?: string[];
+  /** Farge per figur når mønsteret er farge. Tomt når mønsteret er form. */
+  monsterFarge?: string[];
+  /** Størrelse per figur når mønsteret er størrelse. */
+  monsterStor?: number[];
+  /** Ett hint om gangen. Færre hint gir flere mynter. */
+  hint?: string[];
+  hintVist?: number;
   ruter?: { id: string; ruter: number }[];
   koordinat?: string;
 }
@@ -335,6 +342,8 @@ export interface AktivDag {
   forsteRett?: number;
   /** Oppgaver som fikk et første svar. */
   svarTotalt?: number;
+  /** Hvor mange ganger hver oppgavetype er brukt i dag. */
+  typeTakt?: Partial<Record<OppgaveType, number>>;
 }
 
 export interface Innstillinger {

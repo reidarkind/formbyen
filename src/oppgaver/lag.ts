@@ -384,9 +384,18 @@ function lagLenge(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   return oppgave;
 }
 
+function apenKlokke(ctx: OppgaveKontekst, butikk: { apner: number; stenger: number; stengtFra?: number }): number {
+  if (ctx.naa !== undefined) return ctx.naa;
+  const rull = Math.floor(ctx.tilfeldig() * 4);
+  if (rull === 0) return butikk.apner + 30;
+  if (rull === 1) return Math.max(0, butikk.apner - 30);
+  if (rull === 2 && butikk.stengtFra !== undefined) return butikk.stengtFra + 5;
+  return butikk.stenger + 15;
+}
+
 function lagApen(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const butikk = ctx.plan?.butikk ?? { apner: klokke(14, 0), stenger: klokke(17, 0), stengtHele: false };
-  const naa = ctx.naa ?? butikk.apner;
+  const naa = apenKlokke(ctx, butikk);
   const apen = erApen(naa, butikk);
   const neste = nesteApning(naa, butikk, ctx.plan?.nesteApning);
   const oppgave = basis(
@@ -699,33 +708,62 @@ function lagTell(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   return oppgave;
 }
 
-function monsterPar(v: number): { sekvens: string[]; neste: string } {
+function monsterPar(v: number, voksende: boolean): { sekvens: string[]; neste: string; farge?: string[]; stor?: number[] } {
   const a = "kvadrat";
   const b = "sirkel";
   const c = "trekant";
-  const m = v % 4;
+  if (voksende) return { sekvens: [a, a, b, a, b, b], neste: a };
+  const m = v % 5;
   if (m === 1) return { sekvens: [a, a, b, a, a, b], neste: a };
   if (m === 2) return { sekvens: [a, b, c, a, b, c], neste: a };
   if (m === 3) return { sekvens: [a, b, b, a, b, b], neste: a };
-  return { sekvens: [a, b, a, b], neste: a };
+  if (m === 4) {
+    const farge = ["takRodt", "takBlatt", "takRodt", "takBlatt"];
+    return { sekvens: [b, b, b, b], neste: b, farge: [...farge, "takRodt"] };
+  }
+  const stor = [1, 2, 1, 2, 1];
+  return { sekvens: [a, a, a, a], neste: "1", stor };
 }
 
 function lagMonster(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const v = variant(mal.id);
-  const { sekvens, neste } = monsterPar(v);
-  const pakkeFormer = stokk(ctx.tilfeldig, [neste, neste === "kvadrat" ? "sirkel" : "kvadrat", "trekant"]).slice(0, 3);
-  const unike = [...new Set(pakkeFormer)];
-  while (unike.length < 3) unike.push(unike.length === 1 ? "rektangel" : "femkant");
+  const voksende = ctx.nivaa === "utfordrende" && v % 5 === 0;
+  const laget = monsterPar(v, voksende);
+  const neste = laget.farge ? (laget.farge.at(-1) ?? "takRodt") : laget.stor ? String(laget.stor.at(-1) ?? 1) : laget.neste;
+  const sekvens = laget.sekvens;
+  const pakke = laget.farge
+    ? ["takRodt", "takBlatt", "aksentGul"]
+    : laget.stor
+      ? ["1", "2", "3"]
+      : stokk(ctx.tilfeldig, [laget.neste, laget.neste === "kvadrat" ? "sirkel" : "kvadrat", "trekant"]);
+  const unike = [...new Set(pakke)];
+  while (!laget.farge && unike.length < 3) unike.push(unike.length === 1 ? "rektangel" : "femkant");
   const oppgave = basis(
     mal,
     ctx,
-    si(ctx.spraak, "Hva kommer etterpå?", "Kva kjem etterpå?"),
+    si(
+      ctx.spraak,
+      voksende ? "Mønsteret vokser. Hva kommer etterpå?" : "Hva kommer etterpå?",
+      voksende ? "Mønsteret veks. Kva kjem etterpå?" : "Kva kjem etterpå?",
+    ),
     `form:${neste}`,
     neste,
-    vareForForm(neste),
+    vareForForm(laget.neste),
   );
   oppgave.monster = sekvens;
-  oppgave.valg = unike.slice(0, 3).map((form) => ({ id: form, form }));
+  oppgave.monsterFarge = laget.farge?.slice(0, -1);
+  oppgave.monsterStor = laget.stor?.slice(0, -1);
+  oppgave.valg = laget.stor
+    ? [
+        { id: "1", form: "kvadrat", tekst: "liten" },
+        { id: "2", form: "kvadrat", tekst: "stor" },
+        { id: "3", form: "kvadrat", tekst: "størst" },
+      ]
+    : unike.slice(0, 3).map((form) => ({
+        id: form,
+        form: laget.farge ? "sirkel" : form,
+        tekst: form === "takRodt" ? "rød" : form === "takBlatt" ? "blå" : form === "aksentGul" ? "gul" : undefined,
+      }));
   oppgave.fasit = neste;
   return oppgave;
 }
@@ -800,7 +838,8 @@ function lagMasse(mal: Mal, ctx: OppgaveKontekst): Oppgave {
     const oppgave = basis(
       mal,
       ctx,
-      si(ctx.spraak, "Hvor mange {vare} veier like mye?", "Kor mange {vare} veg like mykje?", {
+      si(ctx.spraak, "Sekken veier {kg} kilo. Hvor mange {vare} veier like mye?", "Sekken veg {kg} kilo. Kor mange {vare} veg like mykje?", {
+        kg: String(kg),
         vare: navnVare(liten, ctx.spraak),
       }),
       `vekt:${navn}`,

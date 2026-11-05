@@ -145,7 +145,34 @@ export function tegnKart(by: ByTilstand, tid: number, leggetid = 20 * 60, valg: 
     const px = (pynt.x - ramme.x0) * RUTE + RUTE / 2;
     const py = (pynt.y - ramme.y0) * RUTE + RUTE / 2;
     const farge = pynt.vare === "pynt-flagg" ? FARGER.takRodt : pynt.vare === "pynt-lykt" ? FARGER.vinduslys : FARGER.takBlatt;
-    flater.push(`<circle data-pynt="${pynt.id}" cx="${px}" cy="${py}" r="8" fill="${farge}" stroke="${FARGER.kontur}" stroke-width="2"/>`);
+    const form =
+      pynt.vare === "pynt-flagg"
+        ? `<polygon points="0,-12 12,0 0,8" fill="${farge}" stroke="${FARGER.kontur}" stroke-width="2"/><rect x="-2" y="-12" width="3" height="24" fill="${FARGER.tre}" stroke="${FARGER.kontur}"/>`
+        : pynt.vare === "pynt-lykt"
+          ? `<rect x="-6" y="-12" width="12" height="16" fill="${farge}" stroke="${FARGER.kontur}" stroke-width="2"/>`
+          : pynt.vare === "pynt-benk"
+            ? `<rect x="-14" y="-4" width="28" height="8" fill="${FARGER.tre}" stroke="${FARGER.kontur}" stroke-width="2"/>`
+            : `<circle r="8" fill="${farge}" stroke="${FARGER.kontur}" stroke-width="2"/><circle cy="-6" r="4" fill="${FARGER.aksentGronn}" stroke="${FARGER.kontur}"/>`;
+    flater.push(`<g data-pynt="${pynt.id}" transform="translate(${px} ${py})">${form}</g>`);
+  }
+  const bronnFerdig = by.bygg.some((bygg) => bygg.bygg === "bronn" && bygg.ferdig);
+  if (bronnFerdig && innen(5, 2, ramme)) {
+    const px = (5 - ramme.x0) * RUTE;
+    const py = (2 - ramme.y0) * RUTE;
+    flater.push(
+      `<g data-sted="pynt" transform="translate(${px} ${py})"><rect x="6" y="16" width="32" height="22" fill="${FARGER.takBlatt}" stroke="${FARGER.kontur}" stroke-width="2"/><polygon points="4,16 22,2 40,16" fill="${FARGER.takRodt}" stroke="${FARGER.kontur}" stroke-width="2"/><rect x="18" y="24" width="10" height="14" fill="${FARGER.papir}" stroke="${FARGER.kontur}" stroke-width="2"/></g>`,
+    );
+  }
+  if (innen(4, 1, ramme)) {
+    const px = (4 - ramme.x0) * RUTE;
+    const py = (1 - ramme.y0) * RUTE;
+    const feilTid = (tid + 60) % (24 * 60);
+    const vinkel = ((feilTid / 60) % 12) * 30 * (Math.PI / 180);
+    const x2 = (22 + Math.sin(vinkel) * 5).toFixed(1);
+    const y2 = (16 - Math.cos(vinkel) * 5).toFixed(1);
+    flater.push(
+      `<g data-sted="taarn" transform="translate(${px} ${py})"><rect x="14" y="10" width="16" height="28" fill="${FARGER.mur}" stroke="${FARGER.kontur}" stroke-width="2"/><polygon points="12,10 22,0 32,10" fill="${FARGER.takRodt}" stroke="${FARGER.kontur}" stroke-width="2"/><circle cx="22" cy="20" r="6" fill="${FARGER.papir}" stroke="${FARGER.kontur}" stroke-width="2"/><line x1="22" y1="20" x2="${x2}" y2="${y2}" stroke="${FARGER.kontur}" stroke-width="2"/></g>`,
+    );
   }
   if (valg.figur && innen(valg.figur.x, valg.figur.y, ramme)) {
     const vedSiden = figurVedSiden(by, valg.figur.x, valg.figur.y, ramme);

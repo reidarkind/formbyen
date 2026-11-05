@@ -7,10 +7,11 @@ import type { Avtale, Dagsplan, Lagret, Nivaa, StedId } from "../typer";
 import { avtaleHer, gangMinutter, nesteSteg, stedForAvtale, type NesteSteg } from "./anbefaling";
 import { byggDef } from "../bygg/katalog";
 import { ledigeTomter } from "../bygg/kart";
+import { maalBygg } from "../bygg/handleliste";
 import { utfor } from "./okt";
 import type { ByggId } from "../typer";
 
-const NIVA: Nivaa[] = ["forste", "andre", "utfordrende"];
+const NIVA: Nivaa[] = ["forste", "andre", "utfordrende", "blandet"];
 
 function minuttOk(nivaa: Nivaa, tid: number): boolean {
   const steg = nivaa === "forste" ? 30 : nivaa === "andre" ? 15 : 5;
@@ -63,6 +64,29 @@ function sjekkSteg(lagret: Lagret, steg: NesteSteg): string | null {
     const omIMorgen = steg.grunn.toLowerCase().includes("i morgen") || steg.grunn.toLowerCase().includes("mandag");
     if (omButikk && !omIMorgen && steg.handling.tid > dag.plan.butikk.stenger && !dag.plan.butikk.stengtHele) {
       return "venter på butikken etter stengetid";
+    }
+  }
+  if (steg.handling.slag === "gaa" && steg.handling.sted === "butikk") {
+    const maal = maalBygg(lagret);
+    const navn: Record<string, string> = {
+      bronn: "brønn",
+      gjerde: "gjerde",
+      vedskjul: "vedskjul",
+      hytte: "hytte",
+      hus: "hus",
+      slott: "slott",
+      lekeplass: "lekeplass",
+      ronne: "rønn",
+      bakeri: "bakeri",
+      bro: "bro",
+      skole: "skole",
+      villa: "villa",
+      borg: "borg",
+    };
+    if (maal && dag.dagensBygg && maal.id !== dag.dagensBygg) return `butikk uten ja: ${maal.id}`;
+    if (maal) {
+      const bit = (navn[maal.id] ?? maal.id).slice(0, 4);
+      if (!steg.grunn.toLowerCase().includes(bit)) return `butikken nevner ikke ${maal.id}: ${steg.grunn}`;
     }
   }
   if (steg.handling.slag === "gaa" && steg.handling.sted === "butikk" && dag.dorLest) {

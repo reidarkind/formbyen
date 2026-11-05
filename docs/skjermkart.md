@@ -36,4 +36,6 @@ Ark fra toppfeltet: kurven, dagens plan, pause. Byplanen åpnes fra kartet.
 - Dagen slutter med «Legg deg» hjemme. «Snart leggetid» vises bare det siste halvtimet. Før det kan barnet øve i klokkeleken.
 - Når slottet er ferdig, sier forsiden «Byen er ferdig!» og tilbyr spill, pynt, klokkeleken, dagboka og innstillinger. Ny by ligger bak voksenlåsen og må bekreftes.
 - Kvelden viser 0, 1 eller 2 stjerner: én for å rekke alle avtaler, og én for at minst 80 prosent av svarene var riktige på første forsøk. Et frivillig oppdrag på kartet kan gi en tredje stjerne. Hjelperen ber aldri om oppdraget.
-- Fotoalbumet har et kort for hver form. Ukjente former er bare en skygge. På fredag, når minst fem dager den uka har en stjerne, står det «Fredagsfest på torget.»
+- Fotoalbumet har et kort for hver form, og pynten som er satt ut. Ukjente former er bare en skygge. På fredag, når minst fem dager den uka har en stjerne, står det «Fredagsfest på torget.»
+- Pyntebuen er et hus på kartet når brønnen er ferdig. Barnet velger en ting og setter den på en ledig rute. Den tegnes på kartet, trekkes fra myntene og ligger i albumet.
+- Klokketårnet på kartet viser feil tid. Tårnuret sammenligner med armbåndsuret og nevner morgendagens avtale. Kvelden kan sortere dagens hendelser. «God natt» er alltid synlig.

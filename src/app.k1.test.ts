@@ -2,6 +2,11 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { NOKKEL, standardLagret } from "./lagring/lagring";
 import type { Lagret, Oppgave } from "./typer";
+import { froTilfeldig } from "./felles/tilfeldig";
+import { lagFraMal } from "./oppgaver/lag";
+import { malerFor } from "./oppgaver/maler";
+import { sjekkSvar } from "./oppgaver/sjekk";
+import { OPPGAVE_TYPER } from "./typer";
 import { utfor } from "./spill/okt";
 
 const oppgave: Oppgave = {
@@ -68,5 +73,27 @@ describe("feil svar på skjermen", () => {
       }
     }
     expect(document.querySelector("button"), "skjermen har ingen knapp").toBeTruthy();
+  });
+});
+
+describe("alle maler", () => {
+  it("bygger et svar som kan sjekkes", () => {
+    for (const type of OPPGAVE_TYPER) {
+      for (const mal of malerFor(type)) {
+        const oppgave = lagFraMal(mal, {
+          tilfeldig: froTilfeldig(mal.id.length * 17),
+          spraak: "nb",
+          nivaa: "andre",
+          mestring: {},
+          plan: null,
+          unngaMal: [],
+          unngaNokkel: "",
+          tidsromPa: true,
+        });
+        expect(oppgave.type).toBe(type);
+        expect(oppgave.fasit.length).toBeGreaterThan(0);
+        expect(sjekkSvar(oppgave, oppgave.fasit)).toBe(true);
+      }
+    }
   });
 });

@@ -190,8 +190,17 @@ function apneOppgave(lagret: Lagret): Oppgave {
   const skilt = skiltFor(dag);
   const spraak = lagret.innstillinger.spraak;
   const riktig = skilt.neste;
-  const kandidater = stokk(froTilfeldig(lagret.fro * 17 + riktig), [riktig + 30, riktig - 30, riktig + 60, riktig - 60])
-    .map((tid) => (tid + 24 * 60) % (24 * 60))
+  const time = Math.floor(riktig / 60);
+  const min = riktig % 60;
+  const kvart = (d: number) => (time * 60 + min + d + 24 * 60) % (24 * 60);
+  const halvFeil = min >= 30 ? ((time + 1) % 24) * 60 + (min - 30) : ((time + 23) % 24) * 60 + (min + 30);
+  const kandidater = stokk(froTilfeldig(lagret.fro * 17 + riktig), [
+    ((time + 1) % 24) * 60 + min,
+    ((time + 23) % 24) * 60 + min,
+    kvart(15),
+    kvart(-15),
+    halvFeil,
+  ])
     .filter((tid, indeks, liste) => tid !== riktig && liste.indexOf(tid) === indeks)
     .slice(0, 2);
   const valg = blandValg(lagret, riktig, [
@@ -425,39 +434,123 @@ function handle(lagret: Lagret): { lagret: Lagret; melding: string | null } {
   const kloss = vare.startsWith("kloss");
   const klokkeTyper = ["les-klokka", "still-klokka", "koble", "hvor-lenge", "rekker-jeg", "apningstider"] as const;
   const formTyper = ["finn-formen", "hvem-passer-ikke", "sorter", "tell", "tegn", "monster"] as const;
-  const vilKlokke = (lagret.fro * 17) % 2 === 1;
-  const formType = formTyper[lagret.fro % formTyper.length] ?? "finn-formen";
-  const manglerRom = ROMFORMER.find((form) => !lagret.by.kjente3d.includes(form));
+  const form = formForVare(vare);
+  const vilKlokke = (lagret.fro * 17) % 2 === 1 || !form;
+  const formType = velgType(lagret, formTyper[lagret.fro % formTyper.length] ?? "finn-formen", formTyper, []);
+  const manglerRom = ROMFORMER.find((rom) => !lagret.by.kjente3d.includes(rom));
   const monster = !vilKlokke && lagret.by.monsterFullfort < 1 && lagret.fro % 4 === 0;
   const laerRom = !vilKlokke && !monster && Boolean(manglerRom);
+  const brukGavl = !vilKlokke && !monster && !laerRom && Boolean(form) && lagret.fro % 4 === 1;
   const hylle = vilKlokke || laerRom ? undefined : kloss ? "kloss" : "form";
-  const trukket = trekkOppgave({
-    ...kontekst(lagret),
-    hylle,
-    type: vilKlokke ? klokkeTyper[lagret.fro % klokkeTyper.length] : monster ? "monster" : laerRom ? "finn-formen" : formType,
-    maalForm: laerRom && manglerRom ? manglerRom : maalFormFor(lagret, vare),
-    kjente3d: lagret.by.kjente3d,
-  });
+  const trukket = brukGavl
+    ? gavlOppgave(lagret, vare)
+    : trekkOppgave({
+        ...kontekst(lagret),
+        hylle,
+        type: vilKlokke
+          ? velgType(lagret, klokkeTyper[lagret.fro % klokkeTyper.length] ?? "les-klokka", klokkeTyper, [])
+          : monster
+            ? "monster"
+            : laerRom
+              ? "finn-formen"
+              : formType,
+        maalForm: laerRom && manglerRom ? manglerRom : maalFormFor(lagret, vare),
+        kjente3d: lagret.by.kjente3d,
+      });
   const delNavn = navnVare(vare, lagret.innstillinger.spraak);
   const ledd = vare.startsWith("tak") || vare.startsWith("vindu") || vare === "jord" ? "et" : "en";
-  const prompt = vilKlokke ? trukket.prompt : `${si(lagret, "Vi trenger {del}.", "Vi treng {del}.", { del: `${ledd} ${delNavn}` })} ${trukket.prompt}`;
-  const oppgave: Oppgave = { ...trukket, prompt, hvem: si(lagret, "ekspeditøren", "ekspeditøren"), vare };
+  const prompt = vilKlokke || brukGavl ? trukket.prompt : `${si(lagret, "Vi trenger {del}.", "Vi treng {del}.", { del: `${ledd} ${delNavn}` })} ${trukket.prompt}`;
+  const oppgave: Oppgave = { ...trukket, prompt, hvem: brukGavl ? trukket.hvem : si(lagret, "ekspeditøren", "ekspeditøren"), vare };
   const lengde = lagret.innstillinger.nivaa === "forste" ? 3 : lagret.innstillinger.nivaa === "utfordrende" ? 5 : 4;
   const bonus = bonusOppgaver(lagret, oppgave, lengde - 1);
+  const ko = [oppgave, ...bonus];
   return {
-    lagret: huskOppgave({ ...lagret, aktivDag: { ...dag, fase: "handel", ko: [oppgave, ...bonus], aktiv: 0, forklaring: null, melding: null, feil: 0 } }, oppgave),
+    lagret: medTakt(huskOppgave({ ...lagret, aktivDag: { ...dag, fase: "handel", ko, aktiv: 0, forklaring: null, melding: null, feil: 0 } }, oppgave), ko),
     melding: null,
+  };
+}
+
+function velgType(lagret: Lagret, onsket: Oppgave["type"], familie: readonly Oppgave["type"][], brukt: Oppgave[]): Oppgave["type"] {
+  const kandidater = [onsket, ...familie.filter((type) => type !== onsket)];
+  for (const type of kandidater) {
+    const tidligere = lagret.aktivDag?.typeTakt?.[type] ?? 0;
+    const naa = brukt.filter((oppgave) => oppgave.type === type).length;
+    if (tidligere + naa < 2) return type;
+  }
+  return onsket;
+}
+
+function medTakt(lagret: Lagret, oppgaver: Oppgave[]): Lagret {
+  const dag = lagret.aktivDag;
+  if (!dag) return lagret;
+  const takt = { ...(dag.typeTakt ?? {}) };
+  for (const oppgave of oppgaver) takt[oppgave.type] = (takt[oppgave.type] ?? 0) + 1;
+  return { ...lagret, aktivDag: { ...dag, typeTakt: takt } };
+}
+
+function gavlOppgave(lagret: Lagret, vare: VareId): Oppgave {
+  const form = formForVare(vare) ?? "trekant";
+  const n = lagret.innstillinger.nivaa === "forste" ? 2 : lagret.innstillinger.nivaa === "andre" ? 3 : 4;
+  const biter = Array.from({ length: n }, (_, i) => ({ id: `bit-${i}`, form }));
+  return {
+    id: `gavl-${lagret.fro}`,
+    type: "sorter",
+    mal: "gavl-1",
+    ferdighet: "sortere",
+    prompt: si(lagret, "Hjelp meg å tette gavlen.", "Hjelp meg å tette gavlen."),
+    nokkel: `form:${form}`,
+    valg: [],
+    fasit: biter.map((bit) => `${bit.id}:gavl`).join(","),
+    vare,
+    hvem: si(lagret, "snekkeren", "snikkaren"),
+    overraskelse: false,
+    kasser: [{ id: "gavl", tekst: si(lagret, "Gavl", "Gavl"), symbol: form }],
+    varer: biter,
+    form,
+  };
+}
+
+function bakerOppgave(lagret: Lagret): Oppgave {
+  const steg = lagret.innstillinger.nivaa === "forste" ? 30 : lagret.innstillinger.nivaa === "andre" ? 15 : 5;
+  const fra = lagret.aktivDag?.tid ?? 14 * 60;
+  const til = (fra + steg) % (24 * 60);
+  const feilA = (til + steg) % (24 * 60);
+  const feilB = (til - steg + 24 * 60) % (24 * 60);
+  const spraak = lagret.innstillinger.spraak;
+  const valg = [til, feilA, feilB]
+    .filter((tid, indeks, liste) => liste.indexOf(tid) === indeks)
+    .map((tid) => ({ id: String(tid), klokke: tid, tekst: tidTilOrd(tid, spraak) }));
+  return {
+    id: `kake-${lagret.fro}`,
+    type: "hvor-lenge",
+    mal: "kake-1",
+    ferdighet: "tidsrom",
+    prompt: si(lagret, "Kaken står i ovnen. Når tar vi den ut?", "Kaka står i omnen. Når tek vi ho ut?"),
+    nokkel: `klokke:${til}`,
+    valg,
+    fasit: String(til),
+    vare: "planke",
+    hvem: si(lagret, "bakeren", "bakaren"),
+    overraskelse: false,
+    ovelse: true,
+    maalKlokke: fra,
+    tall: til,
   };
 }
 
 function kasseOppgave(lagret: Lagret): Oppgave {
   const former = ["kule", "kube", "sylinder"] as const;
+  const hint = [
+    si(lagret, "Den har ingen hjørner.", "Han har ingen hjørne."),
+    si(lagret, "Den kan trille.", "Han kan trille."),
+    si(lagret, "Den kan ikke stå.", "Han kan ikkje stå."),
+  ];
   return {
     id: `kasse-${lagret.fro}`,
     type: "stempel",
     mal: "kasse-1",
     ferdighet: "former-3d",
-    prompt: si(lagret, "Noe ligger i kassa. Det har ingen hjørner, og det kan trille.", "Noko ligg i kassa. Det har ingen hjørne, og det kan trille."),
+    prompt: hint[0] ?? "",
     nokkel: "form:kule",
     valg: former.map((form) => ({ id: form, form, tekst: formNavn(form, lagret.innstillinger.spraak) })),
     fasit: "kule",
@@ -465,6 +558,8 @@ function kasseOppgave(lagret: Lagret): Oppgave {
     hvem: si(lagret, "ekspeditøren", "ekspeditøren"),
     overraskelse: false,
     ovelse: true,
+    hint,
+    hintVist: 1,
   };
 }
 
@@ -505,23 +600,30 @@ function bonusOppgaver(lagret: Lagret, forste: Oppgave, antall: number): Oppgave
   const ut: Oppgave[] = [];
   let klokke = !forsteErKlokke;
   for (let i = 0; i < antall; i++) {
-    const type = klokke ? klokkeTyper[(lagret.fro + i) % klokkeTyper.length] : formTyper[(lagret.fro + i) % formTyper.length];
+    const familie = klokke ? klokkeTyper : formTyper;
+    const onsket = familie[(lagret.fro + i) % familie.length] ?? (klokke ? "les-klokka" : "finn-formen");
+    const type = velgType(lagret, onsket, familie, ut);
+    const erDel = i === 1 && lagret.innstillinger.nivaa === "andre";
     try {
-      const trukket = trekkOppgave({
-        ...kontekst(lagret),
-        tilfeldig: froTilfeldig(lagret.fro + 17 * (i + 1)),
-        hylle: klokke ? undefined : "form",
-        type,
-        unngaMal: [forste.mal, ...ut.map((rad) => rad.mal)],
-      });
-      const detektiv =
-        trukket.type === "finn-formen" && trukket.form === "sirkel"
-          ? {
-              ...trukket,
-              prompt: si(lagret, "Kumlokket i gata er rundt. Finn alle sirklene.", "Kumlokket i gata er rundt. Finn alle sirklane."),
-            }
-          : trukket;
-      const ovelse = !(i === 1 && lagret.innstillinger.nivaa === "andre");
+      const kake = klokke && !erDel && (lagret.fro + i) % 5 === 0;
+      const trukket = kake
+        ? bakerOppgave(lagret)
+        : trekkOppgave({
+            ...kontekst(lagret),
+            tilfeldig: froTilfeldig(lagret.fro + 17 * (i + 1)),
+            hylle: klokke ? undefined : "form",
+            type,
+            unngaMal: [forste.mal, ...ut.map((rad) => rad.mal)],
+          });
+      const bybilde: Record<string, [string, string]> = {
+        sirkel: ["Kumlokket i gata er rundt. Finn alle sirklene.", "Kumlokket i gata er rundt. Finn alle sirklane."],
+        trekant: ["Skiltet er en trekant. Finn alle trekantene.", "Skiltet er ein trekant. Finn alle trekantane."],
+        kvadrat: ["Pizzaboksen er et kvadrat. Finn alle kvadratene.", "Pizzaboksen er eit kvadrat. Finn alle kvadrata."],
+        rektangel: ["Døra er et rektangel. Finn alle rektanglene.", "Døra er eit rektangel. Finn alle rektangla."],
+      };
+      const bilde = trukket.type === "finn-formen" && trukket.form ? bybilde[trukket.form] : undefined;
+      const detektiv = bilde ? { ...trukket, prompt: si(lagret, bilde[0], bilde[1]) } : trukket;
+      const ovelse = !erDel;
       ut.push(i === 0 && lagret.innstillinger.nivaa !== "forste" ? kasseOppgave(lagret) : { ...detektiv, ovelse });
       klokke = !klokke;
     } catch {
@@ -605,7 +707,10 @@ function svar(lagret: Lagret, gitt: string): { lagret: Lagret; melding: string |
       neste = { ...neste, aktivDag: { ...neste.aktivDag, kjopIDag: (neste.aktivDag.kjopIDag ?? 0) + 1 } };
     }
   } else {
-    if (!erAktivitet && oppgave.ovelse && (dag.feil ?? 0) === 0) neste = { ...neste, mynter: neste.mynter + 1 };
+    if (!erAktivitet && oppgave.ovelse && (dag.feil ?? 0) === 0) {
+      const faa = oppgave.hint && (oppgave.hintVist ?? 1) <= 1 ? 2 : 1;
+      neste = { ...neste, mynter: neste.mynter + faa };
+    }
     neste = noter(neste, oppgave);
   }
   const dagEtter = neste.aktivDag ?? dag;
