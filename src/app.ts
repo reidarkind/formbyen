@@ -1,8 +1,9 @@
 import { registerSW } from "virtual:pwa-register";
 import { maalBygg, manglendeDeler } from "./bygg/handleliste";
-import { byggSomKanStartes, byenErFerdig, ledigeTomter, lesRute, nesteByggId, pyntRuter, ruteNavn } from "./bygg/kart";
+import { byggSomKanStartes, byenErFerdig, ledigePyntPlasser, ledigeTomter, lesRute, nesteByggId, pyntOmrade, pyntOmradeRamme, pyntPlasser, ruteNavn } from "./bygg/kart";
+import { PYNT_FORMER, pyntSvg } from "./grafikk/pynt-svg";
 import { byggDef } from "./bygg/katalog";
-import { celleFor } from "./bygg/landemerker";
+import { boligen, celleFor } from "./bygg/landemerker";
 import { tegnBygg, tegnFremdrift, tegnKart } from "./grafikk/bygg-svg";
 import { delSvg } from "./grafikk/fasade";
 import { byggmester, ikon, kjaeledyr } from "./grafikk/figurer";
@@ -15,14 +16,14 @@ import { beVarigLagring } from "./pwa/lagring";
 import { oppdateringTekst, sjekkRegistrering, skalSjekkeIgjen } from "./pwa/oppdatering";
 import { sporsmalViser, svarViser } from "./oppgaver/visning";
 import { anbefalt, gangMinutter, nesteSteg } from "./spill/anbefaling";
-import { aktivOppgave, apningTekst, PYNT_PRIS, utfor, type Handling } from "./spill/okt";
+import { aktivOppgave, apningTekst, PYNT, PYNT_PRIS, utfor, type Handling } from "./spill/okt";
 import { urRunde, type UrSteg } from "./spill/taarnur";
 import { FERDIGHET_NAVN, ferdighetStatus, OMRADER, oversiktLinjer, type Status } from "./tilpasning/oversikt";
 import { omrissForForm } from "./tegning/omriss";
 import { rasterFraAlpha, vurderTegning } from "./tegning/vurder";
 import { visNavn } from "./dag/aktiviteter";
 import { ukedagFor } from "./dag/plan";
-import { byggBestemt as byggBestemtOrd, fraNb, formNavn, mal, navnBygg, navnVare, storForbokstav, vareAntall } from "./tekst/ordbok";
+import { byggBestemt as byggBestemtOrd, formMedArtikkel, fraNb, formNavn, mal, navnBygg, navnVare, smaForbokstav, storForbokstav, vareAntall, vareBestemt } from "./tekst/ordbok";
 import { manedTekst, si, SPRAAK_NAVN, ukedagTekst } from "./tekst/spraak";
 import { himmel, leggTil, tidTilDigital24, tidTilOrd, minutt, timer, klokke } from "./tid/tid";
 import { erSpraak, SPRAAK, type ByggId, type Ferdighet, type Lagret, type Nivaa, type NokkelLager, type Oppgave, type SkiltTid, type Spraak, type StedId, type Ukedag, type VareId } from "./typer";
@@ -38,7 +39,7 @@ const lager: NokkelLager = {
   removeItem: (nokkel) => localStorage.removeItem(nokkel),
 };
 
-type Skjerm = "intro" | "velg" | "meny" | "pause" | "dagstart" | "verden" | "kart" | "bygg" | "pynt" | "kveld" | "innstillinger" | "voksen" | "dagbok" | "album" | "ur" | "kurv";
+type Skjerm = "intro" | "velg" | "meny" | "pause" | "dagstart" | "verden" | "kart" | "bygg" | "pynt" | "pynt-kart" | "kveld" | "innstillinger" | "voksen" | "dagbok" | "album" | "ur" | "kurv";
 type VoksenFane = "oversikt" | "detalj" | "nivaa" | "avtaler" | "data" | "om";
 
 const VERSJON = "1.2.0";
@@ -795,7 +796,7 @@ function sceneHtml(): string {
   }
   if (dag.sted === "hjemme") {
     const spiser = nesteSteg(lagret).handling.slag === "spis";
-    const hjem = lagret.by.bygg.find((bygg) => byggDef(bygg.bygg).hjem && !bygg.uthus);
+    const hjem = boligen(lagret.by);
     return `${tilbake}<section class="scene"><h1>${si(spraak(), "Hjemme", "Heime")}</h1>${tegnBygg(hjem?.bygg ?? "ronne", dag.tid >= 18 * 60)}${spiser ? `<p>${si(spraak(), "Familien er sulten.", "Familien er svolten.")}</p>` : ""}</section>`;
   }
   if (dag.sted === "byggeplass") {
@@ -940,25 +941,77 @@ function kartHtml(): string {
   return side(si(spraak(), "Byen", "Byen"), midt, tilbakeKnapp("verden"));
 }
 
+/** `mal` fra ordboka, for steder der `mal` er et lokalt navn. */
+const malTekst = mal;
 let valgtPynt: VareId | "" = "";
-const PYNT_VARER = ["pynt-blomst", "pynt-flagg", "pynt-lykt", "pynt-benk"] as VareId[];
+/** Stedet som vises forstørret når barnet setter eller flytter pynt (gj. 10, C4). */
+let pyntOmradeValgt: string | null = null;
+/** Pynt barnet har trykket på for å flytte eller ta bort. */
+let valgtPyntId: string | null = null;
 
+/** Pyntebua er en butikk: bilde, navn og pris. Det barnet ikke har råd til, er grått (gj. 10, C4). */
 function pyntHtml(): string {
   const ferdig = lagret.by.bygg.some((bygg) => bygg.bygg === "bronn" && bygg.ferdig);
-  const ruter = pyntRuter(lagret.by);
-  const varer = PYNT_VARER.map((vare) => {
+  const varer = PYNT.map((vare) => {
     const pris = PYNT_PRIS[vare] ?? 2;
-    return `<button type="button" data-pynt="${vare}" class="${valgtPynt === vare ? "valgt" : ""}"><span>${esc(navnVare(vare, spraak()))}</span><span class="pris">${pris} ●</span></button>`;
+    const mangler = pris - lagret.mynter;
+    const navn = storForbokstav(navnVare(vare, spraak()));
+    const pengar = mangler > 0 ? `<span class="mangler-tekst">${esc(mal(spraak(), "Mangler {n} mynter", "Manglar {n} myntar", { n: String(mangler) }))}</span>` : `<span class="pris"><span class="mynt liten-mynt">${pris}</span></span>`;
+    return `<button type="button" data-pynt="${vare}" class="pynt-vare${mangler > 0 ? " mangler" : ""}" aria-label="${esc(`${navn}, ${pris}`)}">${pyntSvg(vare, 44)}<span class="pynt-navn">${esc(navn)}</span>${pengar}</button>`;
   }).join("");
-  const plass = valgtPynt
-    ? ruter.length
-      ? `<h2>${si(spraak(), "Hvor skal pynten stå?", "Kvar skal pynten stå?")}</h2><div class="liste ruter">${ruter.map(([x, y]) => `<button type="button" data-rute="${x},${y}">${esc(ruteNavn(x, y))}</button>`).join("")}</div>`
-      : `<p>${si(spraak(), "Det er ingen ledige ruter ved byggene.", "Det er ingen ledige ruter ved bygga.")}</p>`
-    : "";
   const midt = ferdig
-    ? `<p class="mynter"><span class="mynt">${lagret.mynter}</span> ${si(spraak(), "mynter", "myntar")}</p>${melding ? `<p class="banner">${esc(melding)}</p>` : ""}<div class="liste pynt-liste">${varer}</div>${plass}`
+    ? `<p class="mynter"><span class="mynt">${lagret.mynter}</span> ${si(spraak(), "mynter", "myntar")}</p>${melding ? `<p class="banner">${esc(melding)}</p>` : ""}<div class="pynt-butikk">${varer}</div>`
     : `<p>${si(spraak(), "Brønnen må være ferdig først.", "Brunnen må vere ferdig først.")}</p>`;
-  return side(si(spraak(), "Pyntebu", "Pyntebu"), midt, tilbakeKnapp(lagret.aktivDag ? "verden" : "meny"));
+  const flytt = ferdig && (lagret.by.pynt ?? []).length ? `<button type="button" data-pynt-se="1">${si(spraak(), "Flytt pynt", "Flytt pynt")}</button>` : "";
+  return side(si(spraak(), "Pyntebu", "Pyntebu"), midt, `${tilbakeKnapp(lagret.aktivDag ? "verden" : "meny", si(spraak(), "← Byen", "← Byen"))}${flytt}`);
+}
+
+/** «Blomsten er laget av en sirkel, en oval og en trekant.» */
+function pyntFormTekst(vare: VareId): string {
+  const former = (PYNT_FORMER[vare] ?? []).map((form) => formMedArtikkel(form, spraak()));
+  const liste = former.length > 1 ? `${former.slice(0, -1).join(", ")} ${si(spraak(), "og", "og")} ${former.at(-1)}` : (former[0] ?? "");
+  return mal(spraak(), "{pynt} er laget av {former}.", "{pynt} er laga av {former}.", { pynt: vareBestemt(vare, spraak()), former: liste });
+}
+
+/** Kartet med steder som har ledige plasser, eller ett sted forstørret med plassene som knapper. */
+function pyntKartHtml(): string {
+  const tid = lagret.aktivDag?.tid ?? 15 * 60;
+  const leggetid = lagret.aktivDag?.plan.leggetid ?? 20 * 60;
+  const valgt = valgtPyntId ? (lagret.by.pynt ?? []).find((rad) => rad.id === valgtPyntId) : undefined;
+  const flytter = Boolean(valgt);
+  const ramme = pyntOmradeValgt ? pyntOmradeRamme(lagret.by, pyntOmradeValgt) : null;
+  const tittel = valgt
+    ? si(spraak(), "Hvor skal pynten stå?", "Kvar skal pynten stå?")
+    : valgtPynt
+      ? mal(spraak(), "Hvor skal {pynt} stå?", "Kvar skal {pynt} stå?", { pynt: smaForbokstav(vareBestemt(valgtPynt, spraak())) })
+      : si(spraak(), "Trykk på pynten du vil flytte.", "Trykk på pynten du vil flytte.");
+  const info = valgt ? `<p class="banner">${esc(pyntFormTekst(valgt.vare))}</p>` : melding ? `<p class="banner">${esc(melding)}</p>` : "";
+  if (pyntOmradeValgt && ramme) {
+    const w = ramme.x1 - ramme.x0;
+    const h = ramme.y1 - ramme.y0;
+    const pos = (x: number, y: number) => `left:${(((x - ramme.x0) / w) * 100).toFixed(1)}%;top:${(((y - ramme.y0) / h) * 100).toFixed(1)}%`;
+    const plasser = pyntPlasser(lagret.by).filter((plass) => pyntOmrade(plass.plass) === pyntOmradeValgt);
+    const knapper = plasser
+      .map((plass) => {
+        const her = (lagret.by.pynt ?? []).find((rad) => rad.plass === plass.plass);
+        if (her) return `<button type="button" class="pynt-plass har${her.id === valgtPyntId ? " valgt" : ""}" data-pynt-id="${esc(her.id)}" style="${pos(plass.x, plass.y)}" aria-label="${esc(storForbokstav(navnVare(her.vare, spraak())))}">${pyntSvg(her.vare, 32)}</button>`;
+        if (!valgtPynt && !flytter) return "";
+        return `<button type="button" class="pynt-plass ledig" data-pynt-plass="${esc(plass.plass)}" style="${pos(plass.x, plass.y)}" aria-label="${esc(si(spraak(), "Sett pynten her", "Set pynten her"))}">+</button>`;
+      })
+      .join("");
+    const bilde = tegnKart({ ...lagret.by, pynt: [] }, tid, leggetid, { ramme });
+    const midt = `${info}<div class="hage" style="--w:${w};--h:${h}">${bilde}${knapper}</div>`;
+    const fjern = valgt ? `<button type="button" data-pynt-fjern="${esc(valgt.id)}">${si(spraak(), "Ta bort", "Ta bort")}</button>` : "";
+    return side(esc(tittel), midt, `<button type="button" data-pynt-omrade-lukk="1">${si(spraak(), "← Kartet", "← Kartet")}</button>${fjern}`);
+  }
+  const ledige = new Set(ledigePyntPlasser(lagret.by).map((plass) => pyntOmrade(plass.plass)));
+  const medPynt = new Set((lagret.by.pynt ?? []).map((rad) => pyntOmrade(rad.plass)));
+  const omrader = [...new Set(pyntPlasser(lagret.by).map((plass) => pyntOmrade(plass.plass)))]
+    .filter((id) => (valgtPynt ? ledige.has(id) : medPynt.has(id)))
+    .map((id) => ({ id, ramme: pyntOmradeRamme(lagret.by, id) }))
+    .filter((rad): rad is { id: string; ramme: { x0: number; y0: number; x1: number; y1: number } } => rad.ramme !== null);
+  const midt = `${info}<div class="kartboks kart-pynt">${tegnKart(lagret.by, tid, leggetid, { navn: kartNavn(), pyntOmrader: omrader })}</div>`;
+  return side(esc(tittel), midt, tilbakeKnapp("pynt", si(spraak(), "← Pyntebu", "← Pyntebu")));
 }
 
 function byggHtml(): string {
@@ -1335,7 +1388,7 @@ function albumHtml(): string {
     <h2>${si(spraak(), "Bilder av byen", "Bilete av byen")}</h2>
     ${lagret.album.map((foto, indeks) => `<article class="foto">${foto.svg}<button type="button" data-del="${indeks}">${si(spraak(), "Del bilde", "Del bilete")}</button></article>`).join("") || `<p>${si(spraak(), "Bildene kommer når byen vokser.", "Bileta kjem når byen veks.")}</p>`}
     <h2>${si(spraak(), "Pynt", "Pynt")}</h2>
-    ${(lagret.by.pynt ?? []).map((pynt) => `<p>${esc(navnVare(pynt.vare, spraak()))} ${esc(ruteNavn(pynt.x, pynt.y))}</p>`).join("") || `<p>${si(spraak(), "Ingen pynt ennå.", "Ingen pynt enno.")}</p>`}`;
+    ${(lagret.by.pynt ?? []).map((pynt) => `<p class="pynt-rad">${pyntSvg(pynt.vare, 32)} ${esc(storForbokstav(navnVare(pynt.vare, spraak())))}</p>`).join("") || `<p>${si(spraak(), "Ingen pynt ennå.", "Ingen pynt enno.")}</p>`}`;
   return side(si(spraak(), "Fotoalbum", "Fotoalbum"), midt, tilbakeKnapp("dagbok"));
 }
 
@@ -1389,6 +1442,8 @@ function tegn(): string {
               ? byggHtml()
               : skjerm === "pynt"
                 ? pyntHtml()
+                : skjerm === "pynt-kart"
+                ? pyntKartHtml()
               : skjerm === "kveld"
                 ? kveldHtml()
                 : skjerm === "innstillinger"
@@ -1411,7 +1466,26 @@ function tegn(): string {
   });
   klargjorLerret();
   kobleDra();
+  ryddSkilt();
   return "";
+}
+
+/**
+ * Navneskilt på kartet skal ikke dekke hverandre (gj. 10, C6). Er det ikke plass, skjules det siste skiltet.
+ * Stedet har fortsatt bildet sitt og trykkflaten, og navnet står i hjelperens tekst når barnet går dit.
+ */
+function ryddSkilt(): void {
+  for (const flate of rot.querySelectorAll<HTMLElement>(".kartflate")) {
+    const skilt = [...flate.querySelectorAll<HTMLElement>(".skilt")];
+    const vist: DOMRect[] = [];
+    for (const el of skilt) {
+      const r = el.getBoundingClientRect();
+      if (r.width === 0) continue;
+      const kolliderer = vist.some((a) => r.left < a.right - 1 && r.right > a.left + 1 && r.top < a.bottom - 1 && r.bottom > a.top + 1);
+      el.classList.toggle("trangt", kolliderer);
+      if (!kolliderer) vist.push(r);
+    }
+  }
 }
 
 let forrigeSkjerm: Skjerm | "" = "";
@@ -1746,8 +1820,10 @@ rot.addEventListener("click", (hendelse) => {
       urMelding = null;
       melding = null;
     }
-    if (skjerm === "pynt") {
-      valgtPynt = "";
+    if (skjerm === "pynt" || skjerm === "pynt-kart") {
+      if (til !== "pynt-kart") valgtPynt = "";
+      pyntOmradeValgt = null;
+      valgtPyntId = null;
       melding = null;
     }
     skjerm = til === "verden" && !lagret.aktivDag ? "meny" : til;
@@ -1911,20 +1987,63 @@ rot.addEventListener("click", (hendelse) => {
     const vare = knapp.dataset.pynt as VareId;
     const pris = PYNT_PRIS[vare] ?? 2;
     if (lagret.mynter < pris) {
-      valgtPynt = "";
-      gjor({ slag: "pynt", vare });
+      melding = malTekst(spraak(), "Du mangler {n} mynter.", "Du manglar {n} myntar.", { n: String(pris - lagret.mynter) });
+      tegn();
       return;
     }
+    // Barnet velger plassen på kartet (gj. 10, C4).
     valgtPynt = vare;
+    valgtPyntId = null;
+    pyntOmradeValgt = null;
+    melding = null;
+    skjerm = "pynt-kart";
+    tegn();
+    return;
+  }
+  if (knapp.dataset.pyntSe) {
+    valgtPynt = "";
+    valgtPyntId = null;
+    pyntOmradeValgt = null;
+    melding = null;
+    skjerm = "pynt-kart";
+    tegn();
+    return;
+  }
+  if (knapp.dataset.pyntOmradeLukk) {
+    pyntOmradeValgt = null;
+    valgtPyntId = null;
     melding = null;
     tegn();
     return;
   }
-  if (knapp.dataset.rute && valgtPynt) {
-    const [x, y] = knapp.dataset.rute.split(",").map(Number);
-    const vare = valgtPynt;
+  if (knapp.dataset.pyntId) {
+    valgtPyntId = valgtPyntId === knapp.dataset.pyntId ? null : knapp.dataset.pyntId;
+    melding = null;
+    tegn();
+    return;
+  }
+  if (knapp.dataset.pyntPlass) {
+    const plass = knapp.dataset.pyntPlass;
+    const ut = valgtPyntId ? utfor(lagret, { slag: "pynt-flytt", id: valgtPyntId, plass }) : valgtPynt ? utfor(lagret, { slag: "pynt", vare: valgtPynt, plass }) : null;
+    if (ut) {
+      lagret = ut.lagret;
+      melding = ut.melding;
+      lagre();
+      klikk(lagret.innstillinger.lydPa, "hammer");
+    }
     valgtPynt = "";
-    gjor({ slag: "pynt", vare, x, y });
+    valgtPyntId = null;
+    pyntOmradeValgt = null;
+    tegn();
+    return;
+  }
+  if (knapp.dataset.pyntFjern) {
+    const ut = utfor(lagret, { slag: "pynt-fjern", id: knapp.dataset.pyntFjern });
+    lagret = ut.lagret;
+    melding = ut.melding;
+    valgtPyntId = null;
+    lagre();
+    tegn();
     return;
   }
   if (knapp.dataset.kart === "roter") {
@@ -2142,8 +2261,11 @@ function gjorBanner(): void {
 /** Bare i utviklingsmodus: skjermtesten setter en tilstand og en skjerm uten å laste siden på nytt. */
 if (import.meta.env.DEV) {
   (window as unknown as { formbyenTest: unknown }).formbyenTest = {
-    sett(ny: Lagret, til?: string, ekstra?: { voksenInne?: boolean; voksenFane?: string; visPlan?: boolean; kveldApne?: boolean; kveldPanel?: "kart" | "avtaler" | "rekkefolge"; nullSteg?: number }) {
+    sett(ny: Lagret, til?: string, ekstra?: { voksenInne?: boolean; voksenFane?: string; visPlan?: boolean; kveldApne?: boolean; kveldPanel?: "kart" | "avtaler" | "rekkefolge"; nullSteg?: number; valgtPynt?: string; pyntOmrade?: string; valgtPyntId?: string }) {
       lagret = ny;
+      valgtPynt = (ekstra?.valgtPynt as VareId | undefined) ?? "";
+      pyntOmradeValgt = ekstra?.pyntOmrade ?? null;
+      valgtPyntId = ekstra?.valgtPyntId ?? null;
       skjerm = (til as Skjerm | undefined) ?? (lagret.aktivDag ? "verden" : "meny");
       melding = null;
       reaksjon = null;

@@ -12,7 +12,7 @@ export interface Tilstand {
   navn: string;
   lagret: Lagret;
   skjerm?: string;
-  ekstra?: { voksenInne?: boolean; voksenFane?: string; visPlan?: boolean; kveldApne?: boolean; kveldPanel?: "kart" | "avtaler" | "rekkefolge"; nullSteg?: number };
+  ekstra?: { voksenInne?: boolean; voksenFane?: string; visPlan?: boolean; kveldApne?: boolean; kveldPanel?: "kart" | "avtaler" | "rekkefolge"; nullSteg?: number; valgtPynt?: string; pyntOmrade?: string; valgtPyntId?: string };
 }
 
 function grunn(nivaa: Nivaa = "forste"): Lagret {
@@ -37,7 +37,7 @@ function storBy(): ByTilstand {
     { instans: "s", bygg: "skole", x: 9, y: 5, steg: 2, ferdig: false, uthus: false, frie: [], pynt: [] },
     { instans: "k", bygg: "kirke", x: 2, y: 9, steg: 6, ferdig: true, uthus: false, frie: [], pynt: [] },
   ];
-  return { ...by, nivaa: 5, omrader: ["dalen", "bekken", "asen", "havna"], bygg, pynt: [{ id: "p1", vare: "pynt-blomst", x: 3, y: 4 }] };
+  return { ...by, nivaa: 5, omrader: ["dalen", "bekken", "asen", "havna"], bygg, pynt: [{ id: "pynt-1", vare: "pynt-blomst", plass: "hjem:0", x: 2.16, y: 4.86 }, { id: "pynt-2", vare: "pynt-lykt", plass: "sti:1", x: 1.5, y: 2.6 }] };
 }
 
 function langDagbok(antall: number): DagbokInnslag[] {
@@ -98,6 +98,11 @@ export function skjermer(): Tilstand[] {
   const stor = medDag({ ...g, by: storBy(), mynter: 3 });
   ut.push({ navn: "verden-stor-by", lagret: stor, skjerm: "verden" });
   ut.push({ navn: "pyntebu", lagret: stor, skjerm: "pynt" });
+  ut.push({ navn: "pyntebu-rik", lagret: { ...stor, mynter: 40 }, skjerm: "pynt" });
+  ut.push({ navn: "pynt-kart", lagret: { ...stor, mynter: 40 }, skjerm: "pynt-kart", ekstra: { valgtPynt: "pynt-tre" } });
+  ut.push({ navn: "pynt-hage", lagret: { ...stor, mynter: 40 }, skjerm: "pynt-kart", ekstra: { valgtPynt: "pynt-tre", pyntOmrade: "hjem" } });
+  ut.push({ navn: "pynt-sti", lagret: { ...stor, mynter: 40 }, skjerm: "pynt-kart", ekstra: { valgtPynt: "pynt-tre", pyntOmrade: "sti-v" } });
+  ut.push({ navn: "pynt-flytt", lagret: { ...stor, mynter: 40 }, skjerm: "pynt-kart", ekstra: { pyntOmrade: "hjem", valgtPyntId: "pynt-1" } });
   ut.push({ navn: "tarnur-forste", lagret: dag, skjerm: "ur" });
   ut.push({ navn: "tarnur-utfordrende", lagret: medDag(grunn("utfordrende")), skjerm: "ur" });
   // Ekstra bygg-valget: brønnen er ferdig i dag, og butikken er åpen.

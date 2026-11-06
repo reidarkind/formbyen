@@ -13,6 +13,12 @@ export function erLandemerke(x: number, y: number): boolean {
   return Object.values(LANDMERKE).some((punkt) => punkt.x === x && punkt.y === y);
 }
 
+/** Hjemmet barnet bor i: det ferdige hjemmet. Et nytt hjem under bygging er ikke hjemme ennå (gj. 10, C6). */
+export function boligen(by: Lagret["by"]): Lagret["by"]["bygg"][number] | undefined {
+  const hjem = by.bygg.filter((bygg) => byggDef(bygg.bygg).hjem && !bygg.uthus);
+  return hjem.find((bygg) => bygg.ferdig) ?? hjem[0];
+}
+
 export function celleFor(lagret: Lagret, sted: StedId = lagret.aktivDag?.sted ?? "hjemme"): { x: number; y: number } {
   if (sted in LANDMERKE) return LANDMERKE[sted as keyof typeof LANDMERKE];
   if (sted === "byggeplass") {
@@ -24,6 +30,6 @@ export function celleFor(lagret: Lagret, sted: StedId = lagret.aktivDag?.sted ??
     const bygg = lagret.by.bygg.find((rad) => rad.bygg === avtale?.sted);
     if (bygg) return { x: bygg.x, y: bygg.y };
   }
-  const hjem = lagret.by.bygg.find((bygg) => byggDef(bygg.bygg).hjem && !bygg.uthus) ?? lagret.by.bygg[0];
+  const hjem = boligen(lagret.by) ?? lagret.by.bygg[0];
   return hjem ? { x: hjem.x, y: hjem.y } : { x: 2, y: 4 };
 }

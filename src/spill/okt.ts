@@ -1,5 +1,5 @@
 import { maalBygg, manglendeDeler } from "../bygg/handleliste";
-import { ferdigeBygg, kanPlassere, kravSomOves, ledigPyntRute, nesteByggId, nesteHjem, omraderForNivaa } from "../bygg/kart";
+import { ferdigeBygg, kanPlassere, kravSomOves, pyntPlasser, nesteByggId, nesteHjem, omraderForNivaa } from "../bygg/kart";
 import { byggDef } from "../bygg/katalog";
 import { lagDagsplan, morgendagensApning, morgendagensButikk, nesteDato, utvidRytme, type PlanInn } from "../dag/plan";
 import { froTilfeldig, spredt, stokk } from "../felles/tilfeldig";
@@ -27,7 +27,9 @@ export type Handling =
   | { slag: "velg"; instans: string }
   | { slag: "steg" }
   | { slag: "angre" }
-  | { slag: "pynt"; vare: VareId; instans?: string; x?: number; y?: number }
+  | { slag: "pynt"; vare: VareId; plass: string }
+  | { slag: "pynt-flytt"; id: string; plass: string }
+  | { slag: "pynt-fjern"; id: string }
   | { slag: "ekstra"; ja: boolean }
   | { slag: "flytt"; instans: string; x: number; y: number }
   | { slag: "mot" }
@@ -39,8 +41,19 @@ export type Handling =
   | { slag: "avslutt" };
 
 const KLOKKE: Ferdighet[] = ["hele-timer", "halv", "kvart", "fem-minutter", "digital-24", "tidsrom", "periode", "ukedager", "maneder"];
-const PYNT: VareId[] = ["pynt-blomst", "pynt-flagg", "pynt-benk", "pynt-lykt"];
-export const PYNT_PRIS: Partial<Record<VareId, number>> = { "pynt-blomst": 2, "pynt-flagg": 3, "pynt-lykt": 4, "pynt-benk": 5 };
+/** Pynten i pyntebua, billigst først (gj. 10, C4). */
+export const PYNT: VareId[] = ["pynt-blomst", "pynt-busk", "pynt-flagg", "pynt-tre", "pynt-lykt", "pynt-postkasse", "pynt-benk", "pynt-fontene", "pynt-ender"];
+export const PYNT_PRIS: Partial<Record<VareId, number>> = {
+  "pynt-blomst": 2,
+  "pynt-busk": 2,
+  "pynt-flagg": 3,
+  "pynt-tre": 3,
+  "pynt-lykt": 4,
+  "pynt-postkasse": 4,
+  "pynt-benk": 5,
+  "pynt-fontene": 6,
+  "pynt-ender": 6,
+};
 /** Tid en runde i butikken koster når den slutter uten at noe er løst. */
 const MISLYKKET_RUNDE = 15;
 
@@ -414,7 +427,9 @@ export function aktivOppgave(lagret: Lagret): Oppgave | null {
 
 export function utfor(lagret: Lagret, handling: Handling): { lagret: Lagret; melding: string | null } {
   if (handling.slag === "start") return startDag(lagret, handling.blanding);
-  if (handling.slag === "pynt") return pynt(lagret, handling.vare, handling.instans, handling.x, handling.y);
+  if (handling.slag === "pynt") return pynt(lagret, handling.vare, handling.plass);
+  if (handling.slag === "pynt-flytt") return flyttPynt(lagret, handling.id, handling.plass);
+  if (handling.slag === "pynt-fjern") return fjernPynt(lagret, handling.id);
   if (!lagret.aktivDag) return { lagret, melding: null };
   if (handling.slag === "ga") return gaa(lagret, handling.sted);
   if (handling.slag === "vent") return vent(lagret, handling.tid);
@@ -1237,38 +1252,45 @@ function angre(lagret: Lagret): { lagret: Lagret; melding: string | null } {
   };
 }
 
-function pynt(lagret: Lagret, vare: VareId, valgt?: string, x?: number, y?: number): { lagret: Lagret; melding: string | null } {
+/** Setter pynt på en ledig plass i en hage, langs stien eller ved torget (gj. 10, C4). */
+function pynt(lagret: Lagret, vare: VareId, plass: string): { lagret: Lagret; melding: string | null } {
   const pris = PYNT_PRIS[vare];
   if (!PYNT.includes(vare) || pris === undefined) return { lagret, melding: null };
   if (lagret.mynter < pris) {
-    return {
-      lagret,
-      melding: si(lagret, "Du har {n} mynter. {pynt} koster {pris}.", "Du har {n} myntar. {pynt} kostar {pris}.", {
-        n: String(lagret.mynter),
-        pynt: vareBestemt(vare, lagret.innstillinger.spraak),
-        pris: String(pris),
-      }),
-    };
+    return { lagret, melding: si(lagret, "Du mangler {n} mynter.", "Du manglar {n} myntar.", { n: String(pris - lagret.mynter) }) };
   }
-  if (x !== undefined && y !== undefined && !ledigPyntRute(lagret.by, x, y)) {
-    return { lagret, melding: si(lagret, "Der er det ikke plass.", "Der er det ikkje plass.") };
-  }
-  const id = `pynt-${lagret.mynter}-${x ?? 0}-${y ?? 0}`;
-  const plassert = x !== undefined && y !== undefined ? { id, vare, x, y } : null;
-  const instans = plassert ? undefined : (valgt ?? lagret.aktivDag?.valgtInstans ?? lagret.by.bygg.find((bygg) => bygg.ferdig)?.instans);
+  const sted = pyntPlasser(lagret.by).find((rad) => rad.plass === plass);
+  if (!sted) return { lagret, melding: si(lagret, "Der er det ikke plass.", "Der er det ikkje plass.") };
+  if ((lagret.by.pynt ?? []).some((rad) => rad.plass === plass)) return { lagret, melding: si(lagret, "Der står det alt pynt.", "Der står det alt pynt.") };
+  const nummer = Math.max(0, ...(lagret.by.pynt ?? []).map((rad) => Number(rad.id.split("-")[1]) || 0)) + 1;
   return {
     lagret: {
       ...lagret,
       mynter: lagret.mynter - pris,
-      by: {
-        ...lagret.by,
-        pynt: plassert ? [...(lagret.by.pynt ?? []), plassert] : lagret.by.pynt,
-        bygg: instans
-          ? lagret.by.bygg.map((rad) => (rad.instans === instans ? { ...rad, pynt: [...rad.pynt, vare] } : rad))
-          : lagret.by.bygg,
-      },
+      by: { ...lagret.by, pynt: [...(lagret.by.pynt ?? []), { id: `pynt-${nummer}`, vare, plass, x: sted.x, y: sted.y }] },
     },
     melding: si(lagret, "Pynten er på plass.", "Pynten er på plass."),
+  };
+}
+
+function flyttPynt(lagret: Lagret, id: string, plass: string): { lagret: Lagret; melding: string | null } {
+  const sted = pyntPlasser(lagret.by).find((rad) => rad.plass === plass);
+  if (!sted || (lagret.by.pynt ?? []).some((rad) => rad.plass === plass && rad.id !== id)) {
+    return { lagret, melding: si(lagret, "Der er det ikke plass.", "Der er det ikkje plass.") };
+  }
+  return {
+    lagret: { ...lagret, by: { ...lagret.by, pynt: (lagret.by.pynt ?? []).map((rad) => (rad.id === id ? { ...rad, plass, x: sted.x, y: sted.y } : rad)) } },
+    melding: si(lagret, "Pynten er flyttet.", "Pynten er flytta."),
+  };
+}
+
+/** Tar bort pynt og gir myntene tilbake. */
+function fjernPynt(lagret: Lagret, id: string): { lagret: Lagret; melding: string | null } {
+  const rad = (lagret.by.pynt ?? []).find((pynt) => pynt.id === id);
+  if (!rad) return { lagret, melding: null };
+  return {
+    lagret: { ...lagret, mynter: lagret.mynter + (PYNT_PRIS[rad.vare] ?? 0), by: { ...lagret.by, pynt: (lagret.by.pynt ?? []).filter((pynt) => pynt.id !== id) } },
+    melding: si(lagret, "Pynten er tatt bort. Du fikk myntene tilbake.", "Pynten er teken bort. Du fekk myntane tilbake."),
   };
 }
 

@@ -71,6 +71,15 @@ Gjelder alle oppgaver som vises: butikk, bonus, dør, avtale, oppdrag, øving hj
 - Appen blander dagens frø med `Date.now()`. Testene sender ingen blanding.
 - `src/spill/gjentakelse.test.ts` simulerer 20 dager per nivå og sjekker reglene.
 
+## Pynt i hagene
+
+- Pynt tar aldri en rute. Hvert ferdig bygg har en hage inne i sine egne ruter: bredde + 1 plasser foran og én på hver side. Stien og torget har egne plasser (`pyntPlasser` i kart.ts). Ingen av dem kan bli tomt.
+- Pyntebua er en butikk: bilde, navn med stor forbokstav og pris. Det barnet ikke har råd til, er grått og viser «Mangler n mynter». Knappen ut heter «← Byen».
+- Plasseringen skjer på kartet i to steg: steder med ledige plasser har et pulserende «+». Trykk på stedet, så vises det forstørret med plassene som knapper på 48 px.
+- Trykk på pynt i hagen viser formene den er laget av, og gir «Ta bort» (myntene tilbake) eller flytting til en ledig plass.
+- Tegningene ligger i `src/grafikk/pynt-svg.ts`: blomst, busk, flagg, tre, lykt (lyser om kvelden), postkasse, benk, fontene og ender på dammen.
+- Tårnet (E3) og pyntebua (F3) står fast på stien. Navneskilt som ville dekket hverandre, skjules (`ryddSkilt`). Hjemmet på kartet er det ferdige hjemmet (`boligen`).
+
 ## Tekst i butikken
 
 - Når oppgaven handler om delen, sier teksten det: «Døra er et rektangel. Tegn et rektangel.» eller «Sylinderen ligger i hylla med sylindere. Finn alle sylindrene.» Minst halvparten av formoppgavene i butikken handler om delen.

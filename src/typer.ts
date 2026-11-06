@@ -139,7 +139,12 @@ export type VareId =
   | "pynt-blomst"
   | "pynt-flagg"
   | "pynt-benk"
-  | "pynt-lykt";
+  | "pynt-lykt"
+  | "pynt-tre"
+  | "pynt-busk"
+  | "pynt-postkasse"
+  | "pynt-fontene"
+  | "pynt-ender";
 
 export type StedId = "hjemme" | "butikk" | "torg" | "byggeplass" | "aktivitet" | "tannlege" | "svommehall" | "barnehage";
 export type Omrade = "dalen" | "bekken" | "asen" | "havna";
@@ -289,9 +294,11 @@ export interface PlassertBygg {
   pynt: VareId[];
 }
 
+/** Pynt på en plass i en hage, langs stien eller ved torget. x og y er midten, i ruter (gj. 10, C4). */
 export interface PyntPlassert {
   id: string;
   vare: VareId;
+  plass: string;
   x: number;
   y: number;
 }

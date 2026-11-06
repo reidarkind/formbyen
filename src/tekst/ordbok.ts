@@ -1,4 +1,5 @@
 import type { Spraak } from "../typer";
+import { ORD_GJ10 } from "./ordbok-gj10";
 import { fyllSteg } from "./steg";
 
 type Andre = Record<Exclude<Spraak, "nb">, string>;
@@ -8,6 +9,9 @@ const ORD = new Map<string, Andre>();
 function o(nb: string, nn: string, en: string, es: string, de: string, pt: string, sv: string, da: string, fr: string): void {
   ORD.set(nb, { nn, en, es, de, pt, sv, da, fr });
 }
+
+// Oversettelser fra gjennomgang 10. De som står lenger ned i denne fila, vinner.
+for (const [nb, nn, en, es, de, pt, sv, da, fr] of ORD_GJ10) o(nb, nn, en, es, de, pt, sv, da, fr);
 
 /** Bokmål er nøkkelen. Nynorsk fra kallet vinner over ordboka. */
 export function fraNb(spraak: Spraak, nb: string, nn?: string): string {
@@ -134,9 +138,14 @@ v("kloss-kule", "kule", "sphere", "esfera", "Kugel", "esfera", "klot", "kugle", 
 v("kloss-kjegle", "kjegle", "cone", "cono", "Kegel", "cone", "kon", "kegle", "cône");
 v("kloss-pyramide", "pyramide", "pyramid", "pirámide", "Pyramide", "pirâmide", "pyramid", "pyramide", "pyramide");
 v("kloss-prisme", "prisme", "prism", "prisma", "Prisma", "prisma", "prisma", "prisme", "prisme");
-v("pynt-blomst", "blomster", "flower", "flor", "Blume", "flor", "blomma", "blomst", "fleur");
+v("pynt-blomst", "blome", "flower", "flor", "Blume", "flor", "blomma", "blomst", "fleur");
 v("pynt-flagg", "flagg", "flag", "bandera", "Fahne", "bandeira", "flagga", "flag", "drapeau");
 v("pynt-benk", "benk", "bench", "banco", "Bank", "banco", "bänk", "bænk", "banc");
+v("pynt-tre", "tre", "tree", "árbol", "Baum", "árvore", "träd", "træ", "arbre");
+v("pynt-busk", "busk", "bush", "arbusto", "Busch", "arbusto", "buske", "busk", "buisson");
+v("pynt-postkasse", "postkasse", "mailbox", "buzón", "Briefkasten", "caixa de correio", "brevlåda", "postkasse", "boîte aux lettres");
+v("pynt-fontene", "fontene", "fountain", "fuente", "Brunnen", "fonte", "fontän", "springvand", "fontaine");
+v("pynt-ender", "ender", "ducks", "patos", "Enten", "patos", "ankor", "ænder", "canards");
 v("pynt-lykt", "lykt", "lamp", "farol", "Laterne", "lanterna", "lykta", "lygte", "lanterne");
 
 export function navnAktivitet(id: string, spraak: Spraak, nb: string, nn: string): string {
@@ -179,6 +188,11 @@ const VARE_NB: Record<string, string> = {
   "pynt-flagg": "flagg",
   "pynt-benk": "benk",
   "pynt-lykt": "lykt",
+  "pynt-tre": "tre",
+  "pynt-busk": "busk",
+  "pynt-postkasse": "postkasse",
+  "pynt-fontene": "fontene",
+  "pynt-ender": "ender",
 };
 
 export function navnVare(id: string, spraak: Spraak): string {
@@ -220,6 +234,11 @@ const BESTEMT_NB: Record<string, string> = {
   "pynt-flagg": "Flagget",
   "pynt-benk": "Benken",
   "pynt-lykt": "Lykta",
+  "pynt-tre": "Treet",
+  "pynt-busk": "Busken",
+  "pynt-postkasse": "Postkassen",
+  "pynt-fontene": "Fontenen",
+  "pynt-ender": "Endene",
 };
 const BESTEMT_NN: Record<string, string> = {
   jord: "Jorda",
@@ -233,6 +252,11 @@ const BESTEMT_NN: Record<string, string> = {
   "pynt-flagg": "Flagget",
   "pynt-benk": "Benken",
   "pynt-lykt": "Lykta",
+  "pynt-tre": "Treet",
+  "pynt-busk": "Busken",
+  "pynt-postkasse": "Postkassa",
+  "pynt-fontene": "Fontena",
+  "pynt-ender": "Endene",
   planke: "Planken",
   "vegg-tre": "Treveggen",
   "vegg-mur": "Murveggen",
@@ -325,10 +349,10 @@ export function vareBestemt(id: string, spraak: Spraak): string {
 }
 
 /** Stoffer uten artikkel: «Vi trenger jord.» */
-const UTEN_ARTIKKEL = new Set(["jord", "sand", "grus", "sement", "maling", "fliselim", "spiker"]);
+const UTEN_ARTIKKEL = new Set(["jord", "sand", "grus", "sement", "maling", "fliselim", "spiker", "pynt-ender"]);
 
 function intetkjonn(id: string): boolean {
-  return id.startsWith("tak-") || id.startsWith("vindu-") || id === "kloss-prisme" || id === "pynt-flagg";
+  return id.startsWith("tak-") || id.startsWith("vindu-") || id === "kloss-prisme" || id === "pynt-flagg" || id === "pynt-tre";
 }
 
 /** «en planke», «et rødt tak», «jord». Andre språk får navnet uten artikkel. */
@@ -955,6 +979,22 @@ o("Oppdraget var riktig på første forsøk", "Oppdraget var rett på første fo
 o("Oppdraget ble gjort, men ikke på første forsøk.", "Oppdraget vart gjort, men ikkje på første forsøk.", "The task was done, but not on the first try.", "La misión se hizo, pero no a la primera.", "Der Auftrag wurde erledigt, aber nicht beim ersten Versuch.", "A missão foi feita, mas não à primeira.", "Uppdraget blev gjort, men inte på första försöket.", "Opgaven blev løst, men ikke i første forsøg.", "La mission a été faite, mais pas du premier coup.");
 o("Oppdraget ble ikke gjort", "Oppdraget vart ikkje gjort", "The task was not done", "La misión no se hizo", "Der Auftrag wurde nicht erledigt", "A missão não foi feita", "Uppdraget blev inte gjort", "Opgaven blev ikke løst", "La mission n'a pas été faite");
 o("Prøv igjen.", "Prøv igjen.", "Try again.", "Inténtalo otra vez.", "Versuch es noch einmal.", "Tenta outra vez.", "Försök igen.", "Prøv igen.", "Essaie encore.");
+o("Mangler {n} mynter", "Manglar {n} myntar", "{n} coins short", "Faltan {n} monedas", "Es fehlen {n} Münzen", "Faltam {n} moedas", "{n} mynt saknas", "Mangler {n} mønter", "Il manque {n} pièces");
+o("Du mangler {n} mynter.", "Du manglar {n} myntar.", "You need {n} more coins.", "Te faltan {n} monedas.", "Dir fehlen {n} Münzen.", "Faltam-te {n} moedas.", "Du behöver {n} mynt till.", "Du mangler {n} mønter.", "Il te manque {n} pièces.");
+o("Der står det alt pynt.", "Der står det alt pynt.", "Something is already there.", "Ya hay algo ahí.", "Da steht schon etwas.", "Já há algo aí.", "Där står det redan något.", "Der står allerede pynt.", "Il y a déjà quelque chose ici.");
+o("Pynten er flyttet.", "Pynten er flytta.", "The decoration has moved.", "La decoración se ha movido.", "Die Deko ist umgezogen.", "A decoração mudou de lugar.", "Pyntet är flyttat.", "Pynten er flyttet.", "La décoration a été déplacée.");
+o("Pynten er tatt bort. Du fikk myntene tilbake.", "Pynten er teken bort. Du fekk myntane tilbake.", "The decoration is gone. You got your coins back.", "Quitaste la decoración. Te devolvimos las monedas.", "Die Deko ist weg. Du hast deine Münzen zurück.", "A decoração saiu. Recebeste as moedas de volta.", "Pyntet är borta. Du fick tillbaka mynten.", "Pynten er fjernet. Du fik mønterne tilbage.", "La décoration est partie. Tu récupères tes pièces.");
+o("Flytt pynt", "Flytt pynt", "Move decorations", "Mover decoración", "Deko umstellen", "Mudar decoração", "Flytta pynt", "Flyt pynt", "Déplacer la déco");
+o("← Byen", "← Byen", "← Town", "← Ciudad", "← Stadt", "← Cidade", "← Staden", "← Byen", "← Ville");
+o("← Kartet", "← Kartet", "← Map", "← Mapa", "← Karte", "← Mapa", "← Kartan", "← Kortet", "← Carte");
+o("← Pyntebu", "← Pyntebu", "← Decoration shop", "← Tienda de adornos", "← Dekoladen", "← Loja de enfeites", "← Pyntboden", "← Pyntebutik", "← Boutique de déco");
+o("Hvor skal {pynt} stå?", "Kvar skal {pynt} stå?", "Where should {pynt} go?", "¿Dónde va {pynt}?", "Wo soll {pynt} stehen?", "Onde fica {pynt}?", "Var ska {pynt} stå?", "Hvor skal {pynt} stå?", "Où mettre {pynt} ?");
+o("Hvor skal pynten stå?", "Kvar skal pynten stå?", "Where should it go?", "¿Dónde va?", "Wo soll es stehen?", "Onde fica?", "Var ska det stå?", "Hvor skal pynten stå?", "Où le mettre ?");
+o("Trykk på pynten du vil flytte.", "Trykk på pynten du vil flytte.", "Tap the decoration you want to move.", "Toca la decoración que quieres mover.", "Tippe auf die Deko, die du umstellen willst.", "Toca na decoração que queres mudar.", "Tryck på pyntet du vill flytta.", "Tryk på den pynt, du vil flytte.", "Touche la déco à déplacer.");
+o("Sett pynten her", "Set pynten her", "Put it here", "Ponlo aquí", "Hierhin stellen", "Pôr aqui", "Ställ den här", "Sæt pynten her", "Mets-la ici");
+o("Ta bort", "Ta bort", "Remove", "Quitar", "Wegnehmen", "Tirar", "Ta bort", "Fjern", "Enlever");
+o("{pynt} er laget av {former}.", "{pynt} er laga av {former}.", "{pynt} is made of {former}.", "{pynt} está hecho de {former}.", "{pynt} besteht aus {former}.", "{pynt} é feito de {former}.", "{pynt} är gjord av {former}.", "{pynt} er lavet af {former}.", "{pynt} est fait de {former}.");
+o("og", "og", "and", "y", "und", "e", "och", "og", "et");
 o("Lille viser", "Vesle visaren", "Short hand", "Aguja corta", "Kleiner Zeiger", "Ponteiro pequeno", "Lilla visaren", "Lille viser", "Petite aiguille");
 o("Store viser", "Store visaren", "Long hand", "Aguja larga", "Großer Zeiger", "Ponteiro grande", "Stora visaren", "Store viser", "Grande aiguille");
 o("{n} minutter", "{n} minutt", "{n} minutes", "{n} minutos", "{n} Minuten", "{n} minutos", "{n} minuter", "{n} minutter", "{n} minutes");

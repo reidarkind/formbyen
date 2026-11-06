@@ -1,3 +1,4 @@
+import { pyntPlasser } from "../bygg/kart";
 import { describe, expect, it } from "vitest";
 import { STARTDATO } from "../dag/plan";
 import { standardLagret } from "../lagring/lagring";
@@ -146,17 +147,17 @@ describe("tårnur og still klokka (gj. 9, 6.7 og 6.10)", () => {
   });
 });
 
-describe("pynt (gj. 9, 6.10)", () => {
-  it("legger pynt bare på ledige ruter og sier hva pynten koster", () => {
+describe("pynt (gj. 9, 6.10, erstattet av gj. 10, C4)", () => {
+  it("legger pynt bare på ledige plasser og sier hvor mange mynter som mangler", () => {
     let lagret = { ...ny(), mynter: 3 };
-    const hjem = lagret.by.bygg[0]!;
-    const opptatt = utfor(lagret, { slag: "pynt", vare: "pynt-blomst", x: hjem.x, y: hjem.y });
-    expect(opptatt.lagret.mynter).toBe(3);
-    expect(opptatt.lagret.by.pynt ?? []).toEqual([]);
-    const dyr = utfor(lagret, { slag: "pynt", vare: "pynt-benk", x: hjem.x + 1, y: hjem.y + 1 });
-    expect(dyr.melding).toBe("Du har 3 mynter. Benken koster 5.");
+    const ugyldig = utfor(lagret, { slag: "pynt", vare: "pynt-blomst", plass: "ingen:9" });
+    expect(ugyldig.lagret.mynter).toBe(3);
+    expect(ugyldig.lagret.by.pynt ?? []).toEqual([]);
+    const plass = pyntPlasser(lagret.by)[0]!.plass;
+    const dyr = utfor(lagret, { slag: "pynt", vare: "pynt-benk", plass });
+    expect(dyr.melding).toBe("Du mangler 2 mynter.");
     expect(dyr.lagret.mynter).toBe(3);
-    lagret = utfor(lagret, { slag: "pynt", vare: "pynt-blomst", x: hjem.x + 1, y: hjem.y + 1 }).lagret;
+    lagret = utfor(lagret, { slag: "pynt", vare: "pynt-blomst", plass }).lagret;
     expect(lagret.mynter).toBe(1);
     expect(lagret.by.pynt?.length).toBe(1);
   });

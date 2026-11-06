@@ -64,6 +64,7 @@ function dekker(bygg: PlassertBygg, x: number, y: number): boolean {
 
 export function opptatt(by: ByTilstand, x: number, y: number, unntatt?: string): boolean {
   if (erLandemerke(x, y)) return true;
+  if ((x === PYNTEBU.x && y === PYNTEBU.y) || (x === TAARN.x && y === TAARN.y)) return true;
   return by.bygg.some((bygg) => bygg.instans !== unntatt && dekker(bygg, x, y));
 }
 
@@ -213,30 +214,73 @@ export function tomterMedPlass(by: ByTilstand, ruter: number): { id: string; x: 
   return svar.filter((tomt) => tomt.areal >= ruter).slice(0, 12);
 }
 
-/** En rute pynt kan stå på: innenfor byen, ikke vann, ikke sti, ikke under et bygg eller annen pynt. */
-export function ledigPyntRute(by: ByTilstand, x: number, y: number): boolean {
-  if (!innenfor(by, x, y) || erSti(x, y) || opptatt(by, x, y)) return false;
-  if (x === 4 && y === 1) return false;
-  return !(by.pynt ?? []).some((pynt) => pynt.x === x && pynt.y === y);
+export interface PyntPlass {
+  /** «instans:i» for hagen til et bygg, «sti:x:i» langs stien og «torg:i» ved torget. */
+  plass: string;
+  x: number;
+  y: number;
 }
 
-/** Ledige ruter ved siden av ferdige bygg, der barnet kan sette pynt. */
-export function pyntRuter(by: ByTilstand, antall = 6): [number, number][] {
-  const ut: [number, number][] = [];
+/**
+ * Plassene pynt kan stå på (gj. 10, C4). Hvert ferdig bygg har en hage inne i sine egne ruter:
+ * to plasser foran per rute og én på hver side. Stien og torget har egne plasser.
+ * Ingen av rutene kan bli tomt, så pynt står aldri i veien for et bygg.
+ */
+export function pyntPlasser(by: ByTilstand): PyntPlass[] {
+  const ut: PyntPlass[] = [];
   for (const bygg of by.bygg.filter((rad) => rad.ferdig)) {
     const def = byggDef(bygg.bygg);
-    for (let dy = -1; dy <= def.dybde; dy++) {
-      for (let dx = -1; dx <= def.bredde; dx++) {
-        const x = bygg.x + dx;
-        const y = bygg.y + dy;
-        if (!ledigPyntRute(by, x, y) || ut.some((rad) => rad[0] === x && rad[1] === y)) continue;
-        ut.push([x, y]);
-        if (ut.length >= antall) return ut;
-      }
+    const punkter: [number, number][] = [];
+    // Foran: bredde + 1 plasser jevnt fordelt. På sidene: én midt på hver side.
+    const foran = def.bredde + 1;
+    for (let i = 0; i < foran; i++) punkter.push([bygg.x + ((i + 0.5) / foran) * def.bredde, bygg.y + def.dybde - 0.16]);
+    punkter.push([bygg.x + 0.16, bygg.y + def.dybde * 0.45], [bygg.x + def.bredde - 0.16, bygg.y + def.dybde * 0.45]);
+    punkter.forEach(([x, y], i) => ut.push({ plass: `${bygg.instans}:${i}`, x, y }));
+  }
+  if (by.omrader.includes("dalen")) {
+    for (let x = 0; x < 8; x++) {
+      // Pyntebua står på stien i rute F3.
+      if (x === PYNTEBU.x || x === TAARN.x) continue;
+      ut.push({ plass: `sti:${x}`, x: x + 0.5, y: 2.6 });
     }
+    const torg = { x: 3, y: 6 };
+    [
+      [0.16, 0.18],
+      [0.84, 0.18],
+      [0.16, 0.86],
+      [0.84, 0.86],
+    ].forEach(([dx, dy], i) => ut.push({ plass: `torg:${i}`, x: torg.x + (dx ?? 0), y: torg.y + (dy ?? 0) }));
   }
   return ut;
 }
+
+/** Stedet en plass hører til: et bygg, den vestre eller østre delen av stien, eller torget. */
+export function pyntOmrade(plass: string): string {
+  if (plass.startsWith("sti:")) return Number(plass.slice(4)) < 4 ? "sti-v" : "sti-o";
+  if (plass.startsWith("torg:")) return "torg";
+  return plass.slice(0, plass.lastIndexOf(":"));
+}
+
+/** Rutene et sted dekker, for å vise det forstørret. */
+export function pyntOmradeRamme(by: ByTilstand, omrade: string): { x0: number; y0: number; x1: number; y1: number } | null {
+  if (omrade === "sti-v") return { x0: 0, y0: 2, x1: 4, y1: 3 };
+  if (omrade === "sti-o") return { x0: 4, y0: 2, x1: 8, y1: 3 };
+  if (omrade === "torg") return { x0: 3, y0: 6, x1: 4, y1: 7 };
+  const bygg = by.bygg.find((rad) => rad.instans === omrade);
+  if (!bygg) return null;
+  const def = byggDef(bygg.bygg);
+  return { x0: bygg.x, y0: bygg.y, x1: bygg.x + def.bredde, y1: bygg.y + def.dybde };
+}
+
+/** Plassene uten pynt. */
+export function ledigePyntPlasser(by: ByTilstand): PyntPlass[] {
+  const tatt = new Set((by.pynt ?? []).map((pynt) => pynt.plass));
+  return pyntPlasser(by).filter((plass) => !tatt.has(plass.plass));
+}
+
+/** Pyntebua og tårnet står fast på stien, så ingen bygg kan stå oppå dem (gj. 10, C6). */
+export const PYNTEBU = { x: 5, y: 2 } as const;
+export const TAARN = { x: 4, y: 2 } as const;
 
 export function ferdigeBygg(by: ByTilstand): ByggId[] {
   return by.bygg.filter((bygg) => bygg.ferdig).map((bygg) => bygg.bygg);

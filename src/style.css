@@ -330,6 +330,8 @@ main.by { background: transparent; }
   z-index: 1;
 }
 .kartflate .skilt::after { content: ""; position: absolute; inset: -12px -6px; }
+/* Skilt som ville dekket et annet skilt (gj. 10, C6). */
+.kartflate .skilt.trangt { visibility: hidden; }
 .kartflate .skilt.nederst::after { inset: -16px -6px 0; }
 .kartflate .skilt.venstre { transform: translate(-20%, -25%); }
 .kartflate .skilt.hoyre { transform: translate(-80%, -25%); }
@@ -488,8 +490,27 @@ main.by { background: transparent; }
 .formkort svg { width: 48px; height: 48px; }
 .foto { display: flex; flex-direction: column; gap: 6px; }
 .foto svg { width: 100%; height: auto; }
-.pynt-liste { display: grid; grid-template-columns: 1fr 1fr; }
-.pynt-liste button { display: flex; justify-content: space-between; align-items: center; }
+/* Pyntebua som butikk: bilde, navn og pris (gj. 10, C4). */
+.pynt-butikk { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.pynt-vare { display: grid; justify-items: center; gap: 2px; padding: 4px; border-radius: 14px; min-height: 0; }
+.pynt-vare svg { width: clamp(28px, 6dvh, 44px); height: auto; }
+.pynt-navn { font-weight: 800; font-size: 0.9rem; }
+.pynt-vare .pris { display: flex; align-items: center; }
+.liten-mynt { min-width: 26px; width: 26px; height: 26px; font-size: 0.85rem; padding: 0; }
+.pynt-vare.mangler { background: var(--papir-skygge, #EADFCB); color: var(--svak); }
+.pynt-vare.mangler svg { filter: grayscale(1); opacity: 0.55; }
+.mangler-tekst { font-size: 0.75rem; line-height: 1.1; text-align: center; }
+.pynt-rad { display: flex; align-items: center; gap: 8px; }
+.pynt-rad svg { width: 32px; height: 32px; }
+.kart-pynt { flex: 1 1 auto; min-height: 0; }
+/* Ett sted forstørret, med plassene som knapper på minst 44 px. */
+.hage { position: relative; flex: none; align-self: center; width: min(calc(100% - 56px), calc(var(--w) / var(--h) * 42dvh)); aspect-ratio: var(--w) / var(--h); margin: 24px auto 0; }
+.hage > svg { width: 100%; height: 100%; display: block; border-radius: 12px; }
+.pynt-plass { position: absolute; transform: translate(-50%, -85%); min-width: 48px; min-height: 48px; width: 48px; height: 48px; padding: 0; display: grid; place-items: center; border-radius: 50%; }
+.pynt-plass.ledig { background: var(--gul); font-size: 1.6rem; font-weight: 800; animation: puls 1.4s ease-in-out infinite; }
+.pynt-plass.har { background: var(--papir); }
+.pynt-plass.valgt { box-shadow: 0 0 0 4px var(--tak); }
+.pynt-plass svg { width: 34px; height: 34px; }
 .kurv-liste { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; }
 .pris { font-weight: 800; }
 .ruter { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); }
@@ -580,6 +601,9 @@ select, input { min-height: 48px; border: 3px solid var(--kontur); border-radius
 
 /* Liggende telefon: to kolonner. */
 @media (orientation: landscape) and (max-height: 520px) {
+  .pynt-butikk { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+  .pynt-vare { min-height: 0; padding: 4px; }
+  .pynt-vare svg { width: 30px; }
   #app { max-width: none; }
   .skjerm-innstillinger .side-midt { display: grid; grid-template-columns: 1.4fr 1fr; gap: 12px; align-items: start; }
   .verden { display: grid; grid-template-columns: minmax(240px, 40%) 1fr; grid-template-rows: auto auto auto 1fr; column-gap: 10px; }

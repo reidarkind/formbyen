@@ -8,12 +8,16 @@ import type {
   Lagret,
   NokkelLager,
   PlassertBygg,
+  PyntPlassert,
   Spraak,
   VareId,
 } from "../typer";
 import { erSpraak } from "../typer";
 
 export const NOKKEL = "formbyen-v1";
+
+/** Prisene da pynten tok hele ruter. Brukes når gammel pynt gjøres om til mynter. */
+const PYNT_PRIS_GAMMEL: Record<string, number> = { "pynt-blomst": 2, "pynt-flagg": 3, "pynt-lykt": 4, "pynt-benk": 5 };
 
 const BYGG_ID = new Set<ByggId>([
   "ronne", "hytte", "hus", "villa", "borg", "slott", "bronn", "gjerde", "vedskjul", "bakeri", "lekeplass", "bro",
@@ -146,11 +150,23 @@ export function normaliserLagret(raa: unknown): Lagret | null {
       omrader: Array.isArray(byKilde.omrader) ? (byKilde.omrader as ByTilstand["omrader"]) : ["dalen"],
     },
   };
+  // Pynt på plass i en hage beholdes. Gammel pynt som tok hele ruter, blir til mynter igjen (gj. 10, C4).
+  let refusjon = 0;
+  const pynt: PyntPlassert[] = [];
+  for (const rad of Array.isArray(byKilde.pynt) ? byKilde.pynt : []) {
+    if (!erObjekt(rad) || typeof rad.id !== "string" || typeof rad.vare !== "string") continue;
+    if (typeof rad.plass === "string" && typeof rad.x === "number" && typeof rad.y === "number") {
+      pynt.push({ id: rad.id, vare: rad.vare as VareId, plass: rad.plass, x: rad.x, y: rad.y });
+    } else {
+      refusjon += PYNT_PRIS_GAMMEL[rad.vare] ?? 0;
+    }
+  }
+  by.pynt = pynt;
   return {
     ...standard,
     versjon: 1,
     innstillinger: lesInnstillinger(raa.innstillinger, standard.innstillinger),
-    mynter: typeof raa.mynter === "number" ? raa.mynter : 0,
+    mynter: (typeof raa.mynter === "number" ? raa.mynter : 0) + refusjon,
     kurv: erObjekt(raa.kurv) ? (raa.kurv as Lagret["kurv"]) : {},
     by,
     dato: erObjekt(raa.dato) && typeof raa.dato.aar === "number" ? (raa.dato as unknown as Lagret["dato"]) : standard.dato,

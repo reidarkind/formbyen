@@ -1,11 +1,12 @@
 import type { ByggId, ByTilstand } from "../typer";
 import { byggDef } from "../bygg/katalog";
-import { celle, heleByen, kartUtsnitt, ruteNavn } from "../bygg/kart";
-import { LANDMERKE } from "../bygg/landemerker";
+import { celle, heleByen, kartUtsnitt, PYNTEBU, ruteNavn, TAARN } from "../bygg/kart";
+import { boligen, LANDMERKE } from "../bygg/landemerker";
 import { FARGER, himmelFarge } from "./stil";
 import { himmel } from "../tid/tid";
 import { fasadeInnhold, fasadeSvg } from "./fasade";
 import { svgDokument } from "./svg";
+import { pyntInnhold } from "./pynt-svg";
 
 const RUTE = 44;
 
@@ -23,6 +24,10 @@ export interface KartValg {
   hele?: boolean;
   /** Navn på skiltene, hentet fra ordboka på språket som er valgt. */
   navn?: Partial<Record<string, string>>;
+  /** Steder med ledige plasser for pynt, med pulserende «+» (gj. 10, C4). */
+  pyntOmrader?: { id: string; ramme: { x0: number; y0: number; x1: number; y1: number } }[];
+  /** Bare dette utsnittet, uten akser og skilt. Brukes når et sted vises forstørret. */
+  ramme?: { x0: number; y0: number; x1: number; y1: number };
 }
 
 const STANDARD_NAVN: Record<string, string> = {
@@ -65,6 +70,14 @@ function landemerke(sted: string): string {
       <circle cx="22" cy="6" r="4" fill="${FARGER.papir}" stroke="${FARGER.kontur}" stroke-width="2"/>
       <ellipse cx="16" cy="34" rx="12" ry="5" fill="${FARGER.vann}" stroke="${FARGER.kontur}" stroke-width="2"/>`;
   }
+  if (sted === "barnehage") {
+    // Lite hus med lekestativ (gj. 10, C6).
+    return `<polygon points="4,18 14,8 24,18" fill="${FARGER.aksentGronn}" stroke="${FARGER.kontur}" stroke-width="2"/>
+      <rect x="6" y="18" width="16" height="18" fill="${FARGER.papir}" stroke="${FARGER.kontur}" stroke-width="2"/>
+      <rect x="11" y="26" width="6" height="10" fill="${FARGER.takRodt}" stroke="${FARGER.kontur}" stroke-width="2"/>
+      <path d="M27 36 L32 16 L37 36 M29 28 H35" fill="none" stroke="${FARGER.kontur}" stroke-width="2" stroke-linecap="round"/>
+      <path d="M32 16 L40 30" stroke="${FARGER.takBlatt}" stroke-width="3" stroke-linecap="round"/>`;
+  }
   if (sted === "tannlege") {
     return `<rect x="6" y="16" width="32" height="22" fill="${FARGER.papir}" stroke="${FARGER.kontur}" stroke-width="2"/>
       <circle cx="16" cy="18" r="6" fill="${FARGER.papir}" stroke="${FARGER.kontur}" stroke-width="2"/>
@@ -99,7 +112,7 @@ function figurGruppe(x: number, y: number, fra: { x: number; y: number } | null,
 }
 
 export function tegnKart(by: ByTilstand, tid: number, leggetid = 20 * 60, valg: KartValg = {}): string {
-  const ramme = valg.hele ? heleByen(by) : kartUtsnitt(by);
+  const ramme = valg.ramme ?? (valg.hele ? heleByen(by) : kartUtsnitt(by));
   const kolonner = ramme.x1 - ramme.x0;
   const rader = ramme.y1 - ramme.y0;
   const kveld = tid >= 18 * 60 && tid < leggetid;
@@ -156,32 +169,37 @@ export function tegnKart(by: ByTilstand, tid: number, leggetid = 20 * 60, valg: 
       `<g data-sted="${merke}" class="${klasse}"><rect class="treff" x="${rx - 26}" y="${ry - 26}" width="${def.bredde * RUTE + 52}" height="${def.dybde * RUTE + 52}" fill="${FARGER.papir}" fill-opacity="0"/><g transform="translate(${px} ${py}) scale(${sx} ${sy})">${fasadeInnhold(plassert.bygg, synlig, kveld && plassert.ferdig)}</g></g>`,
     );
   }
+  // Pynten står i hagene og tegnes liten, med bunnen på plassen sin (gj. 10, C4).
+  const skala = (0.42 * RUTE) / 48;
   for (const pynt of by.pynt ?? []) {
-    if (!innen(pynt.x, pynt.y, ramme)) continue;
-    const px = (pynt.x - ramme.x0) * RUTE + RUTE / 2;
-    const py = (pynt.y - ramme.y0) * RUTE + RUTE / 2;
-    const farge = pynt.vare === "pynt-flagg" ? FARGER.takRodt : pynt.vare === "pynt-lykt" ? FARGER.vinduslys : FARGER.takBlatt;
-    const form =
-      pynt.vare === "pynt-flagg"
-        ? `<polygon points="0,-12 12,0 0,8" fill="${farge}" stroke="${FARGER.kontur}" stroke-width="2"/><rect x="-2" y="-12" width="3" height="24" fill="${FARGER.tre}" stroke="${FARGER.kontur}"/>`
-        : pynt.vare === "pynt-lykt"
-          ? `<rect x="-6" y="-12" width="12" height="16" fill="${farge}" stroke="${FARGER.kontur}" stroke-width="2"/>`
-          : pynt.vare === "pynt-benk"
-            ? `<rect x="-14" y="-4" width="28" height="8" fill="${FARGER.tre}" stroke="${FARGER.kontur}" stroke-width="2"/>`
-            : `<circle r="8" fill="${farge}" stroke="${FARGER.kontur}" stroke-width="2"/><circle cy="-6" r="4" fill="${FARGER.aksentGronn}" stroke="${FARGER.kontur}"/>`;
-    flater.push(`<g data-pynt="${pynt.id}" transform="translate(${px} ${py})">${form}</g>`);
+    if (pynt.x < ramme.x0 || pynt.x > ramme.x1 || pynt.y < ramme.y0 || pynt.y > ramme.y1) continue;
+    const px = (pynt.x - ramme.x0) * RUTE - 24 * skala;
+    const py = (pynt.y - ramme.y0) * RUTE - 44 * skala;
+    flater.push(`<g data-pynt-tegning="${pynt.id}" transform="translate(${px.toFixed(1)} ${py.toFixed(1)}) scale(${skala.toFixed(3)})">${pyntInnhold(pynt.vare, kveld)}</g>`);
+  }
+  for (const omrade of valg.pyntOmrader ?? []) {
+    const r = omrade.ramme;
+    const rx = (r.x0 - ramme.x0) * RUTE;
+    const ry = (r.y0 - ramme.y0) * RUTE;
+    const w = (r.x1 - r.x0) * RUTE;
+    const h = (r.y1 - r.y0) * RUTE;
+    const cx = rx + w - 10;
+    const cy = ry + 10;
+    flater.push(
+      `<g data-pynt-omrade="${omrade.id}" class="puls"><rect class="treff" x="${rx - 4}" y="${ry - 4}" width="${Math.max(w + 8, RUTE)}" height="${Math.max(h + 8, RUTE)}" fill="${FARGER.papir}" fill-opacity="0"/><circle cx="${cx}" cy="${cy}" r="9" fill="${FARGER.aksentGul}" stroke="${FARGER.kontur}" stroke-width="2"/><path d="M${cx - 5} ${cy} H${cx + 5} M${cx} ${cy - 5} V${cy + 5}" stroke="${FARGER.kontur}" stroke-width="2.5" stroke-linecap="round"/></g>`,
+    );
   }
   const bronnFerdig = by.bygg.some((bygg) => bygg.bygg === "bronn" && bygg.ferdig);
-  if (bronnFerdig && innen(5, 2, ramme)) {
-    const px = (5 - ramme.x0) * RUTE;
-    const py = (2 - ramme.y0) * RUTE;
+  if (bronnFerdig && innen(PYNTEBU.x, PYNTEBU.y, ramme)) {
+    const px = (PYNTEBU.x - ramme.x0) * RUTE;
+    const py = (PYNTEBU.y - ramme.y0) * RUTE;
     flater.push(
       `<g data-sted="pynt" transform="translate(${px} ${py})">${TREFF}<rect x="6" y="16" width="32" height="22" fill="${FARGER.takBlatt}" stroke="${FARGER.kontur}" stroke-width="2"/><polygon points="4,16 22,2 40,16" fill="${FARGER.takRodt}" stroke="${FARGER.kontur}" stroke-width="2"/><rect x="18" y="24" width="10" height="14" fill="${FARGER.papir}" stroke="${FARGER.kontur}" stroke-width="2"/></g>`,
     );
   }
-  if (innen(4, 1, ramme)) {
-    const px = (4 - ramme.x0) * RUTE;
-    const py = (1 - ramme.y0) * RUTE;
+  if (innen(TAARN.x, TAARN.y, ramme)) {
+    const px = (TAARN.x - ramme.x0) * RUTE;
+    const py = (TAARN.y - ramme.y0) * RUTE;
     const feilTid = (tid + 60) % (24 * 60);
     const vinkel = ((feilTid / 60) % 12) * 30 * (Math.PI / 180);
     const x2 = (22 + Math.sin(vinkel) * 5).toFixed(1);
@@ -203,6 +221,7 @@ export function tegnKart(by: ByTilstand, tid: number, leggetid = 20 * 60, valg: 
     kolonner * RUTE,
     rader * RUTE,
   );
+  if (valg.ramme) return svg;
   return `<div class="brett" style="--k:${(kolonner / rader).toFixed(3)}"><div class="akse-x"><span></span>${bokstaver}</div><div class="akse-rad"><div class="akse-y">${tall}</div><div class="kartflate">${svg}${skilt}</div></div></div>`;
 }
 
@@ -213,18 +232,23 @@ function skiltHtml(
   rader: number,
   navn: Partial<Record<string, string>>,
 ): string {
-  const punkter: { sted: string; x: number; y: number }[] = Object.entries(LANDMERKE).map(([sted, punkt]) => ({ sted, x: punkt.x, y: punkt.y }));
-  const hjem = by.bygg.find((bygg) => byggDef(bygg.bygg).hjem && !bygg.uthus);
+  // Rekkefølgen er prioriteten når skilt kolliderer: hjem og butikk først (gj. 10, C6).
+  const punkter: { sted: string; x: number; y: number }[] = [];
+  const hjem = boligen(by);
   if (hjem) punkter.push({ sted: "hjemme", x: hjem.x, y: hjem.y });
-  if (by.bygg.some((bygg) => bygg.bygg === "bronn" && bygg.ferdig)) punkter.push({ sted: "pynt", x: 5, y: 2 });
-  punkter.push({ sted: "taarn", x: 4, y: 1 });
+  punkter.push(...Object.entries(LANDMERKE).map(([sted, punkt]) => ({ sted, x: punkt.x, y: punkt.y })));
+  if (by.bygg.some((bygg) => bygg.bygg === "bronn" && bygg.ferdig)) punkter.push({ sted: "pynt", x: PYNTEBU.x, y: PYNTEBU.y });
+  punkter.push({ sted: "taarn", x: TAARN.x, y: TAARN.y });
   return punkter
     .filter((punkt) => innen(punkt.x, punkt.y, ramme))
     .map((punkt) => {
       const left = ((punkt.x - ramme.x0 + 0.5) / kolonner) * 100;
       const top = ((punkt.y - ramme.y0 + 0.92) / rader) * 100;
-      const kant = (punkt.x === ramme.x0 ? " venstre" : punkt.x === ramme.x1 - 1 ? " hoyre" : "") + (punkt.y === ramme.y1 - 1 ? " nederst" : "");
-      return `<span class="skilt${kant}" style="left:${left.toFixed(1)}%;top:${top.toFixed(1)}%" data-sted="${punkt.sted}">${navn[punkt.sted] ?? punkt.sted}</span>`;
+      // Tårnet og pyntebua står ved siden av hverandre på stien: tårnets skilt står over ruta (gj. 10, C6).
+      const over = punkt.sted === "taarn" && punkt.y > ramme.y0;
+      const kant = (punkt.x === ramme.x0 ? " venstre" : punkt.x === ramme.x1 - 1 ? " hoyre" : "") + (punkt.y === ramme.y1 - 1 || over ? " nederst" : "");
+      const topp = over ? ((punkt.y - ramme.y0 + 0.12) / rader) * 100 : top;
+      return `<span class="skilt${kant}" style="left:${left.toFixed(1)}%;top:${topp.toFixed(1)}%" data-sted="${punkt.sted}">${navn[punkt.sted] ?? punkt.sted}</span>`;
     })
     .join("");
 }
