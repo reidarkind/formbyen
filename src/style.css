@@ -408,6 +408,15 @@ main.by { background: transparent; }
 .sammenlign .ur { width: clamp(90px, 20dvh, 130px); }
 .malform-stor svg { width: 48px; height: 48px; }
 
+.maling-bilde { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 0 auto; max-width: 100%; }
+.maling-bilde svg { max-width: 100%; height: auto; }
+.linjal-tall { position: relative; height: 16px; max-width: 100%; }
+.linjal-tall span { position: absolute; transform: translateX(-50%); font-size: 12px; font-weight: 800; }
+.vekt-merker { display: flex; justify-content: space-between; gap: 12px; width: 220px; max-width: 100%; font-weight: 800; }
+.ukeplan { display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; }
+.ukeplan span { min-width: 36px; padding: 4px; border: 2px solid var(--kontur); border-radius: 8px; background: var(--papir); display: flex; flex-direction: column; align-items: center; font-weight: 800; }
+.ukeplan .merket { background: var(--gul); border-width: 3px; }
+.ukeplan small { font-size: 0.75rem; }
 .dorskilt { display: flex; gap: 12px; align-items: center; justify-content: center; flex-wrap: wrap; }
 .skilt-tider { display: flex; flex-direction: column; gap: 4px; }
 .skilt-tittel { font-weight: 800; }

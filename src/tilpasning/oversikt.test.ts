@@ -33,10 +33,9 @@ describe("mestring på voksensiden (gj. 9, B4)", () => {
 
   it("viser bare ferdigheter spillet øver på", () => {
     const alle = OMRADER.flatMap((omrade) => omrade.ferdigheter);
-    for (const id of ["lengde", "masse", "areal", "koordinater", "likevekt"] as Ferdighet[]) {
-      expect(ovesISpillet(id) && alle.includes(id)).toBe(false);
-    }
+    for (const id of alle) expect(ovesISpillet(id), id).toBe(true);
     expect(alle).toContain("hele-timer");
     expect(alle).toContain("former-3d");
+    expect(alle).toContain("lengde");
   });
 });

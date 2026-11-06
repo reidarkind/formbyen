@@ -472,11 +472,14 @@ function handle(lagret: Lagret): { lagret: Lagret; melding: string | null } {
   const vilKlokke = spredt(trekk()) < 0.5 || !form;
   const x = spredt(trekk());
   const manglerRom = ROMFORMER.find((rom) => !lagret.by.kjente3d.includes(rom));
-  const monster = !vilKlokke && lagret.by.monsterFullfort < 1 && x < 0.2;
-  const laerRom = !vilKlokke && !monster && Boolean(manglerRom) && manglerRom !== form && x >= 0.2 && x < 0.35;
+  const monster = !vilKlokke && lagret.by.monsterFullfort < 1 && x < 0.2 && (dag.typeTakt?.monster ?? 0) < 2;
+  const takt = (type: Oppgave["type"]) => dag.typeTakt?.[type] ?? 0;
+  const laerRom = !vilKlokke && !monster && Boolean(manglerRom) && manglerRom !== form && x >= 0.2 && x < 0.35 && takt("finn-formen") < 2;
   const brukGavl = !vilKlokke && !monster && !laerRom && Boolean(form) && !kloss && x >= 0.35 && x < 0.45;
   const variasjonTyper = ["sorter", "hvem-passer-ikke", "monster"] as const;
-  const variasjon = !vilKlokke && !monster && !laerRom && !brukGavl && x >= 0.45 && x < 0.5;
+  const delTyper: Oppgave["type"][] = kloss ? ["finn-formen", "stempel", "tell"] : ["finn-formen", "tegn", "tell"];
+  const delLedig = delTyper.some((type) => takt(type) < 2);
+  const variasjon = !vilKlokke && !monster && !laerRom && !brukGavl && ((x >= 0.45 && x < 0.5) || !delLedig);
   void formTyper;
   const trukket = brukGavl
     ? gavlOppgave(lagret, vare)
@@ -488,7 +491,8 @@ function handle(lagret: Lagret): { lagret: Lagret; melding: string | null } {
           ? trekkOppgave({ ...kontekst(lagret), type: "finn-formen", maalForm: manglerRom, kjente3d: lagret.by.kjente3d })
           : variasjon
             ? trekkOppgave({ ...kontekst(lagret), hylle: "form", type: velgType(lagret, variasjonTyper[lagret.fro % variasjonTyper.length] ?? "sorter", variasjonTyper, []) })
-            : delOppgave(lagret, form ?? "rektangel", kloss);
+            : (delOppgave(lagret, form ?? "rektangel", kloss) ??
+              trekkOppgave({ ...kontekst(lagret), hylle: "form", type: velgType(lagret, variasjonTyper[lagret.fro % variasjonTyper.length] ?? "sorter", variasjonTyper, []) }));
   const spraak = lagret.innstillinger.spraak;
   const oppgaveForm = trukket.form3d ?? trukket.form;
   const omDelen = !vilKlokke && form !== undefined && oppgaveForm === form && DEL_TYPER.includes(trukket.type);
@@ -519,17 +523,26 @@ function handle(lagret: Lagret): { lagret: Lagret; melding: string | null } {
 const DEL_TYPER: Oppgave["type"][] = ["finn-formen", "tegn", "tell", "stempel"];
 
 /** En formoppgave om delens egen form. Faller tilbake til «finn formen», som alltid kan lages. */
-function delOppgave(lagret: Lagret, form: string, kloss: boolean): Oppgave {
+function delOppgave(lagret: Lagret, form: string, kloss: boolean): Oppgave | null {
   const typer = (kloss ? ["finn-formen", "stempel", "tell"] : ["finn-formen", "tegn", "tell"]) as Oppgave["type"][];
-  const type = velgType(lagret, typer[lagret.fro % typer.length] ?? "finn-formen", typer, []);
+  const ledige = typer.filter((type) => (lagret.aktivDag?.typeTakt?.[type] ?? 0) < 2);
+  const type = ledige[lagret.fro % Math.max(1, ledige.length)] ?? "finn-formen";
   const grunn = { ...kontekst(lagret), hylle: (kloss ? "kloss" : "form") as Hylle, maalForm: form, kjente3d: lagret.by.kjente3d };
   const forsok = trekkOppgave({ ...grunn, type });
-  if ((forsok.form3d ?? forsok.form) === form && DEL_TYPER.includes(forsok.type)) return forsok;
+  const passer = (oppgave: Oppgave, onsket: Oppgave["type"]) => oppgave.type === onsket && (oppgave.form3d ?? oppgave.form) === form;
+  if (passer(forsok, type)) return forsok;
+  for (const reserve of ledige.filter((rad) => rad !== type)) {
+    const neste = trekkOppgave({ ...grunn, type: reserve });
+    if (passer(neste, reserve)) return neste;
+  }
+  if ((lagret.aktivDag?.typeTakt?.["finn-formen"] ?? 0) >= 2) return null;
   return trekkOppgave({ ...grunn, type: "finn-formen" });
 }
 
 function velgType(lagret: Lagret, onsket: Oppgave["type"], familie: readonly Oppgave["type"][], brukt: Oppgave[]): Oppgave["type"] {
-  const kandidater = [onsket, ...familie.filter((type) => type !== onsket)];
+  const nivaa = lagret.innstillinger.nivaa;
+  const reserve: Oppgave["type"][] = [...KLOKKE_TYPER, ...FORM_TYPER, ...MALING_TYPER[nivaa]];
+  const kandidater = [onsket, ...familie.filter((type) => type !== onsket), ...reserve.filter((type) => !familie.includes(type))];
   for (const type of kandidater) {
     const tidligere = lagret.aktivDag?.typeTakt?.[type] ?? 0;
     const naa = brukt.filter((oppgave) => oppgave.type === type).length;
@@ -537,6 +550,9 @@ function velgType(lagret: Lagret, onsket: Oppgave["type"], familie: readonly Opp
   }
   return onsket;
 }
+
+const KLOKKE_TYPER: Oppgave["type"][] = ["les-klokka", "still-klokka", "koble", "hvor-lenge", "rekker-jeg", "apningstider"];
+const FORM_TYPER: Oppgave["type"][] = ["finn-formen", "hvem-passer-ikke", "sorter", "tell", "tegn", "monster"];
 
 function medTakt(lagret: Lagret, oppgaver: Oppgave[]): Lagret {
   const dag = lagret.aktivDag;
@@ -661,6 +677,14 @@ function startOppdrag(lagret: Lagret): { lagret: Lagret; melding: string | null 
   };
 }
 
+/** Måling, kart og kalender per nivå. 1. klasse: ukeplan og kalender. 2. klasse: også lengde og masse. Utfordrende: areal, koordinater og likevekt. */
+const MALING_TYPER: Record<Nivaa, readonly Oppgave["type"][]> = {
+  forste: ["ukeplan", "kalender"],
+  andre: ["lengde", "masse", "ukeplan", "kalender"],
+  utfordrende: ["areal", "koordinater", "likevekt", "lengde", "masse", "kalender"],
+  blandet: ["ukeplan", "kalender", "lengde", "masse", "areal", "koordinater", "likevekt"],
+};
+
 function bonusOppgaver(lagret: Lagret, forste: Oppgave, antall: number): Oppgave[] {
   const klokkeTyper = ["les-klokka", "still-klokka", "koble", "hvor-lenge", "rekker-jeg", "apningstider"] as const;
   const formTyper = ["finn-formen", "hvem-passer-ikke", "sorter", "tell", "tegn", "monster"] as const;
@@ -670,13 +694,26 @@ function bonusOppgaver(lagret: Lagret, forste: Oppgave, antall: number): Oppgave
   for (let i = 0; i < antall; i++) {
     const familie = klokke ? klokkeTyper : formTyper;
     const onsket = familie[(lagret.fro + i) % familie.length] ?? (klokke ? "les-klokka" : "finn-formen");
-    const type = velgType(lagret, onsket, familie, ut);
+    // Ingen oppgavetype mer enn to ganger per ettermiddag (gj. 8, 4.5). Runden teller med.
+    const iRunden = [forste, ...ut];
+    const brukt = (navn: Oppgave["type"]) => (lagret.aktivDag?.typeTakt?.[navn] ?? 0) + iRunden.filter((rad) => rad.type === navn).length;
+    const type = velgType(lagret, onsket, familie, iRunden);
     const erDel = i === 1 && lagret.innstillinger.nivaa === "andre";
     try {
-      const kake = klokke && !erDel && (lagret.fro + i) % 5 === 0;
+      const kake = klokke && !erDel && (lagret.fro + i) % 5 === 0 && brukt("hvor-lenge") < 2;
       const manglerRom = ROMFORMER.find((rom) => !lagret.by.kjente3d.includes(rom) && rom !== forste.form3d);
-      const laerRom = !klokke && manglerRom !== undefined && !ut.some((rad) => rad.form3d);
-      const trukket = kake
+      const laerRom = !klokke && manglerRom !== undefined && !ut.some((rad) => rad.form3d) && brukt("finn-formen") < 2;
+      // Den siste plassen i runden går ofte til måling, kart eller kalender etter nivå (gj. 9, oppfølging).
+      const malTyper = MALING_TYPER[lagret.innstillinger.nivaa];
+      const maling = i === antall - 1 && !erDel && !laerRom && spredt(froTilfeldig(lagret.fro * 7 + 3)()) < 0.5;
+      let trukket = maling
+        ? trekkOppgave({
+            ...kontekst(lagret),
+            tilfeldig: froTilfeldig(lagret.fro + 29 * (i + 1)),
+            type: velgType(lagret, malTyper[lagret.fro % malTyper.length] ?? "kalender", malTyper, iRunden),
+            unngaMal: [forste.mal, ...ut.map((rad) => rad.mal)],
+          })
+        : kake
         ? bakerOppgave(lagret)
         : laerRom
           ? trekkOppgave({ ...kontekst(lagret), tilfeldig: froTilfeldig(lagret.fro + 17 * (i + 1)), type: "finn-formen", maalForm: manglerRom, kjente3d: lagret.by.kjente3d })
@@ -693,10 +730,23 @@ function bonusOppgaver(lagret: Lagret, forste: Oppgave, antall: number): Oppgave
         kvadrat: ["Pizzaboksen er et kvadrat. Finn alle kvadratene.", "Pizzaboksen er eit kvadrat. Finn alle kvadrata."],
         rektangel: ["Døra er et rektangel. Finn alle rektanglene.", "Døra er eit rektangel. Finn alle rektangla."],
       };
+      if (brukt(trukket.type) >= 2) {
+        // Malen falt tilbake til en type som alt er brukt to ganger i dag. Prøv en ledig type.
+        const ledig = velgType(lagret, trukket.type, [], iRunden);
+        if (ledig !== trukket.type) {
+          try {
+            const igjen = trekkOppgave({ ...kontekst(lagret), tilfeldig: froTilfeldig(lagret.fro + 41 * (i + 1)), type: ledig, unngaMal: [forste.mal, ...ut.map((rad) => rad.mal)] });
+            if (brukt(igjen.type) < 2) trukket = igjen;
+          } catch {
+            // Beholder den første.
+          }
+        }
+      }
       const bilde = trukket.type === "finn-formen" && trukket.form ? bybilde[trukket.form] : undefined;
       const detektiv = bilde ? { ...trukket, prompt: si(lagret, bilde[0], bilde[1]) } : trukket;
       const ovelse = !erDel;
-      ut.push(i === 0 && lagret.innstillinger.nivaa !== "forste" ? kasseOppgave(lagret) : { ...detektiv, ovelse });
+      const kasse = i === 0 && lagret.innstillinger.nivaa !== "forste" && brukt("stempel") < 2;
+      ut.push(kasse ? kasseOppgave(lagret) : { ...detektiv, ovelse });
       klokke = !klokke;
     } catch {
       break;

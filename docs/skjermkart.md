@@ -51,6 +51,7 @@ Ark fra toppfeltet: kurven, dagens plan, pause. Byplanen åpnes fra kartet.
 - Når oppgaven handler om delen, sier teksten det: «Døra er et rektangel. Tegn et rektangel.» eller «Sylinderen ligger i hylla med sylindere. Finn alle sylindrene.» Minst halvparten av formoppgavene i butikken handler om delen.
 - Når oppgaven handler om noe annet (klokke, mønster, sortering eller en romform som læres), står en liten grå linje øverst: «Løs oppgaven for å få sylinderen.» Oppgaven er overskriften. «Vi trenger …» står aldri foran en oppgave om noe annet.
 - Forklaringer som «Kule = rund som en ball» er en liten hjelpelinje, ikke en del av oppgaven.
+- Måling, kart og kalender kommer som en øvingsoppgave i runden: ukeplan og kalender i 1. klasse, lengde og masse fra 2. klasse, areal, koordinater og likevekt på utfordrende. Skålvekta har sekken på den ene siden og lodd på den andre, med kilo som tekst under bildet. Planken måles i klosser eller med en linjal i centimeter. Ukeplanen viser hvilken dag avtalen er.
 - Klokkeslett i ord har alltid «klokka» foran. Deler og bygg bøyes: «et rødt tak», «jord», «3 planker», «Vanntårnet». Rå id-er vises aldri.
 
 ## Skjermtest

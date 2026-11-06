@@ -17,6 +17,13 @@ const TYPER_I_SPILLET: OppgaveType[] = [
   "tegn",
   "monster",
   "stempel",
+  "ukeplan",
+  "kalender",
+  "lengde",
+  "masse",
+  "areal",
+  "koordinater",
+  "likevekt",
 ];
 
 const OVES = new Set<Ferdighet>([
@@ -31,7 +38,7 @@ export function ovesISpillet(ferdighet: Ferdighet): boolean {
 }
 
 export interface Omrade {
-  id: "klokke" | "former" | "tid";
+  id: "klokke" | "former" | "tid" | "maling";
   navn: [string, string];
   ferdigheter: Ferdighet[];
 }
@@ -44,6 +51,7 @@ const ALLE_OMRADER: Omrade[] = [
     ferdigheter: ["former-grunn", "former-flere", "sortere", "telle-2d", "rette-vinkler", "former-3d", "telle-3d", "stempel", "monster", "tegne"],
   },
   { id: "tid", navn: ["Tid og kalender", "Tid og kalender"], ferdigheter: ["tidsrom", "periode", "ukedager", "maneder"] },
+  { id: "maling", navn: ["Måling og kart", "Måling og kart"], ferdigheter: ["lengde", "masse", "likevekt", "areal", "koordinater"] },
 ];
 
 /** Områdene på voksensiden. Ferdigheter spillet ikke øver på, vises ikke. */
@@ -111,12 +119,14 @@ function linje(spraak: Spraak, omrade: Omrade, mestring: Partial<Record<Ferdighe
 }
 
 /** To linjer i klartekst øverst på voksensiden. */
-export function oversiktLinjer(mestring: Partial<Record<Ferdighet, FerdighetsTilstand>>, spraak: Spraak): { klokke: string; former: string; tid: string } {
+export function oversiktLinjer(mestring: Partial<Record<Ferdighet, FerdighetsTilstand>>, spraak: Spraak): { klokke: string; former: string; tid: string; maling: string } {
   const finn = (id: Omrade["id"]) => OMRADER.find((omrade) => omrade.id === id);
   const klokke = finn("klokke");
   const former = finn("former");
   const tid = finn("tid");
+  const maling = finn("maling");
   return {
+    maling: maling ? linje(spraak, maling, mestring) : "",
     klokke: klokke ? linje(spraak, klokke, mestring) : "",
     former: former ? linje(spraak, former, mestring) : "",
     tid: tid ? linje(spraak, tid, mestring) : "",

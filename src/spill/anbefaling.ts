@@ -281,14 +281,17 @@ function ferdigDagens(lagret: Lagret): boolean {
   return ferdig && !apen;
 }
 
-function kjopTak(nivaa: Nivaa): number {
-  return nivaa === "utfordrende" ? 5 : 4;
+/** Deler per dag fra bynivå 3. 2. klasse veksler mellom 4 og 5, så slottet nås på 20–25 ettermiddager. */
+function kjopTak(nivaa: Nivaa, dag: number): number {
+  if (nivaa === "forste") return 4;
+  if (nivaa === "andre") return dag % 2 === 0 ? 4 : 5;
+  return 5;
 }
 
 function kjopStans(lagret: Lagret): boolean {
   const maal = maalBygg(lagret);
   if (!maal || byggDef(maal.id).nivaa < 3) return false;
-  return (lagret.aktivDag?.kjopIDag ?? 0) >= kjopTak(lagret.innstillinger.nivaa);
+  return (lagret.aktivDag?.kjopIDag ?? 0) >= kjopTak(lagret.innstillinger.nivaa, lagret.dato.dag);
 }
 
 function ventKnapp(lagret: Lagret, tid: number, grunnKort: string, grunn: string, puls: string | null): NesteSteg {

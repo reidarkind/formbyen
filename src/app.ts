@@ -345,11 +345,11 @@ function oppgaveBilde(oppgave: Oppgave): string {
       </div>`;
   }
   if (oppgave.type === "hvem-passer-ikke") return "";
-  if (oppgave.type === "lengde" && oppgave.tall !== undefined) return plankeBilde(oppgave.tall);
-  if (oppgave.type === "masse" || oppgave.type === "likevekt") return sekkBilde(oppgave.type === "likevekt" || oppgave.prompt.includes("like"), oppgave.tall);
+  if (oppgave.planke) return plankeBilde(oppgave.planke);
+  if (oppgave.vekt) return vektBilde(oppgave.vekt);
   if (oppgave.type === "areal") return "";
   if (oppgave.koordinat) return koordinatBilde(oppgave.koordinat);
-  if (oppgave.type === "ukeplan" || oppgave.type === "kalender") return ukeBilde();
+  if (oppgave.type === "ukeplan" || oppgave.type === "kalender") return oppgave.ukeMerke ? ukeBilde(oppgave.ukeMerke, oppgave.type === "kalender") : "";
   if (oppgave.monster) {
     const bredde = Math.max(28, Math.min(56, Math.floor(280 / (oppgave.monster.length + 1))));
     const fargeNavn: Record<string, Farge> = { takRodt: FARGER.takRodt, takBlatt: FARGER.takBlatt, aksentGul: FARGER.aksentGul };
@@ -398,18 +398,47 @@ function oppgaveBilde(oppgave: Oppgave): string {
   return ikon(ikonFor(oppgave.type));
 }
 
-function plankeBilde(tall: number): string {
-  const enheter = tall > 12 ? Math.max(2, Math.round(tall / 10)) : tall;
-  const b = 16 + enheter * 28;
-  const biter = Array.from({ length: enheter }, (_, i) => `<rect x="${8 + i * 28}" y="8" width="24" height="16" fill="${FARGER.tre}" stroke="${FARGER.kontur}" stroke-width="2"/>`).join("");
-  return `<svg viewBox="0 0 ${b} 32" width="${b}" height="32">${biter}</svg>`;
+/** Planken i klosser. Når svaret er i centimeter, ligger en linjal under med tall for hver tiende centimeter. */
+function plankeBilde(planke: { klosser: number; cm: boolean }): string {
+  const enhet = 40;
+  const bredde = (planke.klosser + (planke.cm ? 1 : 0)) * enhet + 16;
+  const deler = planke.cm
+    ? `<rect x="8" y="6" width="${planke.klosser * enhet}" height="22" fill="${FARGER.tre}" stroke="${FARGER.kontur}" stroke-width="2"/>`
+    : Array.from({ length: planke.klosser }, (_, i) => `<rect x="${8 + i * enhet}" y="6" width="${enhet}" height="22" fill="${FARGER.tre}" stroke="${FARGER.kontur}" stroke-width="2"/>`).join("");
+  const linjal = planke.cm
+    ? `<rect x="8" y="34" width="${(planke.klosser + 1) * enhet}" height="16" fill="${FARGER.aksentGul}" stroke="${FARGER.kontur}" stroke-width="2"/>${Array.from({ length: planke.klosser + 2 }, (_, i) => `<line x1="${8 + i * enhet}" y1="34" x2="${8 + i * enhet}" y2="46" stroke="${FARGER.kontur}" stroke-width="2"/>`).join("")}`
+    : "";
+  const hoyde = planke.cm ? 54 : 34;
+  const tall = planke.cm
+    ? `<div class="linjal-tall" style="width:${bredde}px">${Array.from({ length: planke.klosser + 2 }, (_, i) => `<span style="left:${8 + i * enhet}px">${i * 10}</span>`).join("")}</div>`
+    : "";
+  return `<div class="maling-bilde"><svg viewBox="0 0 ${bredde} ${hoyde}" width="${bredde}" height="${hoyde}">${deler}${linjal}</svg>${tall}</div>`;
 }
 
-function sekkBilde(vekt: boolean, _kilo?: number): string {
-  const merke = "";
-  const liten = `<ellipse cx="18" cy="28" rx="10" ry="8" fill="${FARGER.mur}" stroke="${FARGER.kontur}" stroke-width="2"/>`;
-  const stor = `<ellipse cx="58" cy="24" rx="16" ry="14" fill="${FARGER.tre}" stroke="${FARGER.kontur}" stroke-width="2"/>${merke}`;
-  return `<svg viewBox="0 0 80 44" width="160" height="88">${vekt ? `${liten}${stor}` : stor}</svg>`;
+/** Skålvekt i likevekt: sekken til venstre, lodd til høyre. Tallene står som HTML under (gj. 9, oppfølging). */
+function vektBilde(vekt: { sekkKg?: number; lodd: number; loddKg: number }): string {
+  const b = 220;
+  const loddStor = 18;
+  const perRad = 4;
+  const lodd = Array.from({ length: vekt.lodd }, (_, i) => {
+    const x = 140 + (i % perRad) * (loddStor + 2);
+    const y = 58 - Math.floor(i / perRad) * (loddStor + 2) - loddStor;
+    return `<rect x="${x}" y="${y}" width="${loddStor}" height="${loddStor}" rx="3" fill="${FARGER.mur}" stroke="${FARGER.kontur}" stroke-width="2"/>`;
+  }).join("");
+  const svg = `<svg viewBox="0 0 ${b} 100" width="${b}" height="100">
+    <rect x="106" y="20" width="8" height="70" fill="${FARGER.tre}" stroke="${FARGER.kontur}" stroke-width="2"/>
+    <rect x="80" y="88" width="60" height="8" fill="${FARGER.tre}" stroke="${FARGER.kontur}" stroke-width="2"/>
+    <rect x="20" y="16" width="180" height="6" fill="${FARGER.kontur}"/>
+    <line x1="40" y1="22" x2="40" y2="58" stroke="${FARGER.kontur}" stroke-width="2"/>
+    <line x1="180" y1="22" x2="180" y2="58" stroke="${FARGER.kontur}" stroke-width="2"/>
+    <rect x="10" y="58" width="62" height="6" fill="${FARGER.mur}" stroke="${FARGER.kontur}" stroke-width="2"/>
+    <rect x="134" y="58" width="${perRad * (loddStor + 2) + 8}" height="6" fill="${FARGER.mur}" stroke="${FARGER.kontur}" stroke-width="2"/>
+    <ellipse cx="41" cy="44" rx="22" ry="14" fill="${FARGER.tre}" stroke="${FARGER.kontur}" stroke-width="2"/>
+    ${lodd}
+  </svg>`;
+  const sekk = vekt.sekkKg !== undefined ? `${vekt.sekkKg} kg` : "? kg";
+  const hoyre = mal(spraak(), "Hvert lodd: {kg} kg", "Kvart lodd: {kg} kg", { kg: String(vekt.loddKg) });
+  return `<div class="maling-bilde vekt"><div>${svg}</div><div class="vekt-merker"><span>${esc(sekk)}</span><span>${esc(hoyre)}</span></div></div>`;
 }
 
 function koordinatBilde(kode: string): string {
@@ -429,12 +458,17 @@ function koordinatBilde(kode: string): string {
   return `<svg viewBox="0 0 ${marg + n * cell} ${n * cell + 18}" width="174" height="174">${celler}${merker}</svg>`;
 }
 
-function ukeBilde(): string {
-  const dager = ["ma", "ti", "on", "to", "fr"];
-  const ruter = dager
-    .map((dag, i) => `<rect x="${i * 36}" y="0" width="32" height="32" fill="${FARGER.papir}" stroke="${FARGER.kontur}" stroke-width="2"/><text x="${i * 36 + 16}" y="22" text-anchor="middle" font-size="14" font-weight="700" fill="${FARGER.kontur}">${dag}</text>`)
-    .join("");
-  return `<svg viewBox="0 0 180 32" width="180" height="32">${ruter}</svg>`;
+/** Ukeplanen med dagen merket. I kalenderoppgaven er merket «i dag». */
+function ukeBilde(merke: string, heleUka: boolean): string {
+  const dager: Ukedag[] = heleUka ? UKEDAGER : ["mandag", "tirsdag", "onsdag", "torsdag", "fredag"];
+  return `<div class="ukeplan">${dager
+    .map((dag) => {
+      const merket = dag === merke;
+      const navn = ukedagTekst(spraak(), dag).slice(0, 2);
+      const tegn = merket ? (heleUka ? `<small>${si(spraak(), "i dag", "i dag")}</small>` : `<small aria-hidden="true">★</small>`) : "";
+      return `<span class="${merket ? "merket" : ""}">${esc(navn)}${tegn}</span>`;
+    })
+    .join("")}</div>`;
 }
 
 function rutenettBilde(ruter: number): string {
@@ -555,7 +589,9 @@ function oppgaveHtml(oppgave: Oppgave): string {
     const visTid = videre ? (rett?.klokke ?? oppgave.maalKlokke) : undefined;
     const klokke = visTid !== undefined ? urHtml(visTid, false, false, "analog", 120) : "";
     const kasser = videre && oppgave.type === "sorter" ? sorterFasit(oppgave) : "";
-    const fasitForm = videre ? (oppgave.type === "monster" ? oppgave.fasit : oppgave.form ?? rett?.form) : undefined;
+    const kandidat = videre ? (oppgave.type === "monster" ? oppgave.fasit : oppgave.form ?? rett?.form) : undefined;
+    // Bare ekte former tegnes. Vekt og planke bruker feltet til tall.
+    const fasitForm = kandidat && (erForm2d(kandidat) || erForm3d(kandidat)) ? kandidat : undefined;
     const svarTekst = videre && rett?.tekst && oppgave.type !== "tell" ? `<p class="valgt-svar">${esc(rett.tekst)}</p>` : "";
     return `<article class="kort oppgave feil">${prikker}<p class="forklaring">${esc(forklaring)}</p><div class="fasit">${klokke}${kasser}${svarTekst}${fasitForm ? formSvg(fasitForm, 80) : ""}</div></article>`;
   }
@@ -1064,6 +1100,9 @@ const KOMPETANSEMAL: { nb: string; nn: string; ferdigheter: Ferdighet[] }[] = [
   { nb: "Beskrive tid ved hjelp av kalender og analog og digital klokke.", nn: "Beskrive tid ved hjelp av kalender og analog og digital klokke.", ferdigheter: ["hele-timer", "halv", "kvart", "fem-minutter", "digital-24", "tidsrom", "periode"] },
   { nb: "Utforske, tegne og beskrive geometriske figurer og sortere dem etter egenskaper.", nn: "Utforske, teikne og beskrive geometriske figurar og sortere dei etter eigenskapar.", ferdigheter: ["former-grunn", "former-flere", "sortere", "telle-2d", "tegne", "former-3d", "telle-3d", "stempel"] },
   { nb: "Kjenne igjen gjentakende enheter i mønstre.", nn: "Kjenne att gjentakande einingar i mønster.", ferdigheter: ["monster"] },
+  { nb: "Måle lengde og masse med ikke-standardiserte og standardiserte enheter.", nn: "Måle lengd og masse med ikkje-standardiserte og standardiserte einingar.", ferdigheter: ["lengde", "masse"] },
+  { nb: "Beskrive tid med kalender: ukedager og måneder.", nn: "Beskrive tid med kalender: vekedagar og månader.", ferdigheter: ["ukedager", "maneder"] },
+  { nb: "Fra 3. trinn (utfordrende): måle areal, plassere punkter i et rutenett og utforske likevekt.", nn: "Frå 3. trinn (utfordrande): måle areal, plassere punkt i eit rutenett og utforske likevekt.", ferdigheter: ["areal", "koordinater", "likevekt"] },
 ];
 
 const FASTE_AKTIVITETER = ["lekser", "hund", "tannlege", "svomming", "dans", "fotball", "korps", "piano", "kor", "bibliotek"] as const;
@@ -1094,7 +1133,7 @@ function voksenHtml(): string {
   const linjer = oversiktLinjer(lagret.mestring, spraak());
   const sist = lagret.dagbok.at(-1);
   const ukeDager = sist ? lagret.dagbok.filter((rad) => sammeUke(rad.dato, sist.dato)).length : 0;
-  const oversikt = `${[linjer.klokke, linjer.former, linjer.tid].filter(Boolean).map((linje) => `<p>${esc(linje)}</p>`).join("")}
+  const oversikt = `${[linjer.klokke, linjer.former, linjer.tid, linjer.maling].filter(Boolean).map((linje) => `<p>${esc(linje)}</p>`).join("")}
     <p>${mal(spraak(), "Dager spilt denne uka: {n}.", "Dagar spela denne veka: {n}.", { n: String(ukeDager) })} ${sist ? mal(spraak(), "Siste spilledag: {dato}.", "Siste speledag: {dato}.", { dato: datoTekst(sist.dato).toLowerCase() }) : si(spraak(), "Ingen dager spilt ennå.", "Ingen dagar spela enno.")}</p>`;
   const statusNavn: Record<Status, string> = {
     ikke: si(spraak(), "Ikke øvd", "Ikkje øvd"),

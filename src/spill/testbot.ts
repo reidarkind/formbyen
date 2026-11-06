@@ -17,10 +17,12 @@ export interface Logg {
   steg: number;
   /** Anbefalingene underveis, med lagret tilstand før handlingen. */
   spor: { lagret: Lagret; slag: string; sted?: string }[];
+  /** Hver oppgave barnet fikk, med typetakten for dagen da den ble vist. */
+  oppgaver: { oppgave: Oppgave; takt: Partial<Record<Oppgave["type"], number>> }[];
 }
 
 export function spillDag(lagret: Lagret, svar: Svarer = riktigSvar, maks = 600): { lagret: Lagret; logg: Logg } {
-  const logg: Logg = { steg: 0, spor: [] };
+  const logg: Logg = { steg: 0, spor: [], oppgaver: [] };
   if (!lagret.aktivDag) lagret = utfor(lagret, { slag: "start" }).lagret;
   for (; logg.steg < maks && lagret.aktivDag; logg.steg++) {
     const dag = lagret.aktivDag;
@@ -30,6 +32,7 @@ export function spillDag(lagret: Lagret, svar: Svarer = riktigSvar, maks = 600):
         lagret = utfor(lagret, { slag: "fortsett" }).lagret;
         continue;
       }
+      if (!logg.oppgaver.some((rad) => rad.oppgave === oppgave)) logg.oppgaver.push({ oppgave, takt: { ...(dag.typeTakt ?? {}) } });
       lagret = utfor(lagret, { slag: "svar", svar: svar(oppgave) }).lagret;
       continue;
     }

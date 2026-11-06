@@ -205,6 +205,12 @@ export interface Oppgave {
   kontekst?: string;
   /** Liten hjelpelinje under bildet, for eksempel «Kule = rund som en ball.». */
   hjelp?: string;
+  /** Skålvekta: sekken (med kilo når det står i oppgaven) mot lodd. */
+  vekt?: { sekkKg?: number; lodd: number; loddKg: number };
+  /** Planken som måles, i klosser. Med linjal når svaret er i centimeter. */
+  planke?: { klosser: number; cm: boolean };
+  /** Dagen som er merket i ukeplanen. */
+  ukeMerke?: string;
 }
 
 export interface FastAvtale {

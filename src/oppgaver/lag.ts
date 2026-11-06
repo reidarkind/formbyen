@@ -444,22 +444,28 @@ function lagApen(mal: Mal, ctx: OppgaveKontekst): Oppgave {
 function lagUke(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const dager = ["mandag", "tirsdag", "onsdag", "torsdag", "fredag"];
   const ukedag = ctx.plan?.ukedag;
-  const riktig = ukedag && dager.includes(ukedag) ? ukedag : "tirsdag";
-  const andre = stokk(ctx.tilfeldig, dager.filter((dag) => dag !== riktig)).slice(0, 2);
+  const iDag = ukedag && dager.includes(ukedag) ? ukedag : undefined;
+  const riktig = iDag ?? trekk(ctx.tilfeldig, dager);
+  // Distraktorene er nabodagene, så barnet må lese ukeplanen.
+  const indeks = dager.indexOf(riktig);
+  const naboer = [dager[indeks - 1], dager[indeks + 1], dager[indeks + 2], dager[indeks - 2]].filter((dag): dag is string => Boolean(dag));
+  const andre = naboer.slice(0, 2);
   const navn = (dag: string) => ctx.ukedagNavn?.(dag) ?? dag;
   const valg = stokk(ctx.tilfeldig, [riktig, ...andre]).map((dag) => ({ id: dag, tekst: navn(dag) }));
-  const avtale = ctx.plan?.avtaler.find((rad) => rad.varighet > 0 && rad.aktivitet);
+  const avtale = iDag ? ctx.plan?.avtaler.find((rad) => rad.varighet > 0 && rad.aktivitet && rad.slag !== "middag") : undefined;
   const oppgave = basis(
     mal,
     ctx,
-    si(ctx.spraak, "Hvilken dag er {navn}?", "Kva for dag er {navn}?", {
-      navn: avtale ? visBestemt(avtale.aktivitet ?? avtale.navn, ctx.spraak) : si(ctx.spraak, "avtalen", "avtala"),
+    si(ctx.spraak, "Se på ukeplanen. Hvilken dag er {navn}?", "Sjå på vekeplanen. Kva for dag er {navn}?", {
+      navn: avtale ? visBestemt(avtale.aktivitet ?? avtale.navn, ctx.spraak) : si(ctx.spraak, "biblioteket", "biblioteket"),
     }),
     `dag:${riktig}`,
     riktig,
     "pynt-flagg",
   );
   oppgave.valg = valg;
+  // Dagen med avtalen er merket i ukeplanen (gj. 9, oppfølging).
+  oppgave.ukeMerke = riktig;
   return oppgave;
 }
 
@@ -473,25 +479,36 @@ function lagKalender(mal: Mal, ctx: OppgaveKontekst): Oppgave {
     { id: "host", nb: "høst", nn: "haust" },
   ];
   if ((v === 4 || v === 12) && nivaTall(ctx.nivaa) >= 1) {
-    const riktig = ctx.plan?.arstid ?? "host";
+    // Spørsmålet nevner måneden, så det kan løses uten å vite datoen i spillet.
+    const maned = heltall(ctx.tilfeldig, 1, 12);
+    const riktig = maned === 12 || maned <= 2 ? "vinter" : maned <= 5 ? "var" : maned <= 8 ? "sommer" : "host";
     const valg = stokk(ctx.tilfeldig, arstider).map((rad) => ({
       id: rad.id,
       tekst: arstidTekst(ctx.spraak, rad.id),
     }));
-    const oppgave = basis(mal, ctx, si(ctx.spraak, "Hvilken årstid er det?", "Kva for årstid er det?"), `arstid:${riktig}`, riktig, "jord");
+    const navn = manedTekst(ctx.spraak, maneder[maned - 1] ?? "januar");
+    const oppgave = basis(
+      mal,
+      ctx,
+      si(ctx.spraak, "Hvilken årstid hører {maned} til?", "Kva for årstid høyrer {maned} til?", { maned: navn }),
+      `arstid:${riktig}`,
+      riktig,
+      "jord",
+    );
     oppgave.valg = valg;
     return oppgave;
   }
   const justert = malFerdighet(mal);
   if (justert.ferdighet === "maneder" && v !== 4) {
-    const indeks = (ctx.plan?.dato.maned ?? 8) - 1;
+    const fra = (ctx.plan?.dato.maned ?? 8) - 1;
+    const indeks = (fra + 1) % 12;
     const riktig = maneder[indeks] ?? "august";
-    const andre = [maneder[(indeks + 11) % 12] ?? "mai", maneder[(indeks + 2) % 12] ?? "juni"];
+    const andre = [maneder[(indeks + 10) % 12] ?? "mai", maneder[(indeks + 1) % 12] ?? "juni"];
     const valg = stokk(ctx.tilfeldig, [riktig, ...andre]).map((navn) => ({ id: navn, tekst: manedTekst(ctx.spraak, navn) }));
     const oppgave = basis(
       mal,
       ctx,
-      si(ctx.spraak, "Hvilken måned er det?", "Kva for månad er det?"),
+      si(ctx.spraak, "Hvilken måned kommer etter {maned}?", "Kva for månad kjem etter {maned}?", { maned: manedTekst(ctx.spraak, maneder[fra] ?? "juli") }),
       `maned:${riktig}`,
       riktig,
       "pynt-blomst",
@@ -516,6 +533,8 @@ function lagKalender(mal: Mal, ctx: OppgaveKontekst): Oppgave {
     "pynt-blomst",
   );
   oppgave.valg = valgDag;
+  // Ukeplanen viser hvilken dag det er i dag.
+  oppgave.ukeMerke = iDag;
   return oppgave;
 }
 
@@ -811,14 +830,14 @@ function lagLengde(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const planke = trekk(ctx.tilfeldig, PLANKER);
   const cm = variant(mal.id) % 2 === 0 && nivaTall(ctx.nivaa) > 0;
   const svar = cm ? planke.cm : planke.klosser;
-  const pakke = tallValg(svar, ctx.tilfeldig);
+  const pakke = cm ? tiValg(svar, ctx.tilfeldig) : tallValg(svar, ctx.tilfeldig);
   const oppgave = basis(
     mal,
     ctx,
     si(
       ctx.spraak,
-      cm ? "Hvor mange centimeter er planken?" : "Hvor mange klosser lang er planken?",
-      cm ? "Kor mange centimeter er planken?" : "Kor mange klossar lang er planken?",
+      cm ? "Linjalen viser centimeter. Hvor mange centimeter er planken?" : "Hvor mange klosser lang er planken?",
+      cm ? "Linjalen viser centimeter. Kor mange centimeter er planken?" : "Kor mange klossar lang er planken?",
     ),
     `planke:${planke.id}`,
     pakke.fasit,
@@ -827,7 +846,17 @@ function lagLengde(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   oppgave.tall = svar;
   oppgave.valg = pakke.valg;
   oppgave.form = planke.id;
+  oppgave.planke = { klosser: planke.klosser, cm };
   return oppgave;
+}
+
+/** Svar i hele tiere: 30, 40, 50 cm. */
+function tiValg(riktig: number, tilfeldig: Tilfeldig): { valg: Valg[]; fasit: string } {
+  const pakke = tallValg(riktig / 10, tilfeldig);
+  return {
+    valg: pakke.valg.map((valg) => ({ id: `t${(valg.tall ?? 0) * 10}`, tall: (valg.tall ?? 0) * 10, tekst: String((valg.tall ?? 0) * 10) })),
+    fasit: `t${riktig}`,
+  };
 }
 
 function lagMasse(mal: Mal, ctx: OppgaveKontekst): Oppgave {
@@ -842,7 +871,7 @@ function lagMasse(mal: Mal, ctx: OppgaveKontekst): Oppgave {
       const kilo = basis(
         mal,
         ctx,
-        si(ctx.spraak, "Hvor mange kilo veier sekken?", "Kor mange kilo veg sekken?"),
+        si(ctx.spraak, "Hvor mange kilo veier sekken? Hvert lodd veier 1 kilo.", "Kor mange kilo veg sekken? Kvart lodd veg 1 kilo."),
         `vekt:${navn}`,
         pakkeKg.fasit,
         navn as VareId,
@@ -850,6 +879,7 @@ function lagMasse(mal: Mal, ctx: OppgaveKontekst): Oppgave {
       kilo.tall = kg;
       kilo.valg = pakkeKg.valg;
       kilo.form = navn;
+      kilo.vekt = { lodd: kg, loddKg: 1 };
       return kilo;
     }
     const svar = kg / litenKg;
@@ -868,13 +898,14 @@ function lagMasse(mal: Mal, ctx: OppgaveKontekst): Oppgave {
     oppgave.tall = svar;
     oppgave.valg = pakke.valg;
     oppgave.form = navn;
+    oppgave.vekt = { sekkKg: kg, lodd: 1, loddKg: litenKg };
     return oppgave;
   }
   const pakke = tallValg(kg, ctx.tilfeldig);
   const oppgave = basis(
     mal,
     ctx,
-    si(ctx.spraak, "Hvor mange kilo veier sekken?", "Kor mange kilo veg sekken?"),
+    si(ctx.spraak, "Hvor mange kilo veier sekken? Hvert lodd veier 1 kilo.", "Kor mange kilo veg sekken? Kvart lodd veg 1 kilo."),
     `vekt:${navn}`,
     pakke.fasit,
     navn as VareId,
@@ -882,6 +913,8 @@ function lagMasse(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   oppgave.tall = kg;
   oppgave.valg = pakke.valg;
   oppgave.form = navn;
+  // Vekta er i likevekt: sekken på den ene siden, like mange kilolodd på den andre (gj. 9, oppfølging).
+  oppgave.vekt = { lodd: kg, loddKg: 1 };
   return oppgave;
 }
 
@@ -956,6 +989,7 @@ function lagVekt(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   oppgave.tall = stor;
   oppgave.valg = pakke.valg;
   oppgave.form = String(liten);
+  oppgave.vekt = { sekkKg: stor, lodd: 1, loddKg: liten };
   return oppgave;
 }
 
