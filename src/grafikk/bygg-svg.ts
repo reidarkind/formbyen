@@ -41,8 +41,15 @@ const STANDARD_NAVN: Record<string, string> = {
   taarn: "Tårnet",
 };
 
-/** Usynlig trykkflate på minst 1,5 rute, så stedet treffes også når rutene er små. */
-const TREFF = `<rect class="treff" x="-26" y="-26" width="${RUTE + 52}" height="${RUTE + 52}" fill="${FARGER.papir}" fill-opacity="0"/>`;
+
+/** Trykkflate rundt (x, y, b, h) med 26 ekstra på hver side. Ved kanten skyves den inn, så den aldri går utenfor kartet (gj. 10, C6). */
+function treff(x: number, y: number, b: number, h: number, bredde: number, hoyde: number, dx = 0, dy = 0): string {
+  const w = Math.min(b + 52, bredde);
+  const hh = Math.min(h + 52, hoyde);
+  const x0 = Math.min(Math.max(-dx, x - 26), bredde - dx - w);
+  const y0 = Math.min(Math.max(-dy, y - 26), hoyde - dy - hh);
+  return `<rect class="treff" x="${x0}" y="${y0}" width="${w}" height="${hh}" fill="${FARGER.papir}" fill-opacity="0"/>`;
+}
 
 function innen(x: number, y: number, ramme: { x0: number; y0: number; x1: number; y1: number }): boolean {
   return x >= ramme.x0 && x < ramme.x1 && y >= ramme.y0 && y < ramme.y1;
@@ -140,7 +147,7 @@ export function tegnKart(by: ByTilstand, tid: number, leggetid = 20 * 60, valg: 
     const py = (tomt.y - ramme.y0) * RUTE + 6;
     const klasse = valg.puls === "tomt" ? "puls" : "";
     flater.push(
-      `<g data-sted="tomt:${tomt.x},${tomt.y}" class="${klasse}"><rect class="treff" x="${px - 32}" y="${py - 32}" width="${RUTE + 52}" height="${RUTE + 52}" fill="${FARGER.papir}" fill-opacity="0"/><rect x="${px}" y="${py}" width="${RUTE - 12}" height="${RUTE - 12}" fill="${FARGER.papir}" stroke="${FARGER.kontur}" stroke-width="2" stroke-dasharray="5 4"/><rect x="${px + 14}" y="${py + 8}" width="4" height="16" fill="${FARGER.kontur}"/><rect x="${px + 8}" y="${py + 14}" width="16" height="4" fill="${FARGER.kontur}"/></g>`,
+      `<g data-sted="tomt:${tomt.x},${tomt.y}" class="${klasse}">${treff(px - 6, py - 6, RUTE, RUTE, kolonner * RUTE, rader * RUTE)}<rect x="${px}" y="${py}" width="${RUTE - 12}" height="${RUTE - 12}" fill="${FARGER.papir}" stroke="${FARGER.kontur}" stroke-width="2" stroke-dasharray="5 4"/><rect x="${px + 14}" y="${py + 8}" width="4" height="16" fill="${FARGER.kontur}"/><rect x="${px + 8}" y="${py + 14}" width="16" height="4" fill="${FARGER.kontur}"/></g>`,
     );
   }
   for (const [sted, punkt] of Object.entries(LANDMERKE)) {
@@ -148,7 +155,7 @@ export function tegnKart(by: ByTilstand, tid: number, leggetid = 20 * 60, valg: 
     const px = (punkt.x - ramme.x0) * RUTE;
     const py = (punkt.y - ramme.y0) * RUTE;
     const klasse = valg.puls === sted ? "puls" : "";
-    flater.push(`<g data-sted="${sted}" class="${klasse}" transform="translate(${px} ${py})">${TREFF}${landemerke(sted)}</g>`);
+    flater.push(`<g data-sted="${sted}" class="${klasse}" transform="translate(${px} ${py})">${treff(0, 0, RUTE, RUTE, kolonner * RUTE, rader * RUTE, px, py)}${landemerke(sted)}</g>`);
   }
   for (const plassert of by.bygg) {
     if (!innen(plassert.x, plassert.y, ramme)) continue;
@@ -166,7 +173,7 @@ export function tegnKart(by: ByTilstand, tid: number, leggetid = 20 * 60, valg: 
       `<rect x="${rx}" y="${ry}" width="${def.bredde * RUTE}" height="${def.dybde * RUTE}" fill="none" stroke="${FARGER.kontur}" stroke-width="2" stroke-opacity="0.35"/>`,
     );
     flater.push(
-      `<g data-sted="${merke}" class="${klasse}"><rect class="treff" x="${rx - 26}" y="${ry - 26}" width="${def.bredde * RUTE + 52}" height="${def.dybde * RUTE + 52}" fill="${FARGER.papir}" fill-opacity="0"/><g transform="translate(${px} ${py}) scale(${sx} ${sy})">${fasadeInnhold(plassert.bygg, synlig, kveld && plassert.ferdig)}</g></g>`,
+      `<g data-sted="${merke}" class="${klasse}">${treff(rx, ry, def.bredde * RUTE, def.dybde * RUTE, kolonner * RUTE, rader * RUTE)}<g transform="translate(${px} ${py}) scale(${sx} ${sy})">${fasadeInnhold(plassert.bygg, synlig, kveld && plassert.ferdig)}</g></g>`,
     );
   }
   // Pynten står i hagene og tegnes liten, med bunnen på plassen sin (gj. 10, C4).
@@ -186,7 +193,7 @@ export function tegnKart(by: ByTilstand, tid: number, leggetid = 20 * 60, valg: 
     const cx = rx + w - 10;
     const cy = ry + 10;
     flater.push(
-      `<g data-pynt-omrade="${omrade.id}" class="puls"><rect class="treff" x="${rx - 4}" y="${ry - 4}" width="${Math.max(w + 8, RUTE)}" height="${Math.max(h + 8, RUTE)}" fill="${FARGER.papir}" fill-opacity="0"/><circle cx="${cx}" cy="${cy}" r="9" fill="${FARGER.aksentGul}" stroke="${FARGER.kontur}" stroke-width="2"/><path d="M${cx - 5} ${cy} H${cx + 5} M${cx} ${cy - 5} V${cy + 5}" stroke="${FARGER.kontur}" stroke-width="2.5" stroke-linecap="round"/></g>`,
+      `<g data-pynt-omrade="${omrade.id}" class="puls">${treff(rx, ry, w, h, kolonner * RUTE, rader * RUTE)}<circle cx="${cx}" cy="${cy}" r="9" fill="${FARGER.aksentGul}" stroke="${FARGER.kontur}" stroke-width="2"/><path d="M${cx - 5} ${cy} H${cx + 5} M${cx} ${cy - 5} V${cy + 5}" stroke="${FARGER.kontur}" stroke-width="2.5" stroke-linecap="round"/></g>`,
     );
   }
   const bronnFerdig = by.bygg.some((bygg) => bygg.bygg === "bronn" && bygg.ferdig);
@@ -194,7 +201,7 @@ export function tegnKart(by: ByTilstand, tid: number, leggetid = 20 * 60, valg: 
     const px = (PYNTEBU.x - ramme.x0) * RUTE;
     const py = (PYNTEBU.y - ramme.y0) * RUTE;
     flater.push(
-      `<g data-sted="pynt" transform="translate(${px} ${py})">${TREFF}<rect x="6" y="16" width="32" height="22" fill="${FARGER.takBlatt}" stroke="${FARGER.kontur}" stroke-width="2"/><polygon points="4,16 22,2 40,16" fill="${FARGER.takRodt}" stroke="${FARGER.kontur}" stroke-width="2"/><rect x="18" y="24" width="10" height="14" fill="${FARGER.papir}" stroke="${FARGER.kontur}" stroke-width="2"/></g>`,
+      `<g data-sted="pynt" transform="translate(${px} ${py})">${treff(0, 0, RUTE, RUTE, kolonner * RUTE, rader * RUTE, px, py)}<rect x="6" y="16" width="32" height="22" fill="${FARGER.takBlatt}" stroke="${FARGER.kontur}" stroke-width="2"/><polygon points="4,16 22,2 40,16" fill="${FARGER.takRodt}" stroke="${FARGER.kontur}" stroke-width="2"/><rect x="18" y="24" width="10" height="14" fill="${FARGER.papir}" stroke="${FARGER.kontur}" stroke-width="2"/></g>`,
     );
   }
   if (innen(TAARN.x, TAARN.y, ramme)) {
@@ -205,7 +212,7 @@ export function tegnKart(by: ByTilstand, tid: number, leggetid = 20 * 60, valg: 
     const x2 = (22 + Math.sin(vinkel) * 5).toFixed(1);
     const y2 = (16 - Math.cos(vinkel) * 5).toFixed(1);
     flater.push(
-      `<g data-sted="taarn" transform="translate(${px} ${py})">${TREFF}<rect x="14" y="10" width="16" height="28" fill="${FARGER.mur}" stroke="${FARGER.kontur}" stroke-width="2"/><polygon points="12,10 22,0 32,10" fill="${FARGER.takRodt}" stroke="${FARGER.kontur}" stroke-width="2"/><circle cx="22" cy="20" r="6" fill="${FARGER.papir}" stroke="${FARGER.kontur}" stroke-width="2"/><line x1="22" y1="20" x2="${x2}" y2="${y2}" stroke="${FARGER.kontur}" stroke-width="2"/></g>`,
+      `<g data-sted="taarn" transform="translate(${px} ${py})">${treff(0, 0, RUTE, RUTE, kolonner * RUTE, rader * RUTE, px, py)}<rect x="14" y="10" width="16" height="28" fill="${FARGER.mur}" stroke="${FARGER.kontur}" stroke-width="2"/><polygon points="12,10 22,0 32,10" fill="${FARGER.takRodt}" stroke="${FARGER.kontur}" stroke-width="2"/><circle cx="22" cy="20" r="6" fill="${FARGER.papir}" stroke="${FARGER.kontur}" stroke-width="2"/><line x1="22" y1="20" x2="${x2}" y2="${y2}" stroke="${FARGER.kontur}" stroke-width="2"/></g>`,
     );
   }
   if (valg.figur && innen(valg.figur.x, valg.figur.y, ramme)) {

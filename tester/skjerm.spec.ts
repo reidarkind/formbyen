@@ -89,6 +89,18 @@ async function sjekk(page: Page, tillatScroll = false): Promise<string[]> {
         funn.push(`tallene er forskjøvet på klokka (${Math.round(a.width)}×${Math.round(a.height)} mot ${Math.round(b.width)}×${Math.round(b.height)})`);
       }
     }
+    // Trykkflatene på kartet går ikke utenfor kartet (gj. 10, C6).
+    for (const flate of document.querySelectorAll<HTMLElement>(".kartflate")) {
+      const ramme = flate.querySelector("svg")?.getBoundingClientRect();
+      if (!ramme) continue;
+      for (const treff of flate.querySelectorAll<SVGRectElement>(".treff")) {
+        const r = treff.getBoundingClientRect();
+        if (r.left < ramme.left - 1 || r.right > ramme.right + 1 || r.top < ramme.top - 1 || r.bottom > ramme.bottom + 1) {
+          funn.push(`trykkflate utenfor kartet: ${treff.parentElement?.getAttribute("data-sted") ?? ""}`);
+          break;
+        }
+      }
+    }
     for (const treff of document.querySelectorAll<SVGRectElement>(".verden .kartflate .treff")) {
       const r = treff.getBoundingClientRect();
       if (r.width > 0 && (r.width < 43 || r.height < 43)) {
