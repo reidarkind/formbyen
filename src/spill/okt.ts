@@ -270,7 +270,8 @@ function taVare(lagret: Lagret, vare: VareId): Lagret | null {
 }
 
 function oppdaterMestring(lagret: Lagret, oppgave: Oppgave, riktig: boolean): Lagret {
-  let mestring = registrerSvar(lagret.mestring, oppgave.ferdighet, riktig, lagret.innstillinger.nivaa);
+  const dag = `${lagret.dato.aar}-${lagret.dato.maned}-${lagret.dato.dag}`;
+  let mestring = registrerSvar(lagret.mestring, oppgave.ferdighet, riktig, lagret.innstillinger.nivaa, dag);
   const by = { ...lagret.by };
   if (KLOKKE.includes(oppgave.ferdighet)) {
     by.klokkePaRad = riktig ? by.klokkePaRad + 1 : 0;

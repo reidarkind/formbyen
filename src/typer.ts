@@ -257,6 +257,8 @@ export interface FerdighetsTilstand {
   feilPaRad: number;
   riktige: number;
   forsok: number;
+  /** De ti siste svarene: 1 er riktig, med dagen svaret kom («2026-8-17»). */
+  siste?: { r: 0 | 1; d: string }[];
 }
 
 export interface FriDel {

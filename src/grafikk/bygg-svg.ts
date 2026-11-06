@@ -37,7 +37,7 @@ const STANDARD_NAVN: Record<string, string> = {
 };
 
 /** Usynlig trykkflate på minst 1,5 rute, så stedet treffes også når rutene er små. */
-const TREFF = `<rect class="treff" x="-11" y="-11" width="${RUTE + 22}" height="${RUTE + 22}" fill="${FARGER.papir}" fill-opacity="0"/>`;
+const TREFF = `<rect class="treff" x="-26" y="-26" width="${RUTE + 52}" height="${RUTE + 52}" fill="${FARGER.papir}" fill-opacity="0"/>`;
 
 function innen(x: number, y: number, ramme: { x0: number; y0: number; x1: number; y1: number }): boolean {
   return x >= ramme.x0 && x < ramme.x1 && y >= ramme.y0 && y < ramme.y1;
@@ -127,7 +127,7 @@ export function tegnKart(by: ByTilstand, tid: number, leggetid = 20 * 60, valg: 
     const py = (tomt.y - ramme.y0) * RUTE + 6;
     const klasse = valg.puls === "tomt" ? "puls" : "";
     flater.push(
-      `<g data-sted="tomt:${tomt.x},${tomt.y}" class="${klasse}"><rect class="treff" x="${px - 17}" y="${py - 17}" width="${RUTE + 22}" height="${RUTE + 22}" fill="${FARGER.papir}" fill-opacity="0"/><rect x="${px}" y="${py}" width="${RUTE - 12}" height="${RUTE - 12}" fill="${FARGER.papir}" stroke="${FARGER.kontur}" stroke-width="2" stroke-dasharray="5 4"/><rect x="${px + 14}" y="${py + 8}" width="4" height="16" fill="${FARGER.kontur}"/><rect x="${px + 8}" y="${py + 14}" width="16" height="4" fill="${FARGER.kontur}"/></g>`,
+      `<g data-sted="tomt:${tomt.x},${tomt.y}" class="${klasse}"><rect class="treff" x="${px - 32}" y="${py - 32}" width="${RUTE + 52}" height="${RUTE + 52}" fill="${FARGER.papir}" fill-opacity="0"/><rect x="${px}" y="${py}" width="${RUTE - 12}" height="${RUTE - 12}" fill="${FARGER.papir}" stroke="${FARGER.kontur}" stroke-width="2" stroke-dasharray="5 4"/><rect x="${px + 14}" y="${py + 8}" width="4" height="16" fill="${FARGER.kontur}"/><rect x="${px + 8}" y="${py + 14}" width="16" height="4" fill="${FARGER.kontur}"/></g>`,
     );
   }
   for (const [sted, punkt] of Object.entries(LANDMERKE)) {
@@ -153,7 +153,7 @@ export function tegnKart(by: ByTilstand, tid: number, leggetid = 20 * 60, valg: 
       `<rect x="${rx}" y="${ry}" width="${def.bredde * RUTE}" height="${def.dybde * RUTE}" fill="none" stroke="${FARGER.kontur}" stroke-width="2" stroke-opacity="0.35"/>`,
     );
     flater.push(
-      `<g data-sted="${merke}" class="${klasse}"><rect class="treff" x="${rx - 11}" y="${ry - 11}" width="${def.bredde * RUTE + 22}" height="${def.dybde * RUTE + 22}" fill="${FARGER.papir}" fill-opacity="0"/><g transform="translate(${px} ${py}) scale(${sx} ${sy})">${fasadeInnhold(plassert.bygg, synlig, kveld && plassert.ferdig)}</g></g>`,
+      `<g data-sted="${merke}" class="${klasse}"><rect class="treff" x="${rx - 26}" y="${ry - 26}" width="${def.bredde * RUTE + 52}" height="${def.dybde * RUTE + 52}" fill="${FARGER.papir}" fill-opacity="0"/><g transform="translate(${px} ${py}) scale(${sx} ${sy})">${fasadeInnhold(plassert.bygg, synlig, kveld && plassert.ferdig)}</g></g>`,
     );
   }
   for (const pynt of by.pynt ?? []) {
@@ -203,7 +203,7 @@ export function tegnKart(by: ByTilstand, tid: number, leggetid = 20 * 60, valg: 
     kolonner * RUTE,
     rader * RUTE,
   );
-  return `<div class="brett"><div class="akse-x"><span></span>${bokstaver}</div><div class="akse-rad"><div class="akse-y">${tall}</div><div class="kartflate">${svg}${skilt}</div></div></div>`;
+  return `<div class="brett" style="--k:${(kolonner / rader).toFixed(3)}"><div class="akse-x"><span></span>${bokstaver}</div><div class="akse-rad"><div class="akse-y">${tall}</div><div class="kartflate">${svg}${skilt}</div></div></div>`;
 }
 
 function skiltHtml(
@@ -223,7 +223,7 @@ function skiltHtml(
     .map((punkt) => {
       const left = ((punkt.x - ramme.x0 + 0.5) / kolonner) * 100;
       const top = ((punkt.y - ramme.y0 + 0.92) / rader) * 100;
-      const kant = punkt.x === ramme.x0 ? " venstre" : punkt.x === ramme.x1 - 1 ? " hoyre" : "";
+      const kant = (punkt.x === ramme.x0 ? " venstre" : punkt.x === ramme.x1 - 1 ? " hoyre" : "") + (punkt.y === ramme.y1 - 1 ? " nederst" : "");
       return `<span class="skilt${kant}" style="left:${left.toFixed(1)}%;top:${top.toFixed(1)}%" data-sted="${punkt.sted}">${navn[punkt.sted] ?? punkt.sted}</span>`;
     })
     .join("");

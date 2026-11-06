@@ -1,158 +1,152 @@
-import { expect, test, type Page } from "@playwright/test";
-import { standardLagret } from "../src/lagring/lagring";
-import { utfor } from "../src/spill/okt";
-import type { Lagret } from "../src/typer";
+import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { oppgaver, skjermer, type Tilstand } from "./tilstander";
 
-const STORRELSER = [
-  { width: 390, height: 664, navn: "390x664" },
-  { width: 375, height: 667, navn: "375x667" },
-  { width: 320, height: 568, navn: "320x568" },
-  { width: 844, height: 390, navn: "844x390" },
-];
+/**
+ * Skjermtesten (gj. 9, B8). For hver skjerm og hver oppgavemal sjekkes:
+ * a) ingen element med overflow: hidden har innhold som er klippet, verken loddrett eller sideveis,
+ * b) alle knapper kan nås, ligger innenfor skjermen, er ikke dekket og er minst 44 px,
+ * c) det finnes en vei ut,
+ * d) klokker som er en del av oppgaven, er minst 80 px.
+ */
 
-async function ingenRulling(page: Page): Promise<void> {
-  const brudd = await page.evaluate(() => {
-    const funn: string[] = [];
-    if (document.documentElement.scrollHeight > window.innerHeight + 1) funn.push("dokument");
-    for (const el of document.querySelectorAll<HTMLElement>("*")) {
-      if (!el.querySelector("button, [data-svar]")) continue;
-      if (el.scrollHeight > el.clientHeight + 1) funn.push(`klipp ${el.className || el.tagName}`);
-    }
-    for (const knapp of document.querySelectorAll<HTMLElement>("button, [data-svar]")) {
-      const r = knapp.getBoundingClientRect();
-      if (r.width === 0 || r.height === 0) continue;
-      if (r.bottom > window.innerHeight + 1 || r.right > window.innerWidth + 1 || r.top < -1 || r.left < -1) {
-        funn.push((knapp.textContent ?? "knapp").trim().slice(0, 40));
-      }
-      const treff = document.elementFromPoint(r.left + r.width / 2, r.top + Math.min(r.height / 2, 12));
-      if (treff && treff !== knapp && !knapp.contains(treff)) funn.push(`dekket ${(knapp.textContent ?? "knapp").trim().slice(0, 24)}`);
-    }
-    return funn;
-  });
-  expect(brudd).toEqual([]);
+async function sett(page: Page, tilstand: Tilstand): Promise<void> {
+  await page.evaluate(
+    ({ lagret, skjerm, ekstra }) => {
+      (window as unknown as { formbyenTest: { sett: (l: unknown, s?: string, e?: unknown) => void } }).formbyenTest.sett(lagret, skjerm, ekstra);
+    },
+    { lagret: tilstand.lagret, skjerm: tilstand.skjerm, ekstra: tilstand.ekstra },
+  );
 }
 
-test.describe("ingen skjerm ruller", () => {
-  for (const stor of STORRELSER) {
-    test(stor.navn, async ({ page }) => {
-      test.setTimeout(90000);
-      await page.setViewportSize({ width: stor.width, height: stor.height });
-      await page.goto("/formbyen/");
-      await page.evaluate(() => localStorage.clear());
-      await page.reload();
-      await ingenRulling(page);
-      await page.getByRole("button", { name: "Hopp over" }).click();
-      await ingenRulling(page);
-      await page.getByRole("button", { name: "Innstillinger" }).click();
-      await ingenRulling(page);
-      await page.getByRole("button", { name: "Nivå" }).click();
-      await ingenRulling(page);
-      await page.getByRole("button", { name: "Språk" }).click();
-      await ingenRulling(page);
-      await page.getByRole("button", { name: "Voksen" }).click();
-      await ingenRulling(page);
-      await page.getByRole("button", { name: "Tilbake" }).click();
-      await page.getByRole("button", { name: "Spill" }).click();
-      await ingenRulling(page);
-      await page.getByRole("button", { name: "Start ettermiddagen" }).click();
-      await ingenRulling(page);
-      await page.getByRole("button", { name: "Dagens plan" }).click();
-      await expect(page.locator("button.hoved[data-plan='lukk']")).toBeVisible();
-      await ingenRulling(page);
-      await page.locator("button.hoved[data-plan='lukk']").click();
-      await page.locator("[data-sted='taarn']").click({ force: true });
-      await expect(page.locator(".ur-skjerm")).toBeVisible();
-      await expect(page.locator(".ur-skjerm button.hoved")).toBeVisible();
-      await ingenRulling(page);
-      await page.locator(".ur-skjerm [data-skjerm='verden']").click();
-      const butikk = lagButikk();
-      await page.evaluate((json) => localStorage.setItem("formbyen-v1", json), JSON.stringify(butikk));
-      await page.reload();
-      await expect(page.locator("article.kort .dorskilt")).toBeVisible();
-      await ingenRulling(page);
-      const oppgave = lagOppgave();
-      await page.evaluate((json) => localStorage.setItem("formbyen-v1", json), JSON.stringify(oppgave));
-      await page.reload();
-      await expect(page.locator("[data-svar]").first()).toBeVisible();
-      await ingenRulling(page);
-      const kveld = lagKveld();
-      await page.evaluate((json) => localStorage.setItem("formbyen-v1", json), JSON.stringify(kveld));
-      await page.reload();
-      await page.getByRole("button", { name: "Legg deg" }).click();
-      await expect(page.getByRole("button", { name: "God natt" })).toBeVisible();
-      await ingenRulling(page);
-      await page.getByRole("button", { name: "God natt" }).click();
-      await page.getByRole("button", { name: "Dagboka" }).click();
-      await page.getByRole("button", { name: "Fotoalbum" }).click();
-      await expect(page.getByRole("button", { name: "Tilbake" })).toBeVisible();
-      await ingenRulling(page);
-      await page.getByRole("button", { name: "Tilbake" }).click();
-      await page.getByRole("button", { name: "Tilbake" }).click();
-      await page.getByRole("button", { name: "Innstillinger" }).click();
-      await page.getByRole("button", { name: "Voksen" }).click();
-      await page.getByRole("button", { name: "Kompetansemål" }).click();
-      await expect(page.getByRole("button", { name: "Åpne" })).toBeVisible();
-      await ingenRulling(page);
-      const stykke = await page.locator("main p").first().textContent();
-      const deler = (stykke ?? "").match(/(\d+)\s*×\s*(\d+)/);
-      if (deler) {
-        await page.locator("#voksen-svar").fill(String(Number(deler[1]) * Number(deler[2])));
-        await page.getByRole("button", { name: "Åpne" }).click();
-        await page.locator("button[data-fane='data']").click();
-        await expect(page.locator("button[data-skjerm='innstillinger']")).toBeVisible();
-        await ingenRulling(page);
+async function sjekk(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const funn: string[] = [];
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const navn = (el: Element) => ((el as HTMLElement).innerText || el.getAttribute("aria-label") || el.getAttribute("data-sted") || el.className.toString() || el.tagName).trim().replace(/\s+/g, " ").slice(0, 32);
+    if (document.documentElement.scrollWidth > vw + 1) funn.push("siden er bredere enn skjermen");
+    if (document.documentElement.scrollHeight > vh + 1) funn.push("dokumentet scroller");
+    for (const el of document.querySelectorAll<HTMLElement>("body *")) {
+      if (el.closest("svg") || el.classList.contains("skjult") || el.closest(".skjult")) continue;
+      const stil = getComputedStyle(el);
+      const klipperY = stil.overflowY === "hidden" || stil.overflowY === "clip";
+      const klipperX = stil.overflowX === "hidden" || stil.overflowX === "clip";
+      if (klipperY && el.scrollHeight > el.clientHeight + 2) funn.push(`klippet loddrett: ${navn(el)}`);
+      if (klipperX && el.scrollWidth > el.clientWidth + 2) funn.push(`klippet sideveis: ${navn(el)}`);
+      if (!klipperX && stil.overflowX === "visible" && el.scrollWidth > el.clientWidth + 2 && el.clientWidth > 0 && !el.closest(".tall-lag") && stil.display !== "inline") {
+        const forelder = el.parentElement;
+        if (forelder && el.getBoundingClientRect().right > vw + 1) funn.push(`stikker ut sideveis: ${navn(el)}`);
       }
+    }
+    const knapper = [...document.querySelectorAll<HTMLElement>("button, a.knapp, select, input:not(.skjult), summary")].filter((el) => {
+      const r = el.getBoundingClientRect();
+      return r.width > 0 && r.height > 0 && !el.closest(".skjult");
     });
+    let veiUt = false;
+    for (const knapp of knapper) {
+      knapp.scrollIntoView({ block: "nearest", inline: "nearest" });
+      const r = knapp.getBoundingClientRect();
+      if (r.top < -1 || r.left < -1 || r.bottom > vh + 1 || r.right > vw + 1) {
+        funn.push(`utenfor skjermen: ${navn(knapp)}`);
+        continue;
+      }
+      if (r.height < 43.5 || r.width < 43.5) funn.push(`for liten (${Math.round(r.width)}×${Math.round(r.height)}): ${navn(knapp)}`);
+      const x = r.left + r.width / 2;
+      const y = r.top + r.height / 2;
+      const treff = document.elementFromPoint(x, y);
+      if (treff && treff !== knapp && !knapp.contains(treff) && !(treff instanceof HTMLLabelElement && treff.contains(knapp))) funn.push(`dekket: ${navn(knapp)} av ${navn(treff)}`);
+      if (!(knapp as HTMLButtonElement).disabled) veiUt = true;
+    }
+    if (!veiUt) funn.push("ingen vei ut");
+    for (const ur of document.querySelectorAll<HTMLElement>(".oppgave > .ur, .oppgave .sammenlign .ur, .oppgave .valg .ur, .ur-midten .ur, .skilt-naa .ur")) {
+      const r = ur.getBoundingClientRect();
+      if (r.width > 0 && r.width < 79.5) funn.push(`klokke for liten (${Math.round(r.width)} px)`);
+    }
+    for (const treff of document.querySelectorAll<SVGRectElement>(".verden .kartflate .treff")) {
+      const r = treff.getBoundingClientRect();
+      if (r.width > 0 && (r.width < 43 || r.height < 43)) {
+        funn.push(`trykkflate på kartet for liten (${Math.round(r.width)} px)`);
+        break;
+      }
+    }
+    document.querySelectorAll<HTMLElement>(".side-midt, .verden-midten, .kveld-midt").forEach((el) => {
+      el.scrollTop = 0;
+    });
+    return [...new Set(funn)];
+  });
+}
+
+async function apne(page: Page): Promise<void> {
+  await page.goto("/formbyen/");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.waitForFunction(() => "formbyenTest" in window);
+}
+
+async function bilde(page: Page, info: TestInfo, navn: string): Promise<void> {
+  await page.screenshot({ path: info.outputPath(`${navn}.png`) });
+}
+
+test("alle skjermer får plass uten klipping", async ({ page }, info) => {
+  test.setTimeout(120_000);
+  await apne(page);
+  const brudd: string[] = [];
+  for (const tilstand of skjermer()) {
+    await sett(page, tilstand);
+    await page.waitForTimeout(30);
+    const funn = await sjekk(page);
+    await bilde(page, info, tilstand.navn);
+    for (const rad of funn) brudd.push(`${tilstand.navn}: ${rad}`);
   }
+  expect(brudd).toEqual([]);
 });
 
-function lagButikk(): Lagret {
-  let lagret = utfor({ ...standardLagret(), startet: true }, { slag: "start" }).lagret;
-  const dag = lagret.aktivDag;
-  if (!dag) throw new Error("mangler dag");
-  lagret = {
-    ...lagret,
-    startet: true,
-    aktivDag: { ...dag, tid: dag.plan.butikk.apner - 30, sted: "butikk", fase: "handel", dorLest: false, ko: [], forklaring: null },
-  };
-  return utfor(lagret, { slag: "handle" }).lagret;
-}
+test("alle oppgavemaler og forklaringskort kan løses", async ({ page }, info) => {
+  test.setTimeout(300_000);
+  await apne(page);
+  const brudd: string[] = [];
+  const vist = new Set<string>();
+  for (const tilstand of oppgaver()) {
+    await sett(page, tilstand);
+    const funn = await sjekk(page);
+    const type = tilstand.navn.replace(/-\d+$/, "");
+    if (funn.length || !vist.has(type)) {
+      vist.add(type);
+      await bilde(page, info, tilstand.navn);
+    }
+    for (const rad of funn) brudd.push(`${tilstand.navn}: ${rad}`);
+  }
+  expect(brudd).toEqual([]);
+});
 
-function lagOppgave(): Lagret {
-  let lagret = utfor({ ...standardLagret(), startet: true }, { slag: "start" }).lagret;
-  const dag = lagret.aktivDag;
-  if (!dag) throw new Error("mangler dag");
-  const oppgave = {
-    id: "skjerm-les",
-    type: "les-klokka" as const,
-    mal: "les-1",
-    ferdighet: "hele-timer" as const,
-    prompt: "Hva viser klokka?",
-    nokkel: "test",
-    valg: [
-      { id: "a", tekst: "ett", klokke: 60 },
-      { id: "b", tekst: "to", klokke: 120 },
-      { id: "c", tekst: "tre", klokke: 180 },
-    ],
-    fasit: "b",
-    vare: "planke" as const,
-    hvem: "ekspeditøren",
-    overraskelse: false,
-  };
-  return {
-    ...lagret,
-    startet: true,
-    aktivDag: { ...dag, tid: dag.plan.butikk.apner, sted: "butikk", fase: "handel", dorLest: true, ko: [oppgave], aktiv: 0, forklaring: null, feil: 0 },
-  };
-}
+test("planen kan ikke åpnes mens en oppgave pågår", async ({ page }) => {
+  await apne(page);
+  const oppgave = oppgaver().find((rad) => rad.navn === "oppgave-les-1");
+  if (!oppgave) throw new Error("mangler oppgave");
+  await sett(page, oppgave);
+  await expect(page.locator("button.stripe")).toBeDisabled();
+});
 
-function lagKveld(): Lagret {
-  let lagret = utfor({ ...standardLagret(), startet: true }, { slag: "start" }).lagret;
-  const dag = lagret.aktivDag;
-  if (!dag) throw new Error("mangler dag");
-  return {
-    ...lagret,
-    startet: true,
-    aktivDag: { ...dag, tid: dag.plan.leggetid, sted: "hjemme", fase: "ute", dorLest: true, ko: [], forklaring: null },
-  };
-}
+test("sortering med dra og berøring", async ({ page }) => {
+  await apne(page);
+  const sortering = oppgaver().find((rad) => rad.navn.startsWith("oppgave-sort"));
+  if (!sortering) throw new Error("mangler sortering");
+  await sett(page, sortering);
+  const figur = page.locator(".figurgrid [data-vare]").first();
+  const kasse = page.locator(".kasse").first();
+  await expect(figur).toBeVisible();
+  await expect(kasse).toBeVisible();
+  const fra = await figur.boundingBox();
+  const til = await kasse.boundingBox();
+  if (!fra || !til) throw new Error("mangler boks");
+  const antall = await page.locator(".figurgrid [data-vare]").count();
+  await figur.dispatchEvent("pointerdown", { pointerType: "touch", isPrimary: true, clientX: fra.x + fra.width / 2, clientY: fra.y + fra.height / 2, pointerId: 1 });
+  await page.evaluate(
+    ({ x, y }) => {
+      window.dispatchEvent(new PointerEvent("pointermove", { pointerType: "touch", isPrimary: true, clientX: x, clientY: y, pointerId: 1 }));
+      window.dispatchEvent(new PointerEvent("pointerup", { pointerType: "touch", isPrimary: true, clientX: x, clientY: y, pointerId: 1 }));
+    },
+    { x: til.x + til.width / 2, y: til.y + til.height / 2 },
+  );
+  await expect(page.locator(".figurgrid [data-vare]")).toHaveCount(antall - 1);
+});

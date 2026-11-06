@@ -15,6 +15,8 @@ const svg = `<?xml version="1.0" encoding="UTF-8"?>
   <polygon points="20,18 32,6 44,18" fill="#C8553D" stroke="#3B2F2A" stroke-width="2" stroke-linejoin="round"/>
   <rect x="22" y="18" width="20" height="32" fill="#E8B27A" stroke="#3B2F2A" stroke-width="2"/>
   <circle cx="32" cy="30" r="7" fill="#FFF8EA" stroke="#3B2F2A" stroke-width="2"/>
+  <line x1="32" y1="30" x2="32" y2="25.5" stroke="#3B2F2A" stroke-width="1.6" stroke-linecap="round"/>
+  <line x1="32" y1="30" x2="35.5" y2="30" stroke="#3B2F2A" stroke-width="1.6" stroke-linecap="round"/>
 </svg>
 `;
 writeFileSync(join(rot, "ikon.svg"), svg);
@@ -65,9 +67,12 @@ function png(stor, valg = {}) {
   const urskive = [0xff, 0xf8, 0xea];
   const sol = [0xff, 0xd6, 0x6b];
   const bla = [0x6f, 0xb1, 0xd8];
-  const s = (n) => Math.round(stor * n);
+  // Maskable-ikonet krympes mot midten, så alt ligger innenfor den sikre sirkelen på 80 % (gj. 9, K11).
+  const k = valg.tett ? 0.78 : 1;
+  const s = (n) => Math.round(stor * (0.5 + (n - 0.5) * k));
+  const l = (n) => Math.max(1, Math.round(stor * n * k));
   for (let y = 0; y < stor; y++) for (let x = 0; x < stor; x++) sett(x, y, y > s(0.78) ? gress : himmel);
-  const inn = valg.tett ? 0.12 : 0.06;
+  const inn = 0.06;
   if (!valg.bareTårn) {
     const stabler = [
       [inn, [bla, sol, gress]],
@@ -87,13 +92,13 @@ function png(stor, valg = {}) {
     fyll(s(0.5 - t * 0.22), y, s(0.5 + t * 0.22), y, tak);
   }
   fyll(s(0.3), takBunn, s(0.7), s(0.78), vegg);
-  fyll(s(0.3), takBunn, s(0.7), takBunn + s(0.015), kontur);
-  fyll(s(0.3), s(0.78) - s(0.015), s(0.7), s(0.78), kontur);
-  fyll(s(0.3), takBunn, s(0.3) + s(0.015), s(0.78), kontur);
-  fyll(s(0.7) - s(0.015), takBunn, s(0.7), s(0.78), kontur);
-  skive(s(0.5), s(0.48), s(0.13), urskive);
-  skive(s(0.5), s(0.48), s(0.13), kontur);
-  skive(s(0.5), s(0.48), s(0.11), urskive);
+  fyll(s(0.3), takBunn, s(0.7), takBunn + l(0.015), kontur);
+  fyll(s(0.3), s(0.78) - l(0.015), s(0.7), s(0.78), kontur);
+  fyll(s(0.3), takBunn, s(0.3) + l(0.015), s(0.78), kontur);
+  fyll(s(0.7) - l(0.015), takBunn, s(0.7), s(0.78), kontur);
+  skive(s(0.5), s(0.48), l(0.13), urskive);
+  skive(s(0.5), s(0.48), l(0.13), kontur);
+  skive(s(0.5), s(0.48), l(0.11), urskive);
   fyll(s(0.49), s(0.4), s(0.51), s(0.48), kontur);
   fyll(s(0.5), s(0.47), s(0.58), s(0.49), kontur);
   const rader = [];

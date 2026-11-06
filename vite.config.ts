@@ -20,7 +20,7 @@ export default defineConfig({
         start_url: "/formbyen/",
         scope: "/formbyen/",
         display: "standalone",
-        orientation: "portrait",
+        orientation: "any",
         background_color: "#F7F0E3",
         theme_color: "#C8553D",
         icons: [

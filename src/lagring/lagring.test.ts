@@ -27,6 +27,10 @@ describe("lagring", () => {
     lagret.mynter = 4;
     const tekst = eksporter(lagret);
     expect(importer("ikke json")).toBeNull();
+    // Et JSON-objekt uten versjon eller by skal aldri erstatte byen (gj. 9, B4).
+    expect(importer("{}")).toBeNull();
+    expect(importer(JSON.stringify({ mynter: 0 }))).toBeNull();
+    expect(importer(JSON.stringify({ versjon: 1 }))).toBeNull();
     expect(importer(tekst)?.mynter).toBe(4);
     expect(importer(tekst)?.by.bygg[0]?.bygg).toBe("ronne");
   });

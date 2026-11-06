@@ -106,6 +106,7 @@ export function registrerSvar(
   ferdighet: Ferdighet,
   riktig: boolean,
   nivaa: Nivaa,
+  dag = "",
 ): Partial<Record<Ferdighet, FerdighetsTilstand>> {
   const forrige = hentFerdighet(mestring, ferdighet);
   const tak = Math.max(0, maksTrinn(ferdighet, nivaa));
@@ -128,6 +129,7 @@ export function registrerSvar(
       feilPaRad,
       riktige: forrige.riktige + (riktig ? 1 : 0),
       forsok: forrige.forsok + 1,
+      siste: [...(forrige.siste ?? []), { r: riktig ? 1 : 0, d: dag } as const].slice(-10),
     },
   };
 }

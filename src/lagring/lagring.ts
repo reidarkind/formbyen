@@ -196,9 +196,12 @@ export function eksporter(data: Lagret): string {
   return JSON.stringify(passPaStorrelse(data));
 }
 
+/** Leser en eksportert by. Krever versjon 1 og en by med bygg, ellers endres ingenting (gj. 9, B4). */
 export function importer(tekst: string): Lagret | null {
   try {
-    return normaliserLagret(JSON.parse(tekst) as unknown);
+    const raa = JSON.parse(tekst) as unknown;
+    if (!erObjekt(raa) || raa.versjon !== 1 || !erObjekt(raa.by) || !Array.isArray((raa.by as { bygg?: unknown }).bygg)) return null;
+    return normaliserLagret(raa);
   } catch {
     return null;
   }
