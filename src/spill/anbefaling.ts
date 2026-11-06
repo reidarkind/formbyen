@@ -1,4 +1,4 @@
-import { aktivitetKnapp, aktivitetNa, visNavn } from "../dag/aktiviteter";
+import { aktivitetKnapp, aktivitetNa, avtaleKlokka, avtaleKort, visNavn } from "../dag/aktiviteter";
 import { maalBygg, manglendeDeler } from "../bygg/handleliste";
 import { byggDef } from "../bygg/katalog";
 import { ferdigeBygg, kravSomOves, ledigeTomter, nesteByggId } from "../bygg/kart";
@@ -115,6 +115,10 @@ export function avtaleHer(lagret: Lagret): Avtale | null {
   );
 }
 
+function kortNavn(lagret: Lagret, avtale: Avtale): string {
+  return avtaleKort(avtale.aktivitet ?? avtale.navn, lagret.innstillinger.spraak);
+}
+
 function navn(lagret: Lagret, avtale: Avtale): string {
   return visNavn(avtale.aktivitet ?? avtale.navn, lagret.innstillinger.spraak);
 }
@@ -227,18 +231,12 @@ function stedFrase(lagret: Lagret, sted: StedId): string {
   return si(lagret, "på stedet", "på staden");
 }
 
-function gaaSetning(lagret: Lagret, sted: StedId, navn: string, tid: string): string {
-  if (sted === "hjemme") {
-    return si(lagret, "Gå hjem. {navn} starter kl. {tid}.", "Gå heim. {navn} startar kl. {tid}.", { navn, tid });
-  }
-  if (navn.toLowerCase().includes("tann")) {
-    return si(lagret, "Tannlegetimen begynner {tid}.", "Tannlegetimen byrjar {tid}.", { tid });
-  }
-  return si(lagret, "Gå til {sted}. {navn} starter kl. {tid}.", "Gå til {sted}. {navn} startar kl. {tid}.", {
-    sted: maalNavn(lagret, sted),
-    navn,
-    tid,
-  });
+function gaaSetning(lagret: Lagret, sted: StedId, avtale: Avtale, tid: string): string {
+  const id = avtale.aktivitet ?? avtale.navn;
+  const setning = avtaleKlokka(id, lagret.innstillinger.spraak, tid);
+  if (sted === "hjemme") return si(lagret, "Gå hjem. {setning}", "Gå heim. {setning}", { setning });
+  if (id === "tannlege") return setning;
+  return si(lagret, "Gå til {sted}. {setning}", "Gå til {sted}. {setning}", { sted: maalNavn(lagret, sted), setning });
 }
 
 function maalNavn(lagret: Lagret, sted: StedId): string {
@@ -284,8 +282,9 @@ function ferdigDagens(lagret: Lagret): boolean {
 
 /** Deler per dag fra bynivå 3. 2. klasse veksler mellom 4 og 5, så slottet nås på 20–25 ettermiddager. */
 function kjopTak(nivaa: Nivaa, dag: number): number {
-  if (nivaa === "forste") return 4;
-  if (nivaa === "andre") return dag % 2 === 0 ? 4 : 5;
+  // Justert da «Nei, ikke i dag» ble den gule knappen for ekstra bygg (gj. 10, 7.1.1).
+  if (nivaa === "forste") return 6;
+  if (nivaa === "andre") return dag % 2 === 0 ? 7 : 8;
   return 5;
 }
 
@@ -430,7 +429,7 @@ export function nesteSteg(lagret: Lagret): NesteSteg {
     return gaaKnapp(
       lagret,
       sted,
-      gaaSetning(lagret, sted, navn(lagret, avgang), tidTilOrd(avgang.start, spraak)),
+      gaaSetning(lagret, sted, avgang, tidTilOrd(avgang.start, spraak)),
     );
   }
 
@@ -451,6 +450,13 @@ export function nesteSteg(lagret: Lagret): NesteSteg {
 
   const forste = apne(lagret).find((avtale) => avtale.start >= dag.tid && kanMotes(lagret, avtale));
   const tidlig = forste && erHer(lagret, forste) && dag.tid < forste.start ? forste : undefined;
+
+  // Alt på nivået er bygget, men et krav mangler: øv hjemme når det er tid før neste avtale (gj. 10, C5).
+  const kravNaa = kravSomOves(lagret.by);
+  if (kravNaa && dag.sted === "hjemme" && igjen > 45) {
+    const avreise = forste ? forste.start - gang(lagret, "hjemme", stedFor(forste)) : dag.plan.leggetid - 30;
+    if (avreise - dag.tid >= 20) return ovKnapp(lagret, kravNaa);
+  }
 
   if (mangler.length > 0 && !stans && dag.sted !== "butikk") {
     const ankomst = dag.tid + gang(lagret, dag.sted, "butikk");
@@ -538,11 +544,8 @@ export function nesteSteg(lagret: Lagret): NesteSteg {
     return ventHer(
       lagret,
       tidlig.start,
-      navn(lagret, tidlig),
-      si(lagret, "{navn} starter kl. {tid}. Vi venter her.", "{navn} startar kl. {tid}. Vi ventar her.", {
-        navn: navn(lagret, tidlig),
-        tid: tidTilOrd(tidlig.start, spraak),
-      }),
+      kortNavn(lagret, tidlig),
+      si(lagret, "{setning} Vi venter her.", "{setning} Vi ventar her.", { setning: avtaleKlokka(tidlig.aktivitet ?? tidlig.navn, spraak, tidTilOrd(tidlig.start, spraak)) }),
       dag.sted,
     );
   }
@@ -554,12 +557,9 @@ export function nesteSteg(lagret: Lagret): NesteSteg {
     const samme = dag.sted === sted;
     if (avreise > dag.tid && (dag.sted === "hjemme" || samme)) {
       if (dag.plan.butikk.stengtHele && !dag.klokkeLekt && avreise - dag.tid > 45) return klokkeKnapp(lagret);
-      const kort = samme ? navn(lagret, neste) : si(lagret, "gå til {sted}", "gå til {sted}", { sted: maalNavn(lagret, sted) });
+      const kort = samme ? kortNavn(lagret, neste) : si(lagret, "gå til {sted}", "gå til {sted}", { sted: maalNavn(lagret, sted) });
       const tekst = samme
-        ? si(lagret, "{navn} starter kl. {tid}. Vi venter her.", "{navn} startar kl. {tid}. Vi ventar her.", {
-            navn: navn(lagret, neste),
-            tid: tidTilOrd(neste.start, spraak),
-          })
+        ? si(lagret, "{setning} Vi venter her.", "{setning} Vi ventar her.", { setning: avtaleKlokka(neste.aktivitet ?? neste.navn, spraak, tidTilOrd(neste.start, spraak)) })
         : si(lagret, "Vi går kl. {tid}, så er vi {sted} klokka {start}.", "Vi går kl. {tid}, så er vi {sted} klokka {start}.", {
             tid: tidTilDigital24(avreise),
             sted: stedFrase(lagret, sted),
@@ -571,7 +571,7 @@ export function nesteSteg(lagret: Lagret): NesteSteg {
       return gaaKnapp(
         lagret,
         sted,
-        gaaSetning(lagret, sted, navn(lagret, neste), tidTilOrd(neste.start, spraak)),
+        gaaSetning(lagret, sted, neste, tidTilOrd(neste.start, spraak)),
       );
     }
   }

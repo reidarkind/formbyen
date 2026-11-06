@@ -228,13 +228,15 @@ function byggPlan(inn: PlanInn, tilfeldig: Tilfeldig): Dagsplan | null {
 
   const sfo = skole && tilfeldig() < 0.35 ? velgTid(tilfeldig, [15 * 60 + 30, 16 * 60], lovlige) : null;
 
-  const rytme = inn.fasteAvtaler.length ? inn.fasteAvtaler : inn.ukerytme;
+  // Faste avtaler fra voksensiden kommer først og hoppes aldri over. Resten av ukerytmen gjelder fortsatt (gj. 10, 7.1.4).
+  const faste = inn.fasteAvtaler.map((fast) => ({ ...fast, fast: true }));
+  const rytme = [...faste, ...inn.ukerytme.filter((rad) => !inn.fasteAvtaler.some((fast) => fast.ukedag === rad.ukedag && fast.aktivitet === rad.aktivitet)).map((rad) => ({ ...rad, fast: false }))];
   const vinter = arstid === "vinter";
   const apne = apneAktiviteter(inn.ferdige, vinter);
   const avvik = tilfeldig();
   for (const fast of rytme) {
     if (fast.ukedag !== ukedag) continue;
-    if (avvik < 0.12) continue;
+    if (avvik < 0.12 && !fast.fast) continue;
     const meta = apne.find((aktivitet) => aktivitet.id === fast.aktivitet);
     if (!meta) continue;
     let startTid = fast.start;

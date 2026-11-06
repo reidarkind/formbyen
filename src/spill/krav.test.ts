@@ -31,14 +31,25 @@ describe("krav for neste bynivå (gj. 10, C5)", () => {
   });
 
   it("tilbyr mønsterøving når alle bygg på nivå 2 er ferdige uten mønster", () => {
-    const { lagret } = spill("andre", 1, 3);
-    let neste = lagret;
-    if (neste.by.monsterFullfort > 0) return;
-    neste = utfor(neste, { slag: "start" }).lagret;
+    // Spill til alt på nivå 2 er bygget, og hold mønsteret ute ved å nullstille det.
+    const grunn = standardLagret();
+    let neste: Lagret = { ...grunn, fro: 1, dato: STARTDATO, startet: true, innstillinger: { ...grunn.innstillinger, nivaa: "andre" } };
+    for (let dag = 0; dag < 20 && kravSomOves({ ...neste.by, monsterFullfort: 0 }) !== "monster"; dag++) {
+      neste = spillDag(utfor({ ...neste, by: { ...neste.by, monsterFullfort: 0 } }, { slag: "start" }).lagret).lagret;
+      if (neste.aktivDag) neste = utfor(neste, { slag: "avslutt" }).lagret;
+    }
+    neste = utfor({ ...neste, by: { ...neste.by, monsterFullfort: 0 } }, { slag: "start" }).lagret;
     expect(kravSomOves(neste.by)).toBe("monster");
     // Hjelperen sier hva som mangler, og den gule knappen gir øvingen.
     let steg = nesteSteg(neste);
-    for (let i = 0; i < 20 && steg.handling.slag !== "ov"; i++) {
+    for (let i = 0; i < 40 && steg.handling.slag !== "ov"; i++) {
+      const dag = neste.aktivDag;
+      const oppgave = dag?.ko[dag.aktiv];
+      if (oppgave) {
+        neste = utfor(neste, { slag: "svar", svar: oppgave.fasit }).lagret;
+        steg = nesteSteg(neste);
+        continue;
+      }
       const valg = anbefalt(neste);
       if (valg.slag === "gaa") neste = utfor(neste, { slag: "ga", sted: valg.sted }).lagret;
       else if (valg.slag === "vent") neste = utfor(neste, { slag: "vent", tid: valg.tid }).lagret;

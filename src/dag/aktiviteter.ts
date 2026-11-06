@@ -151,11 +151,45 @@ export function visBestemt(id: string, spraak: Spraak): string {
     piano: ["pianoøvingen", "pianoøvinga"],
     kor: ["koret", "koret"],
     bibliotek: ["biblioteket", "biblioteket"],
+    speider: ["speideren", "speidaren"],
+    sjakk: ["sjakken", "sjakken"],
+    ski: ["skituren", "skituren"],
+    skoyter: ["skøyteturen", "skeiseturen"],
+    turn: ["turnen", "turnen"],
+    handball: ["håndballen", "handballen"],
+    cello: ["celloøvingen", "celloøvinga"],
+    fiolin: ["fiolinøvingen", "fiolinøvinga"],
+    besteforeldre: ["besøket hos besteforeldrene", "besøket hos besteforeldra"],
+    henting: ["hentingen på SFO", "hentinga på SFO"],
+    nabo: ["hjelpen til naboen", "hjelpa til naboen"],
   };
   const rad = tabell[id];
   if (rad) return mal(spraak, rad[0], rad[1]);
   const navn = visNavn(id, spraak);
   return navn.charAt(0).toLowerCase() + navn.slice(1);
+}
+
+/** En avtale som hel setning med «klokka»: «Hunden skal luftes klokka fem.» (gj. 10, 7.4). */
+export function avtaleKlokka(id: string, spraak: Spraak, tid: string): string {
+  const egne: Record<string, [string, string]> = {
+    hund: ["Hunden skal luftes klokka {tid}.", "Hunden skal luftast klokka {tid}."],
+    middag: ["Middagen er klokka {tid}.", "Middagen er klokka {tid}."],
+    lillesoster: ["Vi henter lillesøster klokka {tid}.", "Vi hentar lillesyster klokka {tid}."],
+    tannlege: ["Tannlegetimen begynner klokka {tid}.", "Tannlegetimen byrjar klokka {tid}."],
+    lekser: ["Vi gjør lekser klokka {tid}.", "Vi gjer lekser klokka {tid}."],
+  };
+  const rad = egne[id];
+  if (rad) return mal(spraak, rad[0], rad[1], { tid });
+  const navn = visBestemt(id, spraak);
+  return mal(spraak, "{navn} begynner klokka {tid}.", "{navn} byrjar klokka {tid}.", { navn: navn.charAt(0).toUpperCase() + navn.slice(1), tid });
+}
+
+/** Kort navn på knappen: «tur med hunden», ikke «Lufte hunden» (gj. 10, 7.4). */
+export function avtaleKort(id: string, spraak: Spraak): string {
+  if (id === "hund") return mal(spraak, "tur med hunden", "tur med hunden");
+  if (id === "lillesoster") return mal(spraak, "henting av lillesøster", "henting av lillesyster");
+  if (id === "middag") return mal(spraak, "middag", "middag");
+  return visNavn(id, spraak);
 }
 
 const NAA: Record<string, [string, string]> = {

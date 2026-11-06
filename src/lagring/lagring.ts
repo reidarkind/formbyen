@@ -13,6 +13,7 @@ import type {
   VareId,
 } from "../typer";
 import { erSpraak } from "../typer";
+import { byggDef } from "../bygg/katalog";
 
 export const NOKKEL = "formbyen-v1";
 
@@ -87,16 +88,24 @@ function erObjekt(verdi: unknown): verdi is Record<string, unknown> {
   return typeof verdi === "object" && verdi !== null;
 }
 
+/** Et helt tall mellom min og maks. Ugyldige tall blir min. */
+function begrens(verdi: number, min: number, maks: number): number {
+  if (!Number.isFinite(verdi)) return min;
+  return Math.min(maks, Math.max(min, Math.round(verdi)));
+}
+
 function lesBygg(verdi: unknown): PlassertBygg | null {
   if (!erObjekt(verdi)) return null;
   if (typeof verdi.instans !== "string" || typeof verdi.bygg !== "string" || !BYGG_ID.has(verdi.bygg as ByggId)) return null;
   if (typeof verdi.x !== "number" || typeof verdi.y !== "number") return null;
+  // Rimelige verdier ved import (gj. 10, 7.1.5).
+  const maks = byggDef(verdi.bygg as ByggId).oppskrift.length;
   return {
     instans: verdi.instans,
     bygg: verdi.bygg as ByggId,
-    x: verdi.x,
-    y: verdi.y,
-    steg: typeof verdi.steg === "number" ? verdi.steg : 0,
+    x: begrens(verdi.x, 0, 11),
+    y: begrens(verdi.y, 0, 11),
+    steg: typeof verdi.steg === "number" ? begrens(verdi.steg, 0, maks) : 0,
     ferdig: verdi.ferdig === true,
     uthus: verdi.uthus === true,
     frie: [],
@@ -166,7 +175,7 @@ export function normaliserLagret(raa: unknown): Lagret | null {
     ...standard,
     versjon: 1,
     innstillinger: lesInnstillinger(raa.innstillinger, standard.innstillinger),
-    mynter: (typeof raa.mynter === "number" ? raa.mynter : 0) + refusjon,
+    mynter: begrens((typeof raa.mynter === "number" ? raa.mynter : 0) + refusjon, 0, 9999),
     kurv: erObjekt(raa.kurv) ? (raa.kurv as Lagret["kurv"]) : {},
     by,
     dato: erObjekt(raa.dato) && typeof raa.dato.aar === "number" ? (raa.dato as unknown as Lagret["dato"]) : standard.dato,

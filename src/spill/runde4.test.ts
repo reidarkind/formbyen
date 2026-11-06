@@ -242,7 +242,7 @@ function spillDagen(lagret: Lagret): Lagret {
       continue;
     }
     if (valg.slag === "ekstra") {
-      lagret = utfor(lagret, { slag: "ekstra", ja: true }).lagret;
+      lagret = utfor(lagret, { slag: "ekstra", ja: false }).lagret;
       continue;
     }
     break;

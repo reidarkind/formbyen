@@ -1,6 +1,6 @@
 import { registerSW } from "virtual:pwa-register";
 import { maalBygg, manglendeDeler } from "./bygg/handleliste";
-import { byggSomKanStartes, byenErFerdig, ledigePyntPlasser, ledigeTomter, lesRute, nesteByggId, pyntOmrade, pyntOmradeRamme, pyntPlasser, ruteNavn } from "./bygg/kart";
+import { byggSomKanStartes, byenErFerdig, ferdigeBygg, ledigePyntPlasser, ledigeTomter, lesRute, nesteByggId, pyntOmrade, pyntOmradeRamme, pyntPlasser, ruteNavn } from "./bygg/kart";
 import { PYNT_FORMER, pyntSvg } from "./grafikk/pynt-svg";
 import { byggDef } from "./bygg/katalog";
 import { boligen, celleFor } from "./bygg/landemerker";
@@ -21,7 +21,7 @@ import { urRunde, type UrSteg } from "./spill/taarnur";
 import { FERDIGHET_NAVN, ferdighetStatus, OMRADER, oversiktLinjer, type Status } from "./tilpasning/oversikt";
 import { omrissForForm } from "./tegning/omriss";
 import { rasterFraAlpha, vurderTegning } from "./tegning/vurder";
-import { visNavn } from "./dag/aktiviteter";
+import { apneAktiviteter, visNavn } from "./dag/aktiviteter";
 import { ukedagFor } from "./dag/plan";
 import { byggBestemt as byggBestemtOrd, formMedArtikkel, fraNb, formNavn, mal, navnBygg, navnVare, smaForbokstav, storForbokstav, vareAntall, vareBestemt } from "./tekst/ordbok";
 import { manedTekst, si, SPRAAK_NAVN, ukedagTekst } from "./tekst/spraak";
@@ -788,10 +788,11 @@ function sceneHtml(): string {
   if (!dag) return "";
   const tilbake = "";
   if (dag.sted === "butikk") {
-    const rader = handlelisteRader();
+    // Like deler samles: «2 murvegger», ikke «murvegg, murvegg» (gj. 10, 7.4).
+    const rader = grupperteDeler();
     const apning = dag.dorLest ? `<p>${esc(apningTekst(lagret))}</p>` : "";
     return `${tilbake}<section class="scene"><h1>${si(spraak(), "Butikken", "Butikken")}</h1>${apning}<div class="hyller">${rader
-      .map((rad) => `<div class="kurv-rad${rad.har ? " har" : ""}">${delBilde(rad.vare)}<p>${rad.har ? "✓ " : ""}${esc(navnVare(rad.vare, spraak()))}</p></div>`)
+      .map((rad) => `<div class="kurv-rad${rad.har >= rad.antall ? " har" : ""}">${delBilde(rad.vare)}<p>${rad.har >= rad.antall ? "✓ " : ""}${esc(vareAntall(rad.vare, rad.antall, spraak()))}</p></div>`)
       .join("")}</div><div class="ekspeditor">${byggmester(1)}</div></section>`;
   }
   if (dag.sted === "hjemme") {
@@ -856,7 +857,8 @@ function enHandling(): string {
   const viserScene = !gar && dag.fase !== "ute";
   const tilBy = viserScene ? `<button type="button" data-ute="1">${si(spraak(), "← Byen", "← Byen")}</button>` : "";
   if (steg.nei) {
-    return `${tilBy}<button type="button" data-handling="ekstra-nei">${esc(steg.nei)}</button><button type="button" class="hoved" data-handling="ekstra-ja">${esc(steg.knapp)}</button>`;
+    // Ett bygg om dagen er standard: «Nei, ikke i dag» er den gule knappen (gj. 10, 7.1.1).
+    return `${tilBy}<button type="button" data-handling="ekstra-ja">${esc(steg.knapp)}</button><button type="button" class="hoved" data-handling="ekstra-nei">${esc(steg.nei)}</button>`;
   }
   return `${tilBy}${hovedKnapp(dag, steg)}`;
 }
@@ -1240,7 +1242,7 @@ function voksenHtml(): string {
   const avtaler = `${inn.fasteAvtaler.length ? `<ul class="avtaleliste">${inn.fasteAvtaler.map((avtale, indeks) => `<li><span>${esc(avtaleNavn(avtale))}</span><button type="button" data-fjern="${indeks}" aria-label="${si(spraak(), "Fjern", "Fjern")} ${esc(avtaleNavn(avtale))}">×</button></li>`).join("")}</ul>` : `<p>${si(spraak(), "Ingen faste avtaler ennå.", "Ingen faste avtalar enno.")}</p>`}
     <h3>${si(spraak(), "Legg til fast avtale", "Legg til fast avtale")}</h3>
     <div class="skjema">
-      <label class="felt"><span>${si(spraak(), "Aktivitet", "Aktivitet")}</span><select id="fast-aktivitet">${FASTE_AKTIVITETER.map((id) => `<option value="${id}">${esc(visNavn(id, spraak()))}</option>`).join("")}</select></label>
+      <label class="felt"><span>${si(spraak(), "Aktivitet", "Aktivitet")}</span><select id="fast-aktivitet">${FASTE_AKTIVITETER.filter((id) => apneAktiviteter(ferdigeBygg(lagret.by), true).some((rad) => rad.id === id)).map((id) => `<option value="${id}">${esc(visNavn(id, spraak()))}</option>`).join("")}</select></label>
       <label class="felt"><span>${si(spraak(), "Ukedag", "Vekedag")}</span><select id="fast-dag">${UKEDAGER.map((dag) => `<option value="${dag}">${ukedagTekst(spraak(), dag)}</option>`).join("")}</select></label>
       <label class="felt"><span>${si(spraak(), "Tid", "Tid")}</span><select id="fast-tid">${Array.from({ length: 17 }, (_, i) => 12 * 60 + i * 30).map((tid) => `<option value="${tid}" ${tid === 17 * 60 ? "selected" : ""}>${tidTilDigital24(tid)}</option>`).join("")}</select></label>
       <button type="button" data-fast="1">${si(spraak(), "Legg til", "Legg til")}</button>
@@ -1250,7 +1252,7 @@ function voksenHtml(): string {
     : "";
   const slett =
     nullSteg >= 1
-      ? `<div class="bekreft"><p>${si(spraak(), "Dette sletter hele byen på denne telefonen.", "Dette slettar heile byen på denne telefonen.")}</p><div class="rad"><button type="button" data-null="avbryt">${si(spraak(), "Avbryt", "Avbryt")}</button><button type="button" class="fare" data-null="ja">${si(spraak(), "Slett byen", "Slett byen")}</button></div></div>`
+      ? `<div class="bekreft"><p>${si(spraak(), "Dette sletter hele byen på denne telefonen. Nivå, språk og faste avtaler blir værende.", "Dette slettar heile byen på denne telefonen. Nivå, språk og faste avtalar blir verande.")}</p><div class="rad"><button type="button" data-null="avbryt">${si(spraak(), "Avbryt", "Avbryt")}</button><button type="button" class="fare" data-null="ja">${si(spraak(), "Slett byen", "Slett byen")}</button></div></div>`
       : `<button type="button" data-null="spor">${si(spraak(), "Start på nytt", "Start på nytt")}</button>`;
   const data = `<p>${si(spraak(), "Byen ligger bare på denne telefonen. Lagre den som fil for å ta vare på den eller flytte den.", "Byen ligg berre på denne telefonen. Lagre han som fil for å ta vare på han eller flytte han.")}</p>
     <button type="button" data-eksport="1">${si(spraak(), "Lagre byen som fil", "Lagre byen som fil")}</button>
@@ -1343,8 +1345,7 @@ function kurvHtml(): string {
   const rader = Object.entries(lagret.kurv).filter((rad) => (rad[1] ?? 0) > 0);
   const mangler = manglendeDeler(lagret);
   const midt = `${rader.length ? `<div class="kurv-liste">${rader.map(([id, antall]) => `<div class="kurv-rad">${delBilde(id)}<p>${esc(navnVare(id, spraak()))} × ${antall}</p></div>`).join("")}</div>` : `<p>${si(spraak(), "Kurven er tom.", "Korga er tom.")}</p>`}
-    <h2>${si(spraak(), "Neste del", "Neste del")}</h2>
-    ${mangler.length ? `<div class="kurv-rad">${delBilde(mangler[0] ?? "")}<p>${esc(navnVare(mangler[0] ?? "", spraak()))}</p></div>` : `<p>${si(spraak(), "Handlelisten er tom.", "Handlelista er tom.")}</p>`}`;
+    ${mangler.length ? `<div class="kurv-rad">${delBilde(mangler[0] ?? "")}<p><strong>${si(spraak(), "Neste del", "Neste del")}:</strong> ${esc(storForbokstav(navnVare(mangler[0] ?? "", spraak())))}</p></div>` : `<p>${si(spraak(), "Handlelisten er tom.", "Handlelista er tom.")}</p>`}`;
   return side(si(spraak(), "Kurven", "Korga"), midt, tilbakeKnapp("verden"));
 }
 
@@ -2138,19 +2139,17 @@ rot.addEventListener("click", (hendelse) => {
     const aktivitet = document.querySelector<HTMLSelectElement>("#fast-aktivitet")?.value ?? "hund";
     const valgtDag = document.querySelector<HTMLSelectElement>("#fast-dag")?.value ?? "tirsdag";
     const ukedag = erUkedag(valgtDag) ? valgtDag : "tirsdag";
-    lagret = {
-      ...lagret,
-      innstillinger: { ...lagret.innstillinger, fasteAvtaler: [...lagret.innstillinger.fasteAvtaler, { aktivitet, ukedag, start: Number(document.querySelector<HTMLSelectElement>("#fast-tid")?.value ?? 18 * 60) }] },
-    };
+    // Samme avtale legges ikke inn to ganger, og morgendagens plan lages på nytt (gj. 10, 7.1.3 og 7.1.6).
+    lagret = utfor(lagret, {
+      slag: "faste-avtaler",
+      liste: [...lagret.innstillinger.fasteAvtaler, { aktivitet, ukedag, start: Number(document.querySelector<HTMLSelectElement>("#fast-tid")?.value ?? 18 * 60) }],
+    }).lagret;
     lagre();
     tegn();
   }
   if (knapp.dataset.fjern) {
     const indeks = Number(knapp.dataset.fjern);
-    lagret = {
-      ...lagret,
-      innstillinger: { ...lagret.innstillinger, fasteAvtaler: lagret.innstillinger.fasteAvtaler.filter((_, i) => i !== indeks) },
-    };
+    lagret = utfor(lagret, { slag: "faste-avtaler", liste: lagret.innstillinger.fasteAvtaler.filter((_, i) => i !== indeks) }).lagret;
     lagre();
     tegn();
   }

@@ -47,7 +47,8 @@ export function spillDag(lagret: Lagret, svar: Svarer = riktigSvar, maks = 600):
     else if (valg.slag === "handle" || valg.slag === "mot" || valg.slag === "spis") lagret = utfor(lagret, { slag: valg.slag }).lagret;
     else if (valg.slag === "klokke") lagret = utfor(lagret, { slag: "klokke" }).lagret;
     else if (valg.slag === "ov") lagret = utfor(lagret, { slag: "ov" }).lagret;
-    else if (valg.slag === "ekstra") lagret = utfor(lagret, { slag: "ekstra", ja: true }).lagret;
+    // Den gule knappen i tilbudet om ekstra bygg er «Nei, ikke i dag» (gj. 10, 7.1.1).
+    else if (valg.slag === "ekstra") lagret = utfor(lagret, { slag: "ekstra", ja: false }).lagret;
     else lagret = utfor(lagret, { slag: "avslutt" }).lagret;
   }
   return { lagret, logg };

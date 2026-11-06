@@ -884,8 +884,22 @@ function lagTell(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const form = form2d(id);
   const tall = v === 6 ? form.retteVinkler : v % 2 === 0 ? form.hjorner : form.sider;
   const pakke = tallValg(tall, ctx.tilfeldig);
-  const prompt = v === 6 ? "Hvor mange hjørner er helt rette, som hjørnet på en bok?" : v % 2 === 0 ? "Tell hjørnene." : "Tell sidene.";
-  const promptNn = v === 6 ? "Kor mange hjørne er heilt rette, som hjørnet på ei bok?" : v % 2 === 0 ? "Tel hjørna." : "Tel sidene.";
+  const ordlydTell = ordlyd(
+    Math.floor((v - 1) / 2),
+    v % 2 === 0
+      ? [
+          ["Tell hjørnene.", "Tel hjørna."],
+          ["Hvor mange hjørner har formen?", "Kor mange hjørne har forma?"],
+          ["Tell alle hjørnene på formen.", "Tel alle hjørna på forma."],
+        ]
+      : [
+          ["Tell sidene.", "Tel sidene."],
+          ["Hvor mange sider har formen?", "Kor mange sider har forma?"],
+          ["Tell alle sidene på formen.", "Tel alle sidene på forma."],
+        ],
+  );
+  const prompt = v === 6 ? "Hvor mange hjørner er helt rette, som hjørnet på en bok?" : ordlydTell[0];
+  const promptNn = v === 6 ? "Kor mange hjørne er heilt rette, som hjørnet på ei bok?" : ordlydTell[1];
   const oppgave = basis(mal, ctx, si(ctx.spraak, prompt, promptNn), `form:${id}`, pakke.fasit, vareForForm(id));
   oppgave.form = id;
   oppgave.tall = tall;

@@ -54,7 +54,7 @@ test("import av en ugyldig fil endrer ikke byen, og en gyldig fil må bekreftes"
   await page.getByRole("button", { name: "Avbryt" }).click();
   await expect(page.getByText(/Fila inneholder/)).toHaveCount(0);
   await page.getByRole("button", { name: "Start på nytt" }).click();
-  await expect(page.getByText("Dette sletter hele byen på denne telefonen.")).toBeVisible();
+  await expect(page.getByText(/^Dette sletter hele byen på denne telefonen./)).toBeVisible();
   await expect(page.getByRole("button", { name: "Slett byen" })).toBeVisible();
 });
 

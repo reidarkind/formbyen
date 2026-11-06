@@ -10,9 +10,9 @@ import { registrerSvar } from "../tilpasning/mestring";
 import { erApen, leggTil, nesteApning, tidTilDigital24, tidTilOrd } from "../tid/tid";
 import { aktivitetSporsmal, visBestemt, visNavn } from "../dag/aktiviteter";
 import { tegnKart } from "../grafikk/bygg-svg";
-import { formMedArtikkel, formNavn, mal, navnVare, smaForbokstav, vareBestemt, vareFlertall } from "../tekst/ordbok";
+import { formMedArtikkel, formNavn, mal, smaForbokstav, vareBestemt, vareFlertall, vareMedArtikkel } from "../tekst/ordbok";
 import { ukedagTekst } from "../tekst/spraak";
-import type { AktivDag, ByggId, Dagsplan, Ferdighet, Hylle, Lagret, Nivaa, Oppgave, SkiltTid, StedId, Valg, VareId } from "../typer";
+import type { AktivDag, ByggId, Dagsplan, FastAvtale, Ferdighet, Hylle, Lagret, Nivaa, Oppgave, SkiltTid, StedId, Valg, VareId } from "../typer";
 import { avtaleHer, gangMinutter, nesteSteg, startTidFor } from "./anbefaling";
 
 export type Handling =
@@ -37,6 +37,7 @@ export type Handling =
   | { slag: "klokke" }
   | { slag: "oppdrag" }
   | { slag: "ov" }
+  | { slag: "faste-avtaler"; liste: FastAvtale[] }
   | { slag: "ur-runde"; riktige: number }
   | { slag: "avslutt" };
 
@@ -427,6 +428,7 @@ export function aktivOppgave(lagret: Lagret): Oppgave | null {
 
 export function utfor(lagret: Lagret, handling: Handling): { lagret: Lagret; melding: string | null } {
   if (handling.slag === "start") return startDag(lagret, handling.blanding);
+  if (handling.slag === "faste-avtaler") return settFasteAvtaler(lagret, handling.liste);
   if (handling.slag === "pynt") return pynt(lagret, handling.vare, handling.plass);
   if (handling.slag === "pynt-flytt") return flyttPynt(lagret, handling.id, handling.plass);
   if (handling.slag === "pynt-fjern") return fjernPynt(lagret, handling.id);
@@ -457,6 +459,24 @@ export function utfor(lagret: Lagret, handling: Handling): { lagret: Lagret; mel
 }
 
 /** `blanding` kommer fra appen (Date.now()) og gir ulike dager fra samme lagring. Testene sender ingen (gj. 10, C2). */
+/**
+ * Faste avtaler fra voksensiden (gj. 10, 7.1.3 og 7.1.6). Samme aktivitet på samme dag står bare én gang.
+ * Morgendagens plan lages på nytt, så avtalen kommer med allerede i morgen.
+ */
+function settFasteAvtaler(lagret: Lagret, liste: readonly FastAvtale[]): { lagret: Lagret; melding: string | null } {
+  const unike: FastAvtale[] = [];
+  for (const rad of liste) {
+    const indeks = unike.findIndex((fast) => fast.ukedag === rad.ukedag && fast.aktivitet === rad.aktivitet);
+    if (indeks >= 0) unike[indeks] = { ...rad };
+    else unike.push({ ...rad });
+  }
+  const neste: Lagret = { ...lagret, innstillinger: { ...lagret.innstillinger, fasteAvtaler: unike }, nestePlan: null, senerePlaner: undefined };
+  const dag = neste.aktivDag;
+  if (!dag) return { lagret: neste, melding: null };
+  const morgen = morgenKjede(planInn(neste), []);
+  return { lagret: { ...neste, aktivDag: { ...dag, morgen } }, melding: null };
+}
+
 function startDag(lagret: Lagret, blanding = 0): { lagret: Lagret; melding: string | null } {
   if (lagret.aktivDag) return { lagret, melding: null };
   const inn = {
@@ -1100,7 +1120,7 @@ function svar(lagret: Lagret, gitt: string): { lagret: Lagret; melding: string |
       return { lagret: etter, melding: si(etter, "Riktig!", "Riktig!") };
     }
     if (oppgave.ovelse) return { lagret: etter, melding: si(etter, "Riktig!", "Riktig!") };
-    const vareNavn = navnVare(gittVare, etter.innstillinger.spraak);
+    const vareNavn = vareMedArtikkel(gittVare, etter.innstillinger.spraak);
     return { lagret: etter, melding: si(etter, "Riktig! Du får {vare}.", "Riktig! Du får {vare}.", { vare: vareNavn }) };
   }
   const videre = {
@@ -1108,7 +1128,7 @@ function svar(lagret: Lagret, gitt: string): { lagret: Lagret; melding: string |
     aktivDag: { ...dagEtter, aktiv, forklaring: null, feil: 0, fase: dag.fase === "forklaring" ? "handel" : dag.fase },
   };
   if (!erAktivitet && !oppgave.ovelse) {
-    const vareNavn = navnVare(gittVare, neste.innstillinger.spraak);
+    const vareNavn = vareMedArtikkel(gittVare, neste.innstillinger.spraak);
     return { lagret: videre, melding: si(neste, "Riktig! Du får {vare}.", "Riktig! Du får {vare}.", { vare: vareNavn }) };
   }
   return { lagret: videre, melding: si(neste, "Riktig!", "Riktig!") };

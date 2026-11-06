@@ -49,7 +49,7 @@ export function forklaring(oppgave: Oppgave, svar: string, spraak: Spraak, gang 
     if (oppgave.fasit === "ja") {
       const skilt = oppgave.skilt;
       const stenger = skilt?.stengtFra !== undefined && skilt.naa < skilt.stengtFra ? skilt.stengtFra : (skilt?.stenger ?? oppgave.tall ?? 0);
-      return si(spraak, "Butikken er åpen. Den stenger {tid}.", "Butikken er open. Den stengjer {tid}.", { tid: tidTilDigital24(stenger) });
+      return si(spraak, "Butikken er åpen. Den stenger klokka {tid}.", "Butikken er open. Den stengjer klokka {tid}.", { tid: tidTilDigital24(stenger) });
     }
     const rett = oppgave.valg.find((valg) => valg.id === oppgave.fasit);
     const apner = rett?.klokke ?? oppgave.skilt?.neste ?? oppgave.tall ?? 0;

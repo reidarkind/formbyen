@@ -80,8 +80,8 @@ export const BYGG: Record<ByggId, ByggDef> = {
     etasjer: 2,
     former: ["rektangel", "kvadrat"],
     oppskrift: [
-      steg("vegg-mur", "Mure første etasje.", "Mure første etasje."),
-      steg("vegg-mur", "Mure andre etasje.", "Mure andre etasje."),
+      steg("vegg-mur", "Mur første etasje.", "Mur første etasje."),
+      steg("vegg-mur", "Mur andre etasje.", "Mur andre etasje."),
       steg("dor-rektangel", "Sett inn døra.", "Set inn døra."),
       steg("vindu-rektangel", "Sett inn et vindu.", "Set inn eit vindauge."),
       steg("vindu-kvadrat", "Sett inn ett vindu til.", "Set inn eit vindauge til."),
@@ -99,8 +99,8 @@ export const BYGG: Record<ByggId, ByggDef> = {
     etasjer: 2,
     former: ["halvsirkel", "rektangel"],
     oppskrift: [
-      steg("vegg-mur", "Mure veggene.", "Mure veggane."),
-      steg("vegg-mur", "Mure andre etasje.", "Mure andre etasje."),
+      steg("vegg-mur", "Mur veggene.", "Mur veggane."),
+      steg("vegg-mur", "Mur andre etasje.", "Mur andre etasje."),
       steg("dor-bue", "Sett inn buen over døra.", "Set inn bogen over døra."),
       steg("vindu-halvsirkel", "Sett inn halvsirkelvinduet.", "Set inn halvsirkelvindauget."),
       steg("vindu-rektangel", "Sett inn verandavinduet.", "Set inn verandavindauget."),
@@ -210,7 +210,7 @@ export const BYGG: Record<ByggId, ByggDef> = {
     etasjer: 1,
     former: ["rektangel", "sirkel"],
     oppskrift: [
-      steg("vegg-mur", "Mure bakeriet.", "Mure bakeriet."),
+      steg("vegg-mur", "Mur bakeriet.", "Mur bakeriet."),
       steg("vindu-rektangel", "Sett inn det store vinduet.", "Set inn det store vindauget."),
       steg("dor-rektangel", "Sett inn døra.", "Set inn døra."),
       steg("vindu-sirkel", "Heng kringle-skiltet.", "Heng kringle-skiltet."),
@@ -246,7 +246,7 @@ export const BYGG: Record<ByggId, ByggDef> = {
     former: ["halvsirkel"],
     oppskrift: [
       steg("vegg-stein", "Legg den ene brukara.", "Legg den eine brukara."),
-      steg("vegg-stein", "Mure buen.", "Mure bogen."),
+      steg("vegg-stein", "Mur buen.", "Mur bogen."),
       steg("kloss-kube", "Sett rekkverket.", "Set rekkverket."),
       steg("planke", "Legg dekket.", "Legg dekket."),
     ],
@@ -262,8 +262,8 @@ export const BYGG: Record<ByggId, ByggDef> = {
     etasjer: 2,
     former: ["kvadrat"],
     oppskrift: [
-      steg("vegg-mur", "Mure skolen.", "Mure skulen."),
-      steg("vegg-mur", "Mure andre etasje.", "Mure andre etasje."),
+      steg("vegg-mur", "Mur skolen.", "Mur skulen."),
+      steg("vegg-mur", "Mur andre etasje.", "Mur andre etasje."),
       steg("vindu-kvadrat", "Sett inn et kvadratvindu.", "Set inn eit kvadratvindauge."),
       steg("vindu-kvadrat", "Sett inn vinduet ved siden av.", "Set inn vindauget ved sida av."),
       steg("dor-rektangel", "Sett inn døra med klokke over.", "Set inn døra med klokke over."),
@@ -316,7 +316,7 @@ export const BYGG: Record<ByggId, ByggDef> = {
     etasjer: 1,
     former: ["sekskant", "halvsirkel"],
     oppskrift: [
-      steg("vegg-mur", "Mure musikkskolen.", "Mure musikkskulen."),
+      steg("vegg-mur", "Mur musikkskolen.", "Mur musikkskulen."),
       steg("vindu-sekskant", "Sett inn sekskantvinduet.", "Set inn sekskantvindauget."),
       steg("dor-bue", "Sett inn halvsirkeldøra.", "Set inn halvsirkeldøra."),
       steg("vindu-kvadrat", "Sett inn et vindu til.", "Set inn eit vindauge til."),
@@ -334,7 +334,7 @@ export const BYGG: Record<ByggId, ByggDef> = {
     etasjer: 1,
     former: ["sylinder", "trekant"],
     oppskrift: [
-      steg("vegg-mur", "Mure biblioteket.", "Mure biblioteket."),
+      steg("vegg-mur", "Mur biblioteket.", "Mur biblioteket."),
       steg("kloss-sylinder", "Sett opp søylene.", "Set opp søylene."),
       steg("vindu-rektangel", "Sett inn vinduet.", "Set inn vindauget."),
       steg("dor-rektangel", "Sett inn døra.", "Set inn døra."),
@@ -370,7 +370,7 @@ export const BYGG: Record<ByggId, ByggDef> = {
     etasjer: 1,
     former: ["kjegle", "halvsirkel"],
     oppskrift: [
-      steg("vegg-stein", "Mure kirken.", "Mure kyrkja."),
+      steg("vegg-stein", "Mur kirken.", "Mur kyrkja."),
       steg("kloss-sylinder", "Reis tårnet.", "Reis tårnet."),
       steg("kloss-kjegle", "Sett spiret på.", "Set spiret på."),
       steg("vindu-halvsirkel", "Sett inn det buete vinduet.", "Set inn det boga vindauget."),
