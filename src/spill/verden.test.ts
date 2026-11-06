@@ -101,13 +101,14 @@ describe("verden", () => {
       });
       if (nb.form === "kvadrat") {
         settKvadrat = true;
-        expect(nb.prompt).toBe("Tegn et kvadrat.");
-        expect(nn.prompt).toBe("Teikn eit kvadrat.");
+        // Ordlyden varierer (gj. 10, C2), men artikkelen følger formen.
+        expect(nb.prompt).toContain("et kvadrat");
+        expect(nn.prompt).toContain("eit kvadrat");
       }
       if (nb.form === "sirkel") {
         settSirkel = true;
-        expect(nb.prompt).toBe("Tegn en sirkel.");
-        expect(nn.prompt).toBe("Teikn ein sirkel.");
+        expect(nb.prompt).toContain("en sirkel");
+        expect(nn.prompt).toContain("ein sirkel");
       }
     }
     expect(settKvadrat).toBe(true);

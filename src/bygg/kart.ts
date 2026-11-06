@@ -256,6 +256,19 @@ export function kravOppfylt(by: ByTilstand): boolean {
   return by.bygg.some((bygg) => bygg.bygg === "slott" && bygg.ferdig);
 }
 
+/**
+ * Kravet for neste bynivå som barnet må øve på, når alt på nivået er bygget (gj. 10, C5).
+ * Mønster på nivå 2, tre klokkeoppgaver riktig på rad på nivå 3 og tre klosser på nivå 4.
+ */
+export function kravSomOves(by: ByTilstand): "monster" | "klokke" | "rom" | null {
+  if (nesteByggId(by) !== null) return null;
+  const antall = antallFerdige(by);
+  if (by.nivaa === 2 && antall >= 6 && by.monsterFullfort < 1) return "monster";
+  if (by.nivaa === 3 && antall >= 10 && by.besteKlokkePaRad < 3) return "klokke";
+  if (by.nivaa === 4 && antall >= 15 && by.kjente3d.length < 3) return "rom";
+  return null;
+}
+
 export function nesteHjem(by: ByTilstand): ByggId | null {
   if (!kravOppfylt(by) || by.nivaa >= 6) return null;
   const neste = (by.nivaa + 1) as 2 | 3 | 4 | 5 | 6;

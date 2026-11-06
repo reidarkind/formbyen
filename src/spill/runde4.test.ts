@@ -206,7 +206,7 @@ function spillDagen(lagret: Lagret): Lagret {
     likt = nokkel === forrige ? likt + 1 : 0;
     forrige = nokkel;
     if (likt > 2) break;
-    if (dag.ko.length > 0 && dag.fase !== "ute") {
+    if (dag.ko.length > 0 && (dag.fase !== "ute" || dag.ko[dag.aktiv]?.hjemme)) {
       lagret = svarEn(lagret);
       continue;
     }
@@ -235,6 +235,10 @@ function spillDagen(lagret: Lagret): Lagret {
     }
     if (valg.slag === "klokke") {
       lagret = utfor(lagret, { slag: "klokke" }).lagret;
+      continue;
+    }
+    if (valg.slag === "ov") {
+      lagret = utfor(lagret, { slag: "ov" }).lagret;
       continue;
     }
     if (valg.slag === "ekstra") {

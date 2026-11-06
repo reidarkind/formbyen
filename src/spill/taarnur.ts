@@ -2,6 +2,7 @@ import { visBestemt } from "../dag/aktiviteter";
 import { lagDagsplan, nesteDato } from "../dag/plan";
 import { ferdigeBygg } from "../bygg/kart";
 import { mal } from "../tekst/ordbok";
+import { froTilfeldig } from "../felles/tilfeldig";
 import { klokke, minutt, timer, tidTilOrd } from "../tid/tid";
 import type { Dagsplan, Lagret, Nivaa } from "../typer";
 
@@ -46,10 +47,23 @@ const GJOR: Record<string, [string, string]> = {
   tannlege: ["I morgen skal vi til tannlegen klokka {ord}. Still tårnuret.", "I morgon skal vi til tannlækjaren klokka {ord}. Still tårnuret."],
 };
 
-/** Fem tider fra morgendagens plan, med en setning som gir mening for hver (gj. 9, B7). */
-export function urRunde(lagret: Lagret, naa = lagret.aktivDag?.tid ?? 12 * 60): UrSteg[] {
+/** Hvem som ber om en ny tid i runde to og senere (gj. 10, C2). */
+const BER: readonly (readonly [string, string])[] = [
+  ["Naboen spør: Kan du stille tårnuret til klokka {ord}?", "Naboen spør: Kan du stille tårnuret til klokka {ord}?"],
+  ["Bakeren vil at tårnuret skal vise klokka {ord}.", "Bakaren vil at tårnuret skal vise klokka {ord}."],
+  ["Treneren spør: Hvordan ser klokka {ord} ut? Still tårnuret.", "Trenaren spør: Korleis ser klokka {ord} ut? Still tårnuret."],
+  ["Kjæledyret lurer på klokka {ord}. Still tårnuret.", "Kjæledyret lurer på klokka {ord}. Still tårnuret."],
+  ["Still tårnuret til klokka {ord}.", "Still tårnuret til klokka {ord}."],
+];
+
+/**
+ * Fem tider fra morgendagens plan, med en setning som gir mening for hver (gj. 9, B7).
+ * Runde to og senere samme dag gir nye tider. Frøet tar med rundenummeret (gj. 10, C2).
+ */
+export function urRunde(lagret: Lagret, naa = lagret.aktivDag?.tid ?? 12 * 60, runde = 0): UrSteg[] {
   const spraak = lagret.innstillinger.spraak;
   const steg = urTrinn(lagret.innstillinger.nivaa);
+  if (runde > 0) return nyRunde(lagret, naa, runde, steg);
   const plan = morgendagensPlan(lagret);
   const start = snap(naa, steg);
   const ut: UrSteg[] = [];
@@ -84,4 +98,21 @@ export function urRunde(lagret: Lagret, naa = lagret.aktivDag?.tid ?? 12 * 60): 
     ekstra = (ekstra + steg * 3) % (24 * 60);
   }
   return ut.slice(0, 5);
+}
+
+function nyRunde(lagret: Lagret, naa: number, runde: number, steg: number): UrSteg[] {
+  const spraak = lagret.innstillinger.spraak;
+  const tilfeldig = froTilfeldig(lagret.fro * 101 + runde * 7919 + naa);
+  tilfeldig();
+  const start = snap(naa, steg);
+  const ut: UrSteg[] = [];
+  for (let vakt = 0; ut.length < 5 && vakt < 200; vakt++) {
+    const time = 7 + Math.floor(tilfeldig() * 14);
+    const min = steg * Math.floor(tilfeldig() * (60 / steg));
+    const tid = klokke(time, min);
+    if (tid === start || ut.some((rad) => rad.tid === tid)) continue;
+    const rad = BER[(runde + ut.length) % BER.length] ?? BER[0]!;
+    ut.push({ tid, tekst: mal(spraak, rad[0], rad[1], { ord: tidTilOrd(tid, spraak) }) });
+  }
+  return ut;
 }

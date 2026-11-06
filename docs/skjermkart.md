@@ -57,6 +57,20 @@ Gjelder klokkeoppgaven, tårnuret og klokkeleken. Logikken ligger i `src/felles/
 - Klokka er minst 180 px, og tallene er minst 14 px.
 - `tester/klokke.spec.ts` trykker midt på hvert tall med berøring og drar minuttviseren gjennom alle trinn.
 
+## Gjentakelse
+
+Gjelder alle oppgaver som vises: butikk, bonus, dør, avtale, oppdrag, øving hjemme, gåten ved kassa og tårnuret.
+
+- Historikken husker de siste 30 malene og 30 nøklene, de siste malene per type, og tekst og svar for de siste dagene (`Lagret.sett`).
+- Samme mal kommer ikke igjen innen ti oppgaver. Samme tekst og samme svar kommer ikke igjen innen tre dager. En oppgave som er sett, trekkes på nytt med et annet frø (`fersk`).
+- Samme type høyst tre ganger per dag og høyst to ganger på rad. Alle kilder telles. Når alt er brukt opp, velges den minst brukte typen. Butikken lar plass stå igjen til avtalene senere samme dag.
+- Hver type har minst seks ordlyder. Varianten styrer tekst og innhold.
+- Gåten ved kassa roterer mellom kule, kube, sylinder, kjegle og pyramide (utfordrende), med hint som skiller formene og formens skygge som bilde. Høyst én om dagen.
+- Avtalene har fem spørsmål: når slutter den, hvor lenge varer den, når må vi gå, rekker vi den etter middag, og still klokka til når den begynner.
+- Tårnuret gir nye mål i hver ny runde samme dag. Bare den første gir mynter.
+- Appen blander dagens frø med `Date.now()`. Testene sender ingen blanding.
+- `src/spill/gjentakelse.test.ts` simulerer 20 dager per nivå og sjekker reglene.
+
 ## Tekst i butikken
 
 - Når oppgaven handler om delen, sier teksten det: «Døra er et rektangel. Tegn et rektangel.» eller «Sylinderen ligger i hylla med sylindere. Finn alle sylindrene.» Minst halvparten av formoppgavene i butikken handler om delen.

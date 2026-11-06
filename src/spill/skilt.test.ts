@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { standardLagret } from "../lagring/lagring";
-import { trekkOppgave } from "../oppgaver/lag";
+import { lagFraMal } from "../oppgaver/lag";
+import { MALER } from "../oppgaver/maler";
 import { forklaring } from "../oppgaver/forklaring";
 import { froTilfeldig } from "../felles/tilfeldig";
 import { nesteSteg } from "./anbefaling";
@@ -76,7 +77,10 @@ describe("skiltet på døra", () => {
     const lagret = butikkDag(17 * 60 + 15);
     const dag = lagret.aktivDag;
     if (!dag) throw new Error("mangler dag");
-    const oppgave = trekkOppgave({
+    // Variant 1 bruker spillets klokke (gj. 10, 7.4).
+    const apen1 = MALER.find((mal) => mal.id === "apen-1");
+    if (!apen1) throw new Error("mangler apen-1");
+    const oppgave = lagFraMal(apen1, {
       tilfeldig: froTilfeldig(4),
       spraak: "nb",
       nivaa: "forste",
@@ -84,7 +88,6 @@ describe("skiltet på døra", () => {
       plan: dag.plan,
       unngaMal: [],
       unngaNokkel: "",
-      type: "apningstider",
       naa: 17 * 60 + 15,
     });
     expect(oppgave.prompt).toContain("kvart over fem");

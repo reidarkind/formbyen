@@ -411,6 +411,8 @@ function oppgaveBilde(oppgave: Oppgave): string {
     if (vis === "digital") return `<p class="digital stor-digital">${tidTilDigital24(oppgave.maalKlokke)}</p>`;
     return urHtml(oppgave.maalKlokke, false, false, vis === "full" ? "analog" : vis);
   }
+  // Gåten ved kassa viser formens skygge, ikke formen (gj. 10, C2).
+  if (oppgave.skygge) return `<div class="skygge-form" aria-hidden="true">${formSvg(oppgave.skygge, 120)}</div>`;
   if (oppgave.form3d) {
     const ligg = lagret.innstillinger.nivaa === "utfordrende" && (oppgave.form3d === "sylinder" || oppgave.form3d === "kjegle") ? 0 : -Math.PI / 2;
     return formSvg(oppgave.form3d, 120, ligg);
@@ -876,6 +878,7 @@ function hovedKnapp(dag: NonNullable<Lagret["aktivDag"]>, steg: ReturnType<typeo
     return `${klokke}<button type="button" class="hoved" data-handling="avslutt">${tekst}</button>`;
   }
   if (valg.slag === "klokke") return `<button type="button" class="hoved" data-handling="klokke">${tekst}</button>`;
+  if (valg.slag === "ov") return `<button type="button" class="hoved" data-handling="ov">${tekst}</button>`;
   return "";
 }
 
@@ -1415,7 +1418,8 @@ let forrigeSkjerm: Skjerm | "" = "";
 
 /** Tårnurets runde: fem tider fra morgendagens plan. Startposisjonen er aldri svaret. */
 function startUr(): void {
-  urSteg = urRunde(lagret);
+  // En ny runde samme dag gir nye mål (gj. 10, C2).
+  urSteg = urRunde(lagret, undefined, lagret.aktivDag?.urRunder ?? 0);
   urStegNr = 0;
   urMelding = null;
   pekerTid = snapTilSteg((lagret.aktivDag?.tid ?? 12 * 60) + minuttSteg());
@@ -1751,7 +1755,10 @@ rot.addEventListener("click", (hendelse) => {
   }
   if (knapp.dataset.ute) {
     if (lagret.aktivDag) {
-      lagret = { ...lagret, aktivDag: { ...lagret.aktivDag, fase: "ute", ko: [], forklaring: null, feil: 0 } };
+      // Runden tas vare på og fortsetter der den slapp når barnet handler igjen (gj. 10, 7.1.2).
+      const dag = lagret.aktivDag;
+      const pauset = dag.fase === "handel" || dag.fase === "forklaring" ? { ko: dag.ko, aktiv: dag.aktiv, feil: dag.feil } : dag.pauset;
+      lagret = { ...lagret, aktivDag: { ...dag, fase: "ute", ko: [], forklaring: null, feil: 0, pauset } };
       lagre();
     }
     tegn();
@@ -1779,7 +1786,8 @@ rot.addEventListener("click", (hendelse) => {
     ) {
       lagret = { ...lagret, dato: tilfeldigStart(), fro: 1 + Math.floor(Math.random() * 900) };
     }
-    gjor({ slag: "start" });
+    // Dagens frø blandes med tiden, så samme lagring gir ulike dager (gj. 10, C2).
+    gjor({ slag: "start", blanding: Date.now() });
   }
   if (handling === "start-ettermiddag") {
     skjerm = "verden";
@@ -1810,6 +1818,10 @@ rot.addEventListener("click", (hendelse) => {
   if (handling === "vent") {
     bekreftAvslutt = false;
     gjor({ slag: "vent", tid: knapp.dataset.tid ? Number(knapp.dataset.tid) : undefined });
+  }
+  if (handling === "ov") {
+    gjor({ slag: "ov" });
+    return;
   }
   if (handling === "klokke") {
     startUr();

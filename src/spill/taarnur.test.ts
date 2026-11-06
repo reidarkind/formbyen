@@ -30,4 +30,26 @@ describe("tårnuret (gj. 9, A6 og B7)", () => {
       }
     }
   });
+
+  it("gir nye mål i en ny runde samme dag (gj. 10, C2)", () => {
+    const grunn = standardLagret();
+    const lagret = utfor({ ...grunn, fro: 4, dato: STARTDATO }, { slag: "start" }).lagret;
+    const forste = urRunde(lagret);
+    const andre = urRunde(lagret, undefined, 1);
+    const tredje = urRunde(lagret, undefined, 2);
+    expect(andre.length).toBe(5);
+    expect(andre.map((rad) => rad.tid)).not.toEqual(forste.map((rad) => rad.tid));
+    expect(tredje.map((rad) => rad.tid)).not.toEqual(andre.map((rad) => rad.tid));
+    for (const rad of andre) expect(rad.tekst).toMatch(/klokka /);
+  });
+
+  it("teller rundene, og bare den første gir mynter", () => {
+    const grunn = standardLagret();
+    let lagret = utfor({ ...grunn, fro: 4, dato: STARTDATO }, { slag: "start" }).lagret;
+    const mynter = lagret.mynter;
+    lagret = utfor(lagret, { slag: "ur-runde", riktige: 5 }).lagret;
+    lagret = utfor(lagret, { slag: "ur-runde", riktige: 5 }).lagret;
+    expect(lagret.mynter).toBe(mynter + 5);
+    expect(lagret.aktivDag?.urRunder).toBe(2);
+  });
 });

@@ -23,10 +23,9 @@ function typerISpillet(nivaa: Nivaa): { typer: Set<OppgaveType>; forMange: strin
     const { lagret: etter, logg } = spillDag(lagret);
     for (const rad of logg.oppgaver) {
       typer.add(rad.oppgave.type);
-      // Regelen kan bare holdes så lenge det finnes ledige typer: 2 × om lag 12 typer per ettermiddag.
+      // Høyst tre av samme type per dag, fra alle kilder (gj. 10, C2).
       const vist = Object.values(rad.takt).reduce((sum, n) => sum + (n ?? 0), 0);
-      if (vist > 24) continue;
-      for (const [type, antall] of Object.entries(rad.takt)) if ((antall ?? 0) > 2) forMange.push(`${nivaa} dag ${dag}: ${type} ${antall} av ${vist}`);
+      for (const [type, antall] of Object.entries(rad.takt)) if ((antall ?? 0) > 3) forMange.push(`${nivaa} dag ${dag}: ${type} ${antall} av ${vist}`);
     }
     lagret = etter;
   }
@@ -60,7 +59,8 @@ describe("måling, areal, koordinater og kalender i spillet (gj. 9, oppfølging)
         expect(vekt, oppgave.prompt).toBeDefined();
         if (!vekt) continue;
         const svar = oppgave.valg.find((valg) => valg.id === oppgave.fasit)?.tall;
-        if (oppgave.prompt.startsWith("Hvor mange kilo")) {
+        // Med kilolodd har vekta ingen sekk med oppgitt vekt.
+        if (vekt.sekkKg === undefined) {
           expect(vekt.sekkKg).toBeUndefined();
           expect(vekt.lodd * vekt.loddKg).toBe(svar);
         } else {

@@ -211,6 +211,10 @@ export interface Oppgave {
   planke?: { klosser: number; cm: boolean };
   /** Dagen som er merket i ukeplanen. */
   ukeMerke?: string;
+  /** Formen som vises som skygge i gåten ved kassa (gj. 10, C2). */
+  skygge?: string;
+  /** Øving hjemme på et krav for neste bynivå (gj. 10, C5). */
+  hjemme?: boolean;
 }
 
 export interface FastAvtale {
@@ -362,8 +366,16 @@ export interface AktivDag {
   forsteRett?: number;
   /** Oppgaver som fikk et første svar. */
   svarTotalt?: number;
-  /** Hvor mange ganger hver oppgavetype er brukt i dag. */
+  /** Hvor mange ganger hver oppgavetype er brukt i dag. Alle kilder telles (gj. 10, C2). */
   typeTakt?: Partial<Record<OppgaveType, number>>;
+  /** Typene som er vist i dag, i rekkefølge. Samme type høyst to ganger på rad. */
+  typeRekke?: OppgaveType[];
+  /** Runden i butikken da barnet gikk ut. Den fortsetter når barnet handler igjen (gj. 10, 7.1.2). */
+  pauset?: { ko: Oppgave[]; aktiv: number; feil?: number };
+  /** Gåten ved kassa er vist i dag. */
+  kasseVist?: boolean;
+  /** Runder med tårnuret i dag. Bare den første gir mynter. */
+  urRunder?: number;
 }
 
 export interface Innstillinger {
@@ -405,8 +417,15 @@ export interface Lagret {
   ukerytme: FastAvtale[];
   bursdager: { maned: number; dag: number; hvem: string }[];
   sistePlaner: string[];
+  /** De siste 30 malene som er vist, fra alle kilder (gj. 10, C2). */
   sisteMaler: string[];
   sisteNokkel: string;
+  /** De siste 30 nøklene, for eksempel klokke:870 og form:kule. */
+  sisteNokler?: string[];
+  /** Tekst og svar for oppgavene de siste dagene. `d` er dagnummeret (dagboka). */
+  sett?: { s: string; d: number }[];
+  /** De siste malene per oppgavetype, så variantene kommer på omgang. */
+  malPerType?: Partial<Record<OppgaveType, string[]>>;
   dagbok: DagbokInnslag[];
   album: Foto[];
   demoSett: string[];

@@ -169,6 +169,10 @@ main.kort {
 .feilmelding { color: var(--tak); font-weight: 800; }
 .hjelp { font-size: 0.85rem; color: var(--svak); }
 
+/* Gåten ved kassa: formen som skygge. */
+.skygge-form { display: grid; place-items: center; }
+.skygge-form svg { width: clamp(80px, 18dvh, 120px); height: auto; filter: brightness(0) opacity(0.78); }
+
 /* Klokker */
 .ur { width: min(100%, 200px); margin: 0 auto; }
 .skive { position: relative; }

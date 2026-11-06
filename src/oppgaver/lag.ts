@@ -4,7 +4,7 @@ import { PLANKER, VEKT_KG } from "../bygg/katalog";
 import { heltall, spredt, stokk, trekk, type Tilfeldig } from "../felles/tilfeldig";
 import { ALLE_2D, ALLE_3D, GRUNNFORMER, form2d, form3d, type Form2dId, type Form3dId } from "../former/definisjoner";
 import { ferdighetApent, tillatteMinutter } from "../tilpasning/mestring";
-import { formFlertall, formNavn, mal, navnVare } from "../tekst/ordbok";
+import { formFlertall, formMedArtikkel, formNavn, mal, navnVare } from "../tekst/ordbok";
 import { arstidTekst, manedTekst } from "../tekst/spraak";
 import { timeNavn } from "../tid/ord";
 import { erApen, klokke, nesteApning, normaliser, tidTilDigital24, tidTilOrd } from "../tid/tid";
@@ -19,6 +19,8 @@ export interface OppgaveKontekst {
   plan: Dagsplan | null;
   unngaMal: string[];
   unngaNokkel: string;
+  /** De siste nøklene fra historikken (gj. 10, C2). */
+  unngaNokler?: string[];
   type?: OppgaveType;
   hylle?: Hylle;
   maalForm?: string;
@@ -38,6 +40,27 @@ const HYLLE: Record<Hylle, OppgaveType[]> = {
 
 function si(spraak: Spraak, nb: string, nn: string, verdier: Record<string, string> = {}): string {
   return mal(spraak, nb, nn, verdier);
+}
+
+/** Nøkler som skal unngås: den siste og historikken. */
+function unngas(ctx: OppgaveKontekst, nokkel: string): boolean {
+  return nokkel === ctx.unngaNokkel || (ctx.unngaNokler ?? []).includes(nokkel);
+}
+
+/** Én av ordlydene for typen, styrt av malvarianten (gj. 10, C2). */
+function ordlyd(indeks: number, liste: readonly (readonly [string, string])[]): readonly [string, string] {
+  return liste[((indeks % liste.length) + liste.length) % liste.length] ?? liste[0]!;
+}
+
+/** Varighet i ord: en halvtime, et kvarter, tre kvarter, en time, en og en halv time, ellers minutter. */
+export function varighetTekst(min: number, spraak: Spraak): string {
+  if (min === 15) return si(spraak, "et kvarter", "eit kvarter");
+  if (min === 30) return si(spraak, "en halvtime", "ein halvtime");
+  if (min === 45) return si(spraak, "tre kvarter", "tre kvarter");
+  if (min === 60) return si(spraak, "en time", "ein time");
+  if (min === 90) return si(spraak, "en og en halv time", "ein og ein halv time");
+  if (min === 120) return si(spraak, "to timer", "to timar");
+  return si(spraak, "{n} minutter", "{n} minutt", { n: String(min) });
 }
 
 function variant(id: string): number {
@@ -101,7 +124,7 @@ function tidUnnga(ctx: OppgaveKontekst, lovlige: number[]): number {
     const time = 12 + heltall(ctx.tilfeldig, 0, 8);
     const m = trekk(ctx.tilfeldig, lovlige);
     const verdi = klokke(time, m);
-    if (`klokke:${verdi}` !== ctx.unngaNokkel) return verdi;
+    if (!unngas(ctx, `klokke:${verdi}`)) return verdi;
   }
   return klokke(14, lovlige.includes(30) ? 30 : 0);
 }
@@ -163,7 +186,7 @@ function tallValg(riktig: number, tilfeldig: Tilfeldig): { valg: Valg[]; fasit: 
 
 function formUnnga(ctx: OppgaveKontekst, liste: readonly string[]): string {
   const blandet = stokk(ctx.tilfeldig, liste);
-  return blandet.find((form) => `form:${form}` !== ctx.unngaNokkel) ?? blandet[0] ?? "sirkel";
+  return blandet.find((form) => !unngas(ctx, `form:${form}`)) ?? blandet[0] ?? "sirkel";
 }
 
 function vareForForm(form: string): VareId {
@@ -216,7 +239,7 @@ function lagStill(mal: Mal, ctx: OppgaveKontekst): Oppgave {
     ["Vis klokka {ord}.", "Vis klokka {ord}."],
     ["Still klokka til {ord}.", "Still klokka til {ord}."],
     ["{hvem} sier klokka {ord}. Still klokka.", "{hvem} seier klokka {ord}. Still klokka."],
-    ["Tårnuret har stoppet. Still det til klokka {ord}.", "Tårnuret har stoppa. Still det til klokka {ord}."],
+    ["Butikkuret står. Still det til klokka {ord}.", "Butikkuret står. Still det til klokka {ord}."],
     ["Lappen sier klokka {ord}. Still klokka.", "Lappen seier klokka {ord}. Still klokka."],
   ];
   const valgt = maler[v - 1] ?? maler[0]!;
@@ -323,14 +346,15 @@ function lagKoble(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const tid = tidUnnga(ctx, lovlige.length ? lovlige : [0]);
   const som = v % 2 === 0 ? "digital" : "ord";
   const pakke = klokkeValg(tid, ctx.tilfeldig, som, ctx.spraak, lovlige);
-  const oppgave = basis(
-    mal,
-    ctx,
-    si(ctx.spraak, "Hvilken tid viser klokka?", "Kva for tid viser klokka?"),
-    `klokke:${tid}`,
-    pakke.fasit,
-    "vindu-rektangel",
-  );
+  const tekst = ordlyd(v - 1, [
+    ["Hvilken tid viser klokka?", "Kva for tid viser klokka?"],
+    ["Hva er klokka?", "Kva er klokka?"],
+    ["Se på viserne. Hvilken tid er det?", "Sjå på visarane. Kva for tid er det?"],
+    ["Finn tiden som passer til klokka.", "Finn tida som passar til klokka."],
+    ["Les klokka. Hva viser den?", "Les klokka. Kva viser ho?"],
+    ["Hvilket kort passer til klokka?", "Kva for kort passar til klokka?"],
+  ]);
+  const oppgave = basis(mal, ctx, si(ctx.spraak, tekst[0], tekst[1]), `klokke:${tid}`, pakke.fasit, "vindu-rektangel");
   oppgave.maalKlokke = tid;
   oppgave.valg = pakke.valg;
   return oppgave;
@@ -347,19 +371,19 @@ function lagRekker(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const kandidat = v % 3 === 0 ? normaliser(naa + (forste ? 30 : 10)) : (avtale?.start ?? normaliser(naa + 120));
   const frist = halv(kandidat > naa ? kandidat : normaliser(naa + 120));
   const rekker = naa + handling <= frist;
-  const varighet = forste ? (handling === 60 ? si(ctx.spraak, "en time", "ein time") : si(ctx.spraak, "en halvtime", "ein halvtime")) : "";
+  const varighet = varighetTekst(handling, ctx.spraak);
+  const tekst = ordlyd(v - 1, [
+    ["Du bruker {varighet}. Rekker du det før klokka {tid}?", "Du brukar {varighet}. Rekk du det før klokka {tid}?"],
+    ["Leken tar {varighet}. Er du ferdig før klokka {tid}?", "Leiken tek {varighet}. Er du ferdig før klokka {tid}?"],
+    ["Vi må være hjemme klokka {tid}. Turen tar {varighet}. Rekker vi det?", "Vi må vere heime klokka {tid}. Turen tek {varighet}. Rekk vi det?"],
+    ["Det tar {varighet} å gå til parken. Er du der før klokka {tid}?", "Det tek {varighet} å gå til parken. Er du der før klokka {tid}?"],
+    ["Kjæledyret skal ut i {varighet}. Er dere tilbake før klokka {tid}?", "Kjæledyret skal ut i {varighet}. Er de tilbake før klokka {tid}?"],
+    ["Snekkeren trenger {varighet}. Er han ferdig før klokka {tid}?", "Snikkaren treng {varighet}. Er han ferdig før klokka {tid}?"],
+  ]);
   const oppgave = basis(
     mal,
     ctx,
-    forste
-      ? si(ctx.spraak, "Du bruker {varighet}. Rekker du det før kl. {tid}?", "Du brukar {varighet}. Rekk du det før kl. {tid}?", {
-          varighet,
-          tid: tidTilDigital24(frist),
-        })
-      : si(ctx.spraak, "Du bruker {min} minutter. Rekker du det før kl. {tid}?", "Du brukar {min} minutt. Rekk du det før kl. {tid}?", {
-          min: String(handling),
-          tid: tidTilDigital24(frist),
-        }),
+    si(ctx.spraak, tekst[0], tekst[1], { varighet, tid: tidTilDigital24(frist) }),
     `klokke:${frist}`,
     rekker ? "ja" : "nei",
     "planke",
@@ -373,23 +397,92 @@ function lagRekker(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   return oppgave;
 }
 
+/** Aktiviteter i «hvor lenge»: bestemt form, bokmål og nynorsk. */
+const LENGE_AKTIVITET: readonly (readonly [string, string])[] = [
+  ["filmen", "filmen"],
+  ["turen", "turen"],
+  ["bursdagen", "bursdagen"],
+  ["bakingen", "bakinga"],
+  ["leken", "leiken"],
+  ["treningen", "treninga"],
+];
+
+/** Varigheter per nivå: hele og halve timer i 1. klasse, kvarter i 2. klasse, fem minutter på utfordrende. */
+function lengeVarigheter(nivaa: Nivaa): number[] {
+  if (nivaTall(nivaa) === 0) return [30, 60];
+  if (nivaTall(nivaa) === 1) return [15, 30, 45, 60, 90];
+  return [20, 25, 35, 40, 45, 50, 55, 70, 75];
+}
+
+/**
+ * «Hvor lenge» spør etter sluttid, starttid eller varighet, med ulike aktiviteter og tider (gj. 10, C2).
+ * Variant 1, 4, 7, 10: sluttid. 2, 5, 8, 11: starttid. 3, 6, 9, 12: hele eller halve timer mellom to tider.
+ */
 function lagLenge(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const v = variant(mal.id);
+  const slag = (v - 1) % 3;
+  const navn = ordlyd(heltall(ctx.tilfeldig, 0, LENGE_AKTIVITET.length - 1), LENGE_AKTIVITET);
+  const akt = si(ctx.spraak, navn[0], navn[1]);
+  const Akt = akt.charAt(0).toUpperCase() + akt.slice(1);
+  const lovlige = tillatteMinutter(ctx.nivaa, ctx.mestring);
+  if (slag < 2) {
+    const varighet = trekk(ctx.tilfeldig, lengeVarigheter(ctx.nivaa));
+    const steg = nivaTall(ctx.nivaa) === 0 ? 30 : nivaTall(ctx.nivaa) === 1 ? 15 : 5;
+    const start = klokke(13 + heltall(ctx.tilfeldig, 0, 5), steg * heltall(ctx.tilfeldig, 0, 60 / steg - 1));
+    const slutt = normaliser(start + varighet);
+    const sporres = slag === 0 ? slutt : start;
+    const pakke = klokkeValg(sporres, ctx.tilfeldig, "ord", ctx.spraak, lovlige.length ? lovlige : undefined);
+    const tekst =
+      slag === 0
+        ? ordlyd(Math.floor((v - 1) / 3), [
+            ["{Akt} begynner klokka {fra}. Den varer {varighet}. Når er den ferdig?", "{Akt} byrjar klokka {fra}. Det varer {varighet}. Når er det ferdig?"],
+            ["{Akt} varer {varighet}. Vi begynner klokka {fra}. Når er vi ferdige?", "{Akt} varer {varighet}. Vi byrjar klokka {fra}. Når er vi ferdige?"],
+            ["Klokka {fra} begynner {akt}. Den tar {varighet}. Når slutter den?", "Klokka {fra} byrjar {akt}. Det tek {varighet}. Når sluttar det?"],
+            ["{Akt} tar {varighet} og begynner klokka {fra}. Når er det slutt?", "{Akt} tek {varighet} og byrjar klokka {fra}. Når er det slutt?"],
+          ])
+        : ordlyd(Math.floor((v - 1) / 3), [
+            ["{Akt} er ferdig klokka {til}. Den varte {varighet}. Når begynte den?", "{Akt} er ferdig klokka {til}. Det varte {varighet}. Når byrja det?"],
+            ["{Akt} sluttet klokka {til}. Den tok {varighet}. Når begynte vi?", "{Akt} slutta klokka {til}. Det tok {varighet}. Når byrja vi?"],
+            ["Vi var ferdige med {akt} klokka {til}. Den varte {varighet}. Når startet vi?", "Vi var ferdige med {akt} klokka {til}. Det varte {varighet}. Når starta vi?"],
+            ["{Akt} tok {varighet} og var ferdig klokka {til}. Når begynte den?", "{Akt} tok {varighet} og var ferdig klokka {til}. Når byrja det?"],
+          ]);
+    const oppgave = basis(
+      mal,
+      ctx,
+      si(ctx.spraak, tekst[0], tekst[1], {
+        Akt,
+        akt,
+        fra: tidTilOrd(start, ctx.spraak),
+        til: tidTilOrd(slutt, ctx.spraak),
+        varighet: varighetTekst(varighet, ctx.spraak),
+      }),
+      `klokke:${sporres}`,
+      pakke.fasit,
+      "planke",
+    );
+    oppgave.maalKlokke = slag === 0 ? start : slutt;
+    oppgave.valg = pakke.valg;
+    return oppgave;
+  }
   const fra = ctx.plan?.start ?? klokke(14, 0);
-  const timerFrem = v % 3 === 0 ? 2 : 1;
+  const timerFrem = 1 + heltall(ctx.tilfeldig, 0, nivaTall(ctx.nivaa) === 0 ? 1 : 2);
   const til = normaliser(fra + timerFrem * 60);
   const enhetHalv = v % 2 === 0 && nivaTall(ctx.nivaa) > 0;
   const svar = enhetHalv ? timerFrem * 2 : timerFrem;
   const pakke = tallValg(svar, ctx.tilfeldig);
+  const tekst = enhetHalv
+    ? ordlyd(Math.floor((v - 1) / 3), [
+        ["Fra klokka {fra} til klokka {til}. Hvor mange halve timer?", "Frå klokka {fra} til klokka {til}. Kor mange halve timar?"],
+        ["{Akt} varer fra klokka {fra} til klokka {til}. Hvor mange halve timer er det?", "{Akt} varer frå klokka {fra} til klokka {til}. Kor mange halve timar er det?"],
+      ])
+    : ordlyd(Math.floor((v - 1) / 3), [
+        ["Fra klokka {fra} til klokka {til}. Hvor mange timer?", "Frå klokka {fra} til klokka {til}. Kor mange timar?"],
+        ["{Akt} varer fra klokka {fra} til klokka {til}. Hvor mange timer er det?", "{Akt} varer frå klokka {fra} til klokka {til}. Kor mange timar er det?"],
+      ]);
   const oppgave = basis(
     mal,
     ctx,
-    si(
-      ctx.spraak,
-      enhetHalv ? "Fra {fra} til {til}. Hvor mange halve timer?" : "Fra {fra} til {til}. Hvor mange timer?",
-      enhetHalv ? "Frå {fra} til {til}. Kor mange halve timar?" : "Frå {fra} til {til}. Kor mange timar?",
-      { fra: tidTilOrd(fra, ctx.spraak), til: tidTilOrd(til, ctx.spraak) },
-    ),
+    si(ctx.spraak, tekst[0], tekst[1], { Akt, akt, fra: tidTilOrd(fra, ctx.spraak), til: tidTilOrd(til, ctx.spraak) }),
     `klokke:${fra}-${til}`,
     pakke.fasit,
     "planke",
@@ -402,28 +495,34 @@ function lagLenge(mal: Mal, ctx: OppgaveKontekst): Oppgave {
 
 function apenKlokke(ctx: OppgaveKontekst, butikk: { apner: number; stenger: number; stengtFra?: number }): number {
   if (ctx.naa !== undefined) return ctx.naa;
-  const rull = Math.floor(ctx.tilfeldig() * 4);
+  const rull = Math.floor(ctx.tilfeldig() * 6);
   if (rull === 0) return butikk.apner + 30;
   if (rull === 1) return Math.max(0, butikk.apner - 30);
   if (rull === 2 && butikk.stengtFra !== undefined) return butikk.stengtFra + 5;
+  if (rull === 3) return Math.max(0, butikk.apner - 60);
+  if (rull === 4) return butikk.stenger - 30;
   return butikk.stenger + 15;
 }
 
 function lagApen(mal: Mal, ctx: OppgaveKontekst): Oppgave {
+  const v = variant(mal.id);
   const butikk = ctx.plan?.butikk ?? { apner: klokke(14, 0), stenger: klokke(17, 0), stengtHele: false };
-  const naa = apenKlokke(ctx, butikk);
+  // Spillets klokke bare i variant 1. Ellers en tenkt tid, og teksten sier det (gj. 10, 7.4).
+  const brukNaa = v === 1 && ctx.naa !== undefined;
+  const naa = brukNaa ? (ctx.naa ?? 0) : apenKlokke({ ...ctx, naa: undefined }, butikk);
   const apen = erApen(naa, butikk);
   const neste = nesteApning(naa, butikk, ctx.plan?.nesteApning);
-  const oppgave = basis(
-    mal,
-    ctx,
-    si(ctx.spraak, "Er butikken åpen nå? Klokka er {naa}.", "Er butikken open no? Klokka er {naa}.", {
-      naa: tidTilOrd(naa, ctx.spraak),
-    }),
-    `klokke:${naa}`,
-    apen ? "ja" : "nei",
-    "dor-rektangel",
-  );
+  const tekst = brukNaa
+    ? (["Er butikken åpen nå? Klokka er {naa}.", "Er butikken open no? Klokka er {naa}."] as const)
+    : ordlyd(v - 2, [
+        ["Tenk deg at klokka er {naa}. Er butikken åpen?", "Tenk deg at klokka er {naa}. Er butikken open?"],
+        ["Se på skiltet. Er det åpent klokka {naa}?", "Sjå på skiltet. Er det ope klokka {naa}?"],
+        ["Kan vi handle klokka {naa}?", "Kan vi handle klokka {naa}?"],
+        ["Tenk deg at du kommer klokka {naa}. Er døra åpen?", "Tenk deg at du kjem klokka {naa}. Er døra open?"],
+        ["Naboen vil handle klokka {naa}. Er butikken åpen da?", "Naboen vil handle klokka {naa}. Er butikken open då?"],
+        ["Les skiltet. Er butikken åpen klokka {naa}?", "Les skiltet. Er butikken open klokka {naa}?"],
+      ]);
+  const oppgave = basis(mal, ctx, si(ctx.spraak, tekst[0], tekst[1], { naa: tidTilOrd(naa, ctx.spraak) }), `klokke:${naa}`, apen ? "ja" : "nei", "dor-rektangel");
   oppgave.maalKlokke = butikk.apner;
   oppgave.tall = butikk.stenger;
   oppgave.skilt = {
@@ -453,10 +552,18 @@ function lagUke(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const navn = (dag: string) => ctx.ukedagNavn?.(dag) ?? dag;
   const valg = stokk(ctx.tilfeldig, [riktig, ...andre]).map((dag) => ({ id: dag, tekst: navn(dag) }));
   const avtale = iDag ? ctx.plan?.avtaler.find((rad) => rad.varighet > 0 && rad.aktivitet && rad.slag !== "middag") : undefined;
+  const tekst = ordlyd(variant(mal.id) - 1, [
+    ["Se på ukeplanen. Hvilken dag er {navn}?", "Sjå på vekeplanen. Kva for dag er {navn}?"],
+    ["Når er {navn}? Se på ukeplanen.", "Når er {navn}? Sjå på vekeplanen."],
+    ["Finn {navn} i ukeplanen. Hvilken dag er det?", "Finn {navn} i vekeplanen. Kva for dag er det?"],
+    ["Ukeplanen viser {navn}. Hvilken dag?", "Vekeplanen viser {navn}. Kva for dag?"],
+    ["Hvilken dag står {navn} i ukeplanen?", "Kva for dag står {navn} i vekeplanen?"],
+    ["Les ukeplanen. På hvilken dag er {navn}?", "Les vekeplanen. På kva for dag er {navn}?"],
+  ]);
   const oppgave = basis(
     mal,
     ctx,
-    si(ctx.spraak, "Se på ukeplanen. Hvilken dag er {navn}?", "Sjå på vekeplanen. Kva for dag er {navn}?", {
+    si(ctx.spraak, tekst[0], tekst[1], {
       navn: avtale ? visBestemt(avtale.aktivitet ?? avtale.navn, ctx.spraak) : si(ctx.spraak, "biblioteket", "biblioteket"),
     }),
     `dag:${riktig}`,
@@ -518,23 +625,26 @@ function lagKalender(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   }
   const dager = ["mandag", "tirsdag", "onsdag", "torsdag", "fredag", "lordag", "sondag"];
   const iDag = ctx.plan?.ukedag ?? "mandag";
-  const neste = dager[(dager.indexOf(iDag) + 1) % 7] ?? "tirsdag";
   const navn = (dag: string) => ctx.ukedagNavn?.(dag) ?? dag;
-  const valgDag = stokk(
-    ctx.tilfeldig,
-    [neste, dager[(dager.indexOf(neste) + 1) % 7] ?? "onsdag", dager[(dager.indexOf(neste) + 2) % 7] ?? "torsdag"],
-  ).map((dag) => ({ id: dag, tekst: navn(dag) }));
-  const oppgave = basis(
-    mal,
-    ctx,
-    si(ctx.spraak, "Hvilken dag er i morgen?", "Kva for dag er i morgon?"),
-    `dag:${neste}`,
-    neste,
-    "pynt-blomst",
-  );
+  const pluss = (dag: string, n: number) => dager[(((dager.indexOf(dag) + n) % 7) + 7) % 7] ?? "mandag";
+  // Seks spørsmål om ukedagene. Ukeplanen viser dagen spørsmålet går ut fra (gj. 10, C2).
+  const slag = (v - 1) % 6;
+  const fra = slag === 3 || slag === 4 ? trekk(ctx.tilfeldig, dager) : iDag;
+  const flytt = [1, -1, 2, 1, -1, 0][slag] ?? 1;
+  const riktig = pluss(fra, flytt);
+  const tekst = ordlyd(slag, [
+    ["Hvilken dag er i morgen?", "Kva for dag er i morgon?"],
+    ["Hvilken dag var i går?", "Kva for dag var i går?"],
+    ["Hvilken dag er i overmorgen?", "Kva for dag er i overmorgon?"],
+    ["Hvilken dag kommer etter {dag}?", "Kva for dag kjem etter {dag}?"],
+    ["Hvilken dag kommer før {dag}?", "Kva for dag kjem før {dag}?"],
+    ["Hvilken dag er det i dag?", "Kva for dag er det i dag?"],
+  ]);
+  const valgDag = stokk(ctx.tilfeldig, [riktig, pluss(riktig, 1), pluss(riktig, -1)]).map((dag) => ({ id: dag, tekst: navn(dag) }));
+  const oppgave = basis(mal, ctx, si(ctx.spraak, tekst[0], tekst[1], { dag: navn(fra) }), `dag:${riktig}`, riktig, "pynt-blomst");
   oppgave.valg = valgDag;
-  // Ukeplanen viser hvilken dag det er i dag.
-  oppgave.ukeMerke = iDag;
+  // Ukeplanen viser dagen spørsmålet går ut fra.
+  oppgave.ukeMerke = fra;
   return oppgave;
 }
 
@@ -563,8 +673,15 @@ function blandLike(ctx: OppgaveKontekst, maal: string, andre: readonly string[])
 function lagFinn(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const prompt = (id: string) => {
     const navn = formFlertall(id, ctx.spraak);
-    const setning = si(ctx.spraak, "Finn alle {navn}.", "Finn alle {navn}.", { navn });
-    return setning;
+    const tekst = ordlyd(variant(mal.id) - 1, [
+      ["Finn alle {navn}.", "Finn alle {navn}."],
+      ["Trykk på alle {navn}.", "Trykk på alle {navn}."],
+      ["Hvor er {navn}? Finn alle.", "Kvar er {navn}? Finn alle."],
+      ["Se godt etter. Finn alle {navn}.", "Sjå godt etter. Finn alle {navn}."],
+      ["Kan du finne alle {navn}?", "Kan du finne alle {navn}?"],
+      ["Pek på alle {navn}.", "Peik på alle {navn}."],
+    ]);
+    return si(ctx.spraak, tekst[0], tekst[1], { navn });
   };
   if (mal.ferdighet === "former-3d") {
     const former = ["kule", "kube", "sylinder", "kjegle"] as const;
@@ -572,7 +689,7 @@ function lagFinn(mal: Mal, ctx: OppgaveKontekst): Oppgave {
     const rotert = [...former.slice(start), ...former.slice(0, start)];
     const onsket = ctx.maalForm && (former as readonly string[]).includes(ctx.maalForm) ? ctx.maalForm : undefined;
     const ukjent = former.find((id) => !(ctx.kjente3d ?? []).includes(id));
-    const maal = onsket ?? ukjent ?? rotert.find((id) => `form3d:${id}` !== ctx.unngaNokkel) ?? rotert[0] ?? "kule";
+    const maal = onsket ?? ukjent ?? rotert.find((id) => !unngas(ctx, `form3d:${id}`)) ?? rotert[0] ?? "kule";
     const blandet = blandLike(ctx, maal, former.filter((id) => id !== maal));
     const vare = maal === "kule" ? "kloss-kule" : maal === "kube" ? "kloss-kube" : maal === "sylinder" ? "kloss-sylinder" : "kloss-kjegle";
     const oppgave = basis(mal, ctx, prompt(maal), `form3d:${maal}`, blandet.fasit, vare);
@@ -596,14 +713,20 @@ function lagFinn(mal: Mal, ctx: OppgaveKontekst): Oppgave {
 
 function lagOdd(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const v = variant(mal.id);
-  const par = [
-    { like: "sirkel" as Form2dId, ulik: "trekant" as Form2dId },
-    { like: "trekant" as Form2dId, ulik: "sirkel" as Form2dId },
-    { like: "kvadrat" as Form2dId, ulik: "sirkel" as Form2dId },
-    { like: "rektangel" as Form2dId, ulik: "trekant" as Form2dId },
-  ][v % 4] ?? { like: "sirkel" as Form2dId, ulik: "trekant" as Form2dId };
-  const inn = [par.like, par.like, par.like];
-  const ut = par.ulik;
+  // Formene trekkes, så svaret varierer. Ordlyden følger varianten (gj. 10, C2).
+  const liste = formerFor(ctx);
+  const like = trekk(ctx.tilfeldig, liste);
+  const naer = (a: string, b: string) => (a === "kvadrat" && b === "rektangel") || (a === "rektangel" && b === "kvadrat") || (a === "sirkel" && b === "oval") || (a === "oval" && b === "sirkel");
+  const ut = trekk(ctx.tilfeldig, liste.filter((form) => form !== like && !naer(form, like)));
+  const inn = [like, like, like];
+  const oddTekst = ordlyd(v - 1, [
+    ["Hvilken form er ulik de andre?", "Kva for form er ulik dei andre?"],
+    ["Én form passer ikke. Hvilken?", "Éi form passar ikkje. Kva for ei?"],
+    ["Hvilken form hører ikke med?", "Kva for form høyrer ikkje med?"],
+    ["Finn formen som er annerledes.", "Finn forma som er annleis."],
+    ["Tre er like. Hvilken er ikke lik?", "Tre er like. Kva for ei er ikkje lik?"],
+    ["Hvilken form skal ut av kassen?", "Kva for form skal ut av kassen?"],
+  ]);
   const figurer = [
     { id: "a", form: inn[0] ?? "sirkel" },
     { id: "b", form: inn[1] ?? "sirkel" },
@@ -613,7 +736,7 @@ function lagOdd(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const oppgave = basis(
     mal,
     ctx,
-    si(ctx.spraak, "Hvilken form er ulik de andre?", "Kva for form er ulik dei andre?"),
+    si(ctx.spraak, oddTekst[0], oddTekst[1]),
     `form:${ut}`,
     "d",
     vareForForm(ut),
@@ -672,30 +795,54 @@ function lagSorter(mal: Mal, ctx: OppgaveKontekst): Oppgave {
     ];
     plass = (form) => (form === "sirkel" || form === "oval" ? "rund" : "kant");
   }
+  // Fem av varene trekkes og stokkes, så samme regel ikke gir samme oppgave hver gang (gj. 10, C2).
+  varer = stokk(ctx.tilfeldig, varer)
+    .slice(0, 5)
+    .map((vare, indeks) => ({ ...vare, id: `v${indeks + 1}` }));
   const fasit = varer
     .map((vare) => `${vare.id}:${plass(vare.form)}`)
     .sort()
     .join(",");
-  const oppgave = basis(mal, ctx, si(ctx.spraak, "Sorter i kassene.", "Sorter i kassane."), "form:sorter", fasit, "vindu-kvadrat");
+  const brukt = regel === 2 && nivaTall(ctx.nivaa) > 0 ? 2 : regel === 1 ? 1 : 0;
+  const sortTekst = ordlyd(Math.floor((v - 1) / 3), ([
+    [
+      ["Rund eller med hjørner? Sorter.", "Rund eller med hjørne? Sorter."],
+      ["Legg de runde formene for seg.", "Legg dei runde formene for seg."],
+      ["Hjelp ekspeditøren å rydde hylla.", "Hjelp ekspeditøren å rydde hylla."],
+    ],
+    [
+      ["Sorter etter antall hjørner.", "Sorter etter talet på hjørne."],
+      ["Tell hjørnene. Legg formene i riktig kasse.", "Tel hjørna. Legg formene i rett kasse."],
+      ["Legg formene i riktig kasse.", "Legg formene i rett kasse."],
+    ],
+    [
+      ["Hvilke kan trille? Legg dem i kassen.", "Kva for nokre kan trille? Legg dei i kassen."],
+      ["Sorter i kassene.", "Sorter i kassane."],
+      ["Hjelp ekspeditøren. Hva kan trille?", "Hjelp ekspeditøren. Kva kan trille?"],
+    ],
+  ] as (readonly [string, string])[][])[brukt] ?? []);
+  const oppgave = basis(mal, ctx, si(ctx.spraak, sortTekst[0], sortTekst[1]), "form:sorter", fasit, "vindu-kvadrat");
   oppgave.varer = varer;
   oppgave.kasser = kasser;
   return oppgave;
-}
-
-function artikkel(form: string): { nb: string; nn: string } {
-  const intet = form === "kvadrat" || form === "rektangel" || form === "prisme";
-  return intet ? { nb: "Tegn et {form}.", nn: "Teikn eit {form}." } : { nb: "Tegn en {form}.", nn: "Teikn ein {form}." };
 }
 
 function lagTegn(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const lov = nivaTall(ctx.nivaa) === 0 ? (["sirkel", "trekant", "kvadrat", "rektangel"] as Form2dId[]) : formerFor(ctx);
   const onsket = ctx.maalForm && lov.includes(ctx.maalForm as Form2dId) ? (ctx.maalForm as Form2dId) : undefined;
   const form = onsket ?? formUnnga(ctx, lov);
-  const ledd = artikkel(form);
+  const tekst = ordlyd(variant(mal.id) - 1, [
+    ["Tegn {formA}.", "Teikn {formA}."],
+    ["Kan du tegne {formA}?", "Kan du teikne {formA}?"],
+    ["Lag {formA} med fingeren.", "Lag {formA} med fingeren."],
+    ["Tegn {formA} på arket.", "Teikn {formA} på arket."],
+    ["Snekkeren trenger {formA}. Tegn den.", "Snikkaren treng {formA}. Teikn den."],
+    ["Bruk fingeren. Tegn {formA}.", "Bruk fingeren. Teikn {formA}."],
+  ]);
   const oppgave = basis(
     mal,
     ctx,
-    si(ctx.spraak, ledd.nb, ledd.nn, { form: formNavn(form, ctx.spraak) }),
+    si(ctx.spraak, tekst[0], tekst[1], { formA: formMedArtikkel(form, ctx.spraak) }),
     `form:${form}`,
     "ok",
     vareForForm(form),
@@ -708,7 +855,8 @@ function lagTell(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const v = variant(mal.id);
   if (v === 3 || v === 4 || v === 11) {
     const onsket3d = ctx.maalForm && (ALLE_3D as readonly string[]).includes(ctx.maalForm) ? (ctx.maalForm as Form3dId) : undefined;
-    const id = onsket3d ?? trekk(ctx.tilfeldig, ALLE_3D);
+    const flate = ALLE_3D.filter((form) => form === "kube" || form === "prisme" || form === "pyramide");
+    const id = v === 4 ? (onsket3d && (flate as readonly string[]).includes(onsket3d) ? onsket3d : trekk(ctx.tilfeldig, flate)) : (onsket3d ?? trekk(ctx.tilfeldig, ALLE_3D));
     const form = form3d(id);
     const tall = v === 4 ? form.flater : v === 11 ? form.hjorner : form.kanter;
     const pakke = tallValg(tall, ctx.tilfeldig);
@@ -717,8 +865,8 @@ function lagTell(mal: Mal, ctx: OppgaveKontekst): Oppgave {
       ctx,
       si(
         ctx.spraak,
-        v === 4 ? "Hvor mange flate sider har klossen?" : v === 11 ? "Tell hjørnene." : "Hvor mange kanter har klossen?",
-        v === 4 ? "Kor mange flate sider har klossen?" : v === 11 ? "Tel hjørna." : "Kor mange kantar har klossen?",
+        v === 4 ? "Hvor mange flater har klossen?" : v === 11 ? "Tell hjørnene på klossen." : "Hvor mange kanter har klossen?",
+        v === 4 ? "Kor mange flater har klossen?" : v === 11 ? "Tel hjørna på klossen." : "Kor mange kantar har klossen?",
       ),
       `form:${id}`,
       pakke.fasit,
@@ -778,11 +926,18 @@ function lagMonster(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const oppgave = basis(
     mal,
     ctx,
-    si(
-      ctx.spraak,
-      voksende ? "Mønsteret vokser. Hva kommer etterpå?" : "Hva kommer etterpå?",
-      voksende ? "Mønsteret veks. Kva kjem etterpå?" : "Kva kjem etterpå?",
-    ),
+    (() => {
+      const tekst = ordlyd(v - 1, [
+        ["Hva kommer etterpå?", "Kva kjem etterpå?"],
+        ["Hvilken form mangler?", "Kva for form manglar?"],
+        ["Fortsett rekka.", "Hald fram med rekkja."],
+        ["Hva skal stå på det tomme feltet?", "Kva skal stå på det tomme feltet?"],
+        ["Hjelp kjæledyret å legge ferdig fortauet.", "Hjelp kjæledyret å leggje ferdig fortauet."],
+        ["Hvilken flis kommer nå?", "Kva for flis kjem no?"],
+      ]);
+      const setning = si(ctx.spraak, tekst[0], tekst[1]);
+      return voksende ? `${si(ctx.spraak, "Mønsteret vokser.", "Mønsteret veks.")} ${setning}` : setning;
+    })(),
     `form:${neste}`,
     neste,
     vareForForm(laget.neste),
@@ -815,7 +970,17 @@ function lagStempel(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const oppgave = basis(
     mal,
     ctx,
-    si(ctx.spraak, "Klossen trykkes ned i sanden. Hvilken form får merket?", "Klossen vert trykt ned i sanden. Kva for form får merket?"),
+    (() => {
+      const tekst = ordlyd(variant(mal.id) - 1, [
+        ["Klossen trykkes ned i sanden. Hvilken form får merket?", "Klossen vert trykt ned i sanden. Kva for form får merket?"],
+        ["Hvilken form blir avtrykket?", "Kva for form blir avtrykket?"],
+        ["Klossen lager et merke i leira. Hvilken form har merket?", "Klossen lagar eit merke i leira. Kva for form har merket?"],
+        ["Vi trykker klossen ned i deigen. Hvilken form får merket?", "Vi trykkjer klossen ned i deigen. Kva for form får merket?"],
+        ["Klossen står i snøen. Hvilket merke blir igjen?", "Klossen står i snøen. Kva for merke blir att?"],
+        ["Hvilken form har flaten klossen står på?", "Kva for form har flata klossen står på?"],
+      ]);
+      return si(ctx.spraak, tekst[0], tekst[1]);
+    })(),
     `form:${id}`,
     stempel,
     vareForForm(id),
@@ -834,11 +999,21 @@ function lagLengde(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const oppgave = basis(
     mal,
     ctx,
-    si(
-      ctx.spraak,
-      cm ? "Linjalen viser centimeter. Hvor mange centimeter er planken?" : "Hvor mange klosser lang er planken?",
-      cm ? "Linjalen viser centimeter. Kor mange centimeter er planken?" : "Kor mange klossar lang er planken?",
-    ),
+    (() => {
+      const indeks = Math.floor((variant(mal.id) - 1) / 2);
+      const tekst = cm
+        ? ordlyd(indeks, [
+            ["Linjalen viser centimeter. Hvor mange centimeter er planken?", "Linjalen viser centimeter. Kor mange centimeter er planken?"],
+            ["Hvor lang er planken i centimeter?", "Kor lang er planken i centimeter?"],
+            ["Les linjalen. Hvor mange centimeter er planken?", "Les linjalen. Kor mange centimeter er planken?"],
+          ])
+        : ordlyd(indeks, [
+            ["Hvor mange klosser lang er planken?", "Kor mange klossar lang er planken?"],
+            ["Mål planken med klosser. Hvor mange trengs?", "Mål planken med klossar. Kor mange trengst?"],
+            ["Planken er like lang som noen klosser. Hvor mange?", "Planken er like lang som nokre klossar. Kor mange?"],
+          ]);
+      return si(ctx.spraak, tekst[0], tekst[1]);
+    })(),
     `planke:${planke.id}`,
     pakke.fasit,
     "planke",
@@ -859,6 +1034,12 @@ function tiValg(riktig: number, tilfeldig: Tilfeldig): { valg: Valg[]; fasit: st
   };
 }
 
+const KILO_TEKST: readonly (readonly [string, string])[] = [
+  ["Hvor mange kilo veier sekken? Hvert lodd veier 1 kilo.", "Kor mange kilo veg sekken? Kvart lodd veg 1 kilo."],
+  ["Vekta er i likevekt. Hvert lodd er 1 kilo. Hvor tung er sekken?", "Vekta er i likevekt. Kvart lodd er 1 kilo. Kor tung er sekken?"],
+  ["Tell loddene. Hvert lodd veier 1 kilo. Hvor mange kilo veier sekken?", "Tel lodda. Kvart lodd veg 1 kilo. Kor mange kilo veg sekken?"],
+];
+
 function lagMasse(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const varer = Object.entries(VEKT_KG);
   const [navn, kg] = trekk(ctx.tilfeldig, varer);
@@ -868,10 +1049,11 @@ function lagMasse(mal: Mal, ctx: OppgaveKontekst): Oppgave {
     const litenKg = VEKT_KG[liten] ?? 1;
     if (kg % litenKg !== 0) {
       const pakkeKg = tallValg(kg, ctx.tilfeldig);
+      const kiloTekst = ordlyd(Math.floor((v - 1) / 2), KILO_TEKST);
       const kilo = basis(
         mal,
         ctx,
-        si(ctx.spraak, "Hvor mange kilo veier sekken? Hvert lodd veier 1 kilo.", "Kor mange kilo veg sekken? Kvart lodd veg 1 kilo."),
+        si(ctx.spraak, kiloTekst[0], kiloTekst[1]),
         `vekt:${navn}`,
         pakkeKg.fasit,
         navn as VareId,
@@ -887,10 +1069,14 @@ function lagMasse(mal: Mal, ctx: OppgaveKontekst): Oppgave {
     const oppgave = basis(
       mal,
       ctx,
-      si(ctx.spraak, "Sekken veier {kg} kilo. Hvor mange {vare} veier like mye?", "Sekken veg {kg} kilo. Kor mange {vare} veg like mykje?", {
-        kg: String(kg),
-        vare: navnVare(liten, ctx.spraak),
-      }),
+      (() => {
+        const tekst = ordlyd(Math.floor((v - 1) / 2), [
+          ["Sekken veier {kg} kilo. Hvor mange {vare} veier like mye?", "Sekken veg {kg} kilo. Kor mange {vare} veg like mykje?"],
+          ["Hvor mange {vare} må på vekta for å veie som sekken? Sekken veier {kg} kilo.", "Kor mange {vare} må på vekta for å vege som sekken? Sekken veg {kg} kilo."],
+          ["Vekta skal være i likevekt. Sekken veier {kg} kilo. Hvor mange {vare} trengs?", "Vekta skal vere i likevekt. Sekken veg {kg} kilo. Kor mange {vare} trengst?"],
+        ]);
+        return si(ctx.spraak, tekst[0], tekst[1], { kg: String(kg), vare: navnVare(liten, ctx.spraak) });
+      })(),
       `vekt:${navn}`,
       pakke.fasit,
       navn as VareId,
@@ -902,10 +1088,11 @@ function lagMasse(mal: Mal, ctx: OppgaveKontekst): Oppgave {
     return oppgave;
   }
   const pakke = tallValg(kg, ctx.tilfeldig);
+  const kiloTekst = ordlyd(Math.floor((v - 1) / 2), KILO_TEKST);
   const oppgave = basis(
     mal,
     ctx,
-    si(ctx.spraak, "Hvor mange kilo veier sekken? Hvert lodd veier 1 kilo.", "Kor mange kilo veg sekken? Kvart lodd veg 1 kilo."),
+    si(ctx.spraak, kiloTekst[0], kiloTekst[1]),
     `vekt:${navn}`,
     pakke.fasit,
     navn as VareId,
@@ -926,18 +1113,22 @@ function lagAreal(mal: Mal, ctx: OppgaveKontekst): Oppgave {
     { id: roller[1] ?? "B2", ruter: trenger },
     { id: roller[2] ?? "C3", ruter: trenger + 2 },
   ];
-  const storst = variant(mal.id) % 2 === 0;
+  const v = variant(mal.id);
+  const slag = (v - 1) % 3;
+  const arealTekst = ordlyd(v - 1, [
+    ["Du trenger {n} ruter. Hvilken tomt har akkurat nok plass?", "Du treng {n} ruter. Kva for tomt har akkurat nok plass?"],
+    ["Hvilken tomt er størst?", "Kva for tomt er størst?"],
+    ["Hvilken tomt er minst?", "Kva for tomt er minst?"],
+    ["Huset trenger {n} ruter. Hvilken tomt passer akkurat?", "Huset treng {n} ruter. Kva for tomt passar akkurat?"],
+    ["Tell rutene. Hvilken tomt har flest?", "Tel rutene. Kva for tomt har flest?"],
+    ["Tell rutene. Hvilken tomt har færrest?", "Tel rutene. Kva for tomt har færrast?"],
+  ]);
   const oppgave = basis(
     mal,
     ctx,
-    si(
-      ctx.spraak,
-      storst ? "Hvilken tomt er størst?" : "Du trenger {n} ruter. Hvilken tomt har akkurat nok plass?",
-      storst ? "Kva for tomt er størst?" : "Du treng {n} ruter. Kva for tomt har akkurat nok plass?",
-      { n: String(trenger) },
-    ),
+    si(ctx.spraak, arealTekst[0], arealTekst[1], { n: String(trenger) }),
     `areal:${trenger}`,
-    storst ? (roller[2] ?? "C3") : (roller[1] ?? "B2"),
+    slag === 1 ? (roller[2] ?? "C3") : slag === 2 ? (roller[0] ?? "A1") : (roller[1] ?? "B2"),
     "jord",
   );
   oppgave.ruter = tomter;
@@ -958,7 +1149,17 @@ function lagKoord(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const oppgave = basis(
     mal,
     ctx,
-    si(ctx.spraak, "Hvor skal du bygge?", "Kor skal du byggje?"),
+    (() => {
+      const tekst = ordlyd(variant(mal.id) - 1, [
+        ["Hvor skal du bygge?", "Kor skal du byggje?"],
+        ["Hvilken rute er merket?", "Kva for rute er merkt?"],
+        ["Les kartet. Hva heter ruta?", "Les kartet. Kva heiter ruta?"],
+        ["Hvor står flagget på kartet?", "Kvar står flagget på kartet?"],
+        ["Finn ruta til tomta. Hvilken er det?", "Finn ruta til tomta. Kva for ei er det?"],
+        ["Bokstav og tall. Hvilken rute er det?", "Bokstav og tal. Kva for rute er det?"],
+      ]);
+      return si(ctx.spraak, tekst[0], tekst[1]);
+    })(),
     `rute:${riktig}`,
     riktig,
     "vegg-stein",
@@ -969,19 +1170,24 @@ function lagKoord(mal: Mal, ctx: OppgaveKontekst): Oppgave {
 }
 
 function lagVekt(mal: Mal, ctx: OppgaveKontekst): Oppgave {
-  const liten = 2;
+  const liten = 2 + heltall(ctx.tilfeldig, 0, 1);
   const antall = 2 + heltall(ctx.tilfeldig, 0, 2);
   const stor = liten * antall;
   const pakke = tallValg(antall, ctx.tilfeldig);
   const oppgave = basis(
     mal,
     ctx,
-    si(
-      ctx.spraak,
-      "Den store veier {stor} kilo. Hver liten veier {liten} kilo. Hvor mange småsekker veier like mye?",
-      "Den store veg {stor} kilo. Kvar liten veg {liten} kilo. Kor mange småsekkar veg like mykje?",
-      { stor: String(stor), liten: String(liten) },
-    ),
+    (() => {
+      const tekst = ordlyd(variant(mal.id) - 1, [
+        ["Den store veier {stor} kilo. Hver liten veier {liten} kilo. Hvor mange småsekker veier like mye?", "Den store veg {stor} kilo. Kvar liten veg {liten} kilo. Kor mange småsekkar veg like mykje?"],
+        ["Hvor mange småsekker må til for å veie {stor} kilo? Hver veier {liten} kilo.", "Kor mange småsekkar må til for å vege {stor} kilo? Kvar veg {liten} kilo."],
+        ["Vekta skal være i likevekt. Den store sekken veier {stor} kilo. Småsekkene veier {liten} kilo. Hvor mange trengs?", "Vekta skal vere i likevekt. Den store sekken veg {stor} kilo. Småsekkane veg {liten} kilo. Kor mange trengst?"],
+        ["Småsekkene veier {liten} kilo hver. Hvor mange veier like mye som {stor} kilo?", "Småsekkane veg {liten} kilo kvar. Kor mange veg like mykje som {stor} kilo?"],
+        ["Fyll den andre siden. Hver sekk er {liten} kilo, og den store er {stor} kilo. Hvor mange sekker?", "Fyll den andre sida. Kvar sekk er {liten} kilo, og den store er {stor} kilo. Kor mange sekkar?"],
+        ["Hvor mange sekker på {liten} kilo veier som én sekk på {stor} kilo?", "Kor mange sekkar på {liten} kilo veg som éin sekk på {stor} kilo?"],
+      ]);
+      return si(ctx.spraak, tekst[0], tekst[1], { stor: String(stor), liten: String(liten) });
+    })(),
     `vekt:${stor}`,
     pakke.fasit,
     "sand",

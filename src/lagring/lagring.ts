@@ -156,8 +156,13 @@ export function normaliserLagret(raa: unknown): Lagret | null {
     dato: erObjekt(raa.dato) && typeof raa.dato.aar === "number" ? (raa.dato as unknown as Lagret["dato"]) : standard.dato,
     ukerytme: Array.isArray(raa.ukerytme) ? (raa.ukerytme as Lagret["ukerytme"]) : standard.ukerytme,
     sistePlaner: Array.isArray(raa.sistePlaner) ? raa.sistePlaner.filter((nokkel): nokkel is string => typeof nokkel === "string").slice(-7) : [],
-    sisteMaler: Array.isArray(raa.sisteMaler) ? raa.sisteMaler.filter((nokkel): nokkel is string => typeof nokkel === "string").slice(-10) : [],
+    sisteMaler: Array.isArray(raa.sisteMaler) ? raa.sisteMaler.filter((nokkel): nokkel is string => typeof nokkel === "string").slice(-30) : [],
     sisteNokkel: typeof raa.sisteNokkel === "string" ? raa.sisteNokkel : "",
+    sisteNokler: Array.isArray(raa.sisteNokler) ? raa.sisteNokler.filter((nokkel): nokkel is string => typeof nokkel === "string").slice(-30) : [],
+    malPerType: erObjekt(raa.malPerType) ? (raa.malPerType as Lagret["malPerType"]) : {},
+    sett: Array.isArray(raa.sett)
+      ? raa.sett.filter((rad): rad is { s: string; d: number } => erObjekt(rad) && typeof rad.s === "string" && typeof rad.d === "number").slice(-300)
+      : [],
     dagbok: Array.isArray(raa.dagbok) ? (raa.dagbok as Lagret["dagbok"]) : [],
     album: Array.isArray(raa.album) ? (raa.album as Lagret["album"]) : [],
     demoSett: Array.isArray(raa.demoSett) ? raa.demoSett.filter((id): id is string => typeof id === "string") : [],

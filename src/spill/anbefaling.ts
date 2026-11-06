@@ -1,7 +1,7 @@
 import { aktivitetKnapp, aktivitetNa, visNavn } from "../dag/aktiviteter";
 import { maalBygg, manglendeDeler } from "../bygg/handleliste";
 import { byggDef } from "../bygg/katalog";
-import { ferdigeBygg, ledigeTomter, nesteByggId } from "../bygg/kart";
+import { ferdigeBygg, kravSomOves, ledigeTomter, nesteByggId } from "../bygg/kart";
 import { morgendagensApning } from "../dag/plan";
 import { byggBestemt as byggBestemtOrd, mal, navnVare, vareAntall, vareBestemt, vareMedArtikkel, klarFor } from "../tekst/ordbok";
 import { erApen, tidTilDigital24, tidTilOrd } from "../tid/tid";
@@ -45,6 +45,7 @@ export type Anbefaling =
   | { slag: "vent"; tid: number }
   | { slag: "legg" }
   | { slag: "klokke" }
+  | { slag: "ov" }
   | { slag: "ekstra" }
   | { slag: "byplan" }
   | { slag: "se" };
@@ -309,6 +310,19 @@ function leggKnapp(lagret: Lagret, grunn: string): NesteSteg {
 function ventHer(lagret: Lagret, tid: number, grunnKort: string, forklaring: string, puls: string | null): NesteSteg {
   if (lagret.aktivDag?.sted === "byggeplass") return gaaKnapp(lagret, "hjemme", si(lagret, "Gå hjem.", "Gå heim."));
   return ventKnapp(lagret, tid, grunnKort, forklaring, puls);
+}
+
+function ovKnapp(lagret: Lagret, krav: "monster" | "klokke" | "rom"): NesteSteg {
+  const tekst: Record<typeof krav, { knapp: [string, string]; grunn: [string, string] }> = {
+    monster: { knapp: ["Øv på mønstre", "Øv på mønster"], grunn: ["For å bygge videre må vi øve på mønstre.", "For å byggje vidare må vi øve på mønster."] },
+    klokke: {
+      knapp: ["Øv på klokka", "Øv på klokka"],
+      grunn: ["For å bygge videre må vi klare tre klokkeoppgaver på rad.", "For å byggje vidare må vi klare tre klokkeoppgåver på rad."],
+    },
+    rom: { knapp: ["Øv på klosser", "Øv på klossar"], grunn: ["For å bygge videre må vi lære flere klosser.", "For å byggje vidare må vi lære fleire klossar."] },
+  };
+  const rad = tekst[krav];
+  return { handling: { slag: "ov" }, knapp: si(lagret, rad.knapp[0], rad.knapp[1]), grunn: si(lagret, rad.grunn[0], rad.grunn[1]), puls: "hjemme" };
 }
 
 function klokkeKnapp(lagret: Lagret): NesteSteg {
@@ -590,6 +604,9 @@ export function nesteSteg(lagret: Lagret): NesteSteg {
     return gaaKnapp(lagret, "hjemme", si(lagret, "Gå hjem.", "Gå heim."));
   }
   if (igjen <= 30) return leggKnapp(lagret, si(lagret, "Snart leggetid.", "Snart leggetid."));
+  // Alt på nivået er bygget, men et krav for neste nivå mangler. Spillet gir øvingen (gj. 10, C5).
+  const krav = kravSomOves(lagret.by);
+  if (krav && igjen > 45) return ovKnapp(lagret, krav);
   if (!dag.klokkeLekt) return klokkeKnapp(lagret);
   const ventTil = dag.plan.leggetid - 30;
   const kveldTekst =

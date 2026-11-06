@@ -75,7 +75,10 @@ describe("åpningstid uten oppgitt klokke", () => {
   });
 
   it("beholder klokka når den er oppgitt", () => {
-    const oppgave = trekkType("apningstider", {
+    // Variant 1 bruker spillets klokke. De andre sier «Tenk deg at klokka er …» eller nevner tiden (gj. 10, 7.4).
+    const apen1 = malerFor("apningstider").find((mal) => mal.id === "apen-1");
+    if (!apen1) throw new Error("mangler apen-1");
+    const oppgave = lagFraMal(apen1, {
       ...ctx(3, "andre"),
       naa: 14 * 60 + 30,
       plan: {
