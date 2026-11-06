@@ -1522,9 +1522,12 @@ function ryddSkilt(): void {
     const skilt = [...flate.querySelectorAll<HTMLElement>(".skilt")];
     const vist: DOMRect[] = [];
     for (const el of skilt) {
-      const r = el.getBoundingClientRect();
-      if (r.width === 0) continue;
-      const kolliderer = vist.some((a) => r.left < a.right - 1 && r.right > a.left + 1 && r.top < a.bottom - 1 && r.bottom > a.top + 1);
+      el.classList.remove("trangt");
+      const b = el.getBoundingClientRect();
+      if (b.width === 0) continue;
+      // Trykkflaten rundt skiltet (::after) er 6 px bredere og 12 px høyere på hver side.
+      const r = new DOMRect(b.left - 6, b.top - 12, b.width + 12, b.height + 24);
+      const kolliderer = vist.some((a) => r.left < a.right && r.right > a.left && r.top < a.bottom && r.bottom > a.top);
       el.classList.toggle("trangt", kolliderer);
       if (!kolliderer) vist.push(r);
     }

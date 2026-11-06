@@ -37,17 +37,20 @@ Formbyen er et norsk byggespill om former og klokka for 1. og 2. klasse. Det er 
 ## Avklarte valg
 
 - Én by per telefon. Eksport og import flytter den. Import må bekreftes, og en fil uten versjon endrer ikke byen. Ingen flere byer.
-- Kartet er spillet, og det viser alltid hele byen. Hjem, butikk, torg, tårn, pyntebu, tannlege og svømmehall står fast. Hvert sted har en trykkflate på minst 44 × 44 px, og navneskiltet kan trykkes. Gange tar 15 minutter, 30 til tannlegen og svømmehallen (30 overalt i 1. klasse). Avtaler lagres som id og vises på språket som er valgt nå.
-- Ett bygg om dagen. Et ekstra bygg er et valg, og det tilbys bare når butikken er åpen minst 30 minutter når barnet kommer fram.
+- Kartet er spillet, og det viser alltid hele byen. Hjem, butikk, torg, tårn, pyntebu, tannlege og svømmehall står fast. Tårnet (E3) og pyntebua (F3) står på stien. Skilt som ville dekket hverandre, skjules (`ryddSkilt`). Hvert sted har en trykkflate på minst 44 × 44 px, og navneskiltet kan trykkes. Gange tar 15 minutter, 30 til tannlegen og svømmehallen (30 overalt i 1. klasse). Avtaler lagres som id og vises på språket som er valgt nå.
+- Ett bygg om dagen. Et ekstra bygg er et valg, og det tilbys bare når butikken er åpen minst 30 minutter når barnet kommer fram. «Nei, ikke i dag» er den gule knappen.
 - Morgendagens plan lages når dagen starter (`aktivDag.morgen`). Tårnuret, skiltet og «åpner i morgen» bruker den.
 - Digital klokke er alltid 24 timer, også i 1. klasse. Ordene står ved siden av. «Halv tre» er 02:30 og 14:30. Når barnet stiller en analog klokke, godtas begge.
-- Avtalene er oppdiktet og følger en fast ukerytme. Voksensiden kan feste ekte avtaler, for eksempel korps tirsdag 18:00.
+- Avtalene er oppdiktet og følger en fast ukerytme. Voksensiden kan feste ekte avtaler, for eksempel korps tirsdag 18:00. Faste avtaler slås sammen med rytmen, hoppes aldri over og gjelder fra i morgen (`faste-avtaler` i okt.ts). Bare aktiviteter som er låst opp, kan velges.
 - Voksensiden ligger bak et regnestykke. Nivå, språk og lyd ligger der. Låsen lukkes når den voksne går ut og etter fem minutter. Kompetansemålene ligger på voksensiden.
 - Oppgavene i butikken: minst halvparten av formoppgavene handler om delen. Ellers står «Løs oppgaven for å få …» som en liten linje over oppgaven. Måling, kart og kalender kommer per nivå: ukeplan og kalender i 1. klasse, lengde og masse fra 2. klasse, areal, koordinater og likevekt på utfordrende. Alle oppgaver som vises, går inn i én historikk (`huskOppgave`/`vis` i okt.ts). Samme type høyst tre ganger per dag og to på rad, samme mal ikke igjen innen ti oppgaver, og samme tekst og svar ikke igjen innen tre dager. Hver type har minst seks ordlyder, og malvarianten styrer tekst og innhold. Se docs/skjermkart.md.
 - Når alt på nivået er bygget og et krav for neste nivå mangler (mønster, klokke på rad, klosser), blir den gule knappen «Øv på …» (`kravSomOves`).
 - To feil på en oppgave sender runden videre. En mislykket butikkrunde koster tid, og et oppdrag avsluttes for dagen.
 - Tempo: slottet nås på 25–35 ettermiddager i 1. klasse og 20–25 i 2. klasse når rådet følges.
 - Oppdatering: «Sjekk for oppdateringer» spør serveren (`reg.update()`), og appen sjekker selv når den blir synlig (høyst hvert kvarter) og hver time. Bare «Åpne på nytt» i banneret aktiverer en ny versjon. «Om appen» viser commit og byggedato.
+- Pynt står i hagene til byggene, langs stien og ved torget, aldri på en rute som kan bli tomt. Se docs/skjermkart.md.
+- Klokker som stilles: trykk og dra tolkes som vinkel, og barnet velger viser (`felles/urInput.ts`).
+- Tårnet åpner klokkeleken bare når det ikke er noe annet å gjøre. Hver ny runde samme dag gir nye mål, og bare den første gir mynter.
 - Ingen tale i v1. Lyd er av som standard. Språk: bokmål, nynorsk, engelsk, spansk, tysk, portugisisk, svensk, dansk og fransk. Digital klokke er alltid 24 timer. Klokkeordene følger landet: «halv tre» er 14:30 på norsk, svensk, dansk og tysk. «Half past two», «las dos y media», «duas e meia» og «deux heures et demie» er også 14:30. Nynorsk har samme klokkeord som bokmål. Ukedagene er ulike.
 
 ## Regler

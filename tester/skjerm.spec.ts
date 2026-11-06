@@ -67,6 +67,13 @@ async function sjekk(page: Page, tillatScroll = false): Promise<string[]> {
       if (!(knapp as HTMLButtonElement).disabled) veiUt = true;
     }
     if (!veiUt) funn.push("ingen vei ut");
+    // Navneskiltene på kartet er ikke dekket av noe annet (gj. 10, 8).
+    for (const skilt of document.querySelectorAll<HTMLElement>(".kartflate .skilt:not(.trangt)")) {
+      const r = skilt.getBoundingClientRect();
+      if (r.width === 0) continue;
+      const treff = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      if (treff && treff !== skilt && !skilt.contains(treff)) funn.push(`skilt dekket: ${navn(skilt)} av ${navn(treff)}`);
+    }
     for (const ur of document.querySelectorAll<HTMLElement>(".oppgave > .ur, .oppgave .sammenlign .ur, .oppgave .valg .ur, .ur-midten .ur, .skilt-naa .ur")) {
       const r = ur.getBoundingClientRect();
       if (r.width > 0 && r.width < 79.5) funn.push(`klokke for liten (${Math.round(r.width)} px)`);

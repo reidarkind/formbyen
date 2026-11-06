@@ -727,7 +727,7 @@ function medTakt(lagret: Lagret, oppgaver: Oppgave[]): Lagret {
   return { ...lagret, aktivDag: { ...dag, typeTakt: takt, typeRekke } };
 }
 
-function gavlOppgave(lagret: Lagret, vare: VareId): Oppgave {
+export function gavlOppgave(lagret: Lagret, vare: VareId): Oppgave {
   const form = formForVare(vare) ?? "trekant";
   const grunn = lagret.innstillinger.nivaa === "forste" ? 2 : lagret.innstillinger.nivaa === "andre" ? 3 : 4;
   const n = grunn + (lagret.fro % 2);

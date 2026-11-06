@@ -4,7 +4,7 @@ import { standardLagret } from "../src/lagring/lagring";
 import { forklaring } from "../src/oppgaver/forklaring";
 import { lagFraMal } from "../src/oppgaver/lag";
 import { MALER } from "../src/oppgaver/maler";
-import { bakerOppgave, kasseOppgave, utfor } from "../src/spill/okt";
+import { bakerOppgave, gavlOppgave, kasseOppgave, utfor } from "../src/spill/okt";
 import { spillDag } from "../src/spill/testbot";
 import type { AktivDag, ByTilstand, DagbokInnslag, Lagret, Nivaa, Oppgave, PlassertBygg } from "../src/typer";
 
@@ -105,6 +105,28 @@ export function skjermer(): Tilstand[] {
   ut.push({ navn: "pynt-flytt", lagret: { ...stor, mynter: 40 }, skjerm: "pynt-kart", ekstra: { pyntOmrade: "hjem", valgtPyntId: "pynt-1" } });
   ut.push({ navn: "tarnur-forste", lagret: dag, skjerm: "ur" });
   ut.push({ navn: "tarnur-utfordrende", lagret: medDag(grunn("utfordrende")), skjerm: "ur" });
+  // Dørkortet, avtalekortene, oppdraget og gavlen (gj. 10, 8).
+  for (const nivaa of ["forste", "andre", "utfordrende"] as const) {
+    const d0 = medDag(grunn(nivaa));
+    const a0 = d0.aktivDag;
+    if (!a0) continue;
+    const vedButikk = { ...d0, aktivDag: { ...a0, sted: "butikk" as const, tid: a0.plan.butikk.stengtHele ? a0.tid : a0.plan.butikk.apner - 30 } };
+    ut.push({ navn: `dorkort-${nivaa}`, lagret: utfor(vedButikk, { slag: "dor" }).lagret, skjerm: "verden" });
+    const apen = { ...d0, aktivDag: { ...a0, sted: "butikk" as const, tid: a0.plan.butikk.stengtHele ? a0.tid : a0.plan.butikk.apner + 30, plan: { ...a0.plan, butikk: { ...a0.plan.butikk, stengtHele: false } } } };
+    ut.push({ navn: `dorkort-apen-${nivaa}`, lagret: utfor(apen, { slag: "dor" }).lagret, skjerm: "verden" });
+    ut.push({ navn: `oppdrag-${nivaa}`, lagret: utfor(d0, { slag: "oppdrag" }).lagret, skjerm: "verden" });
+    const avtale = a0.plan.avtaler.find((rad) => rad.varighet > 0 && rad.slag !== "middag");
+    if (avtale) {
+      // Alle fem avtalespørsmålene, ett om gangen.
+      for (let runde = 0; runde < 5; runde++) {
+        const her = { ...d0, dagbok: Array.from({ length: runde }, () => langDagbok(1)[0]!), aktivDag: { ...a0, tid: avtale.start, sted: (avtale.sted === "hjemme" || avtale.sted === "" ? "hjemme" : avtale.sted) as never, fase: "aktivitet" as const } };
+        const mot = utfor(her, { slag: "mot" }).lagret;
+        if (mot.aktivDag?.ko.length) ut.push({ navn: `avtale-${nivaa}-${runde}`, lagret: mot, skjerm: "verden" });
+      }
+    }
+    const gavl = gavlOppgave(d0, "tak-rodt");
+    ut.push({ navn: `gavl-${nivaa}`, lagret: { ...d0, aktivDag: { ...a0, sted: "butikk", fase: "handel", dorLest: true, ko: [gavl], aktiv: 0, forklaring: null, feil: 0 } }, skjerm: "verden" });
+  }
   // Ekstra bygg-valget: brønnen er ferdig i dag, og butikken er åpen.
   const bronn = grunn("andre");
   const ekstraDag = medDag({ ...bronn, by: { ...bronn.by, bygg: [...bronn.by.bygg, { instans: "b", bygg: "bronn", x: 4, y: 4, steg: 3, ferdig: true, uthus: false, frie: [], pynt: [] }] } });
