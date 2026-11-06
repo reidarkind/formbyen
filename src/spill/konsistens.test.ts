@@ -128,6 +128,7 @@ function gjorAnbefalt(lagret: Lagret, steg: NesteSteg): Lagret {
   if (valg.slag === "klokke") return utfor(lagret, { slag: "klokke" }).lagret;
   if (valg.slag === "ov") return utfor(lagret, { slag: "ov" }).lagret;
   if (valg.slag === "ekstra") return utfor(lagret, { slag: "ekstra", ja: true }).lagret;
+  if (valg.slag === "forraad") return utfor(lagret, { slag: "forraad" }).lagret;
   if (valg.slag === "legg" || valg.slag === "se") return utfor(lagret, { slag: "avslutt" }).lagret;
   return lagret;
 }

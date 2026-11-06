@@ -918,6 +918,7 @@ function hovedKnapp(dag: NonNullable<Lagret["aktivDag"]>, steg: ReturnType<typeo
   }
   if (valg.slag === "klokke") return `<button type="button" class="hoved" data-handling="klokke">${tekst}</button>`;
   if (valg.slag === "ov") return `<button type="button" class="hoved" data-handling="ov">${tekst}</button>`;
+  if (valg.slag === "forraad") return `<button type="button" class="hoved" data-handling="forraad">${tekst}</button>`;
   return "";
 }
 
@@ -1966,6 +1967,7 @@ rot.addEventListener("click", (hendelse) => {
     bekreftAvslutt = false;
     gjor({ slag: "vent", tid: knapp.dataset.tid ? Number(knapp.dataset.tid) : undefined });
   }
+  if (handling === "forraad") gjor({ slag: "forraad" });
   if (handling === "ov") {
     gjor({ slag: "ov" });
     return;

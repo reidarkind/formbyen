@@ -361,6 +361,8 @@ export interface AktivDag {
   /** Bygget dagen startet med. Neste bygg krever et ja. */
   dagensBygg?: ByggId;
   ekstraNei?: boolean;
+  /** Butikken er stengt i morgen. Barnet kjøper én del i dag og bygger med den i morgen (gj. 10, 7.1.10). */
+  forraad?: "kjop" | "kjopt";
   byggetIDag: string[];
   formerIDag: string[];
   klokkerIDag: number[];

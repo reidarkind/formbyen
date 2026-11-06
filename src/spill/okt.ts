@@ -31,6 +31,7 @@ export type Handling =
   | { slag: "pynt-flytt"; id: string; plass: string }
   | { slag: "pynt-fjern"; id: string }
   | { slag: "ekstra"; ja: boolean }
+  | { slag: "forraad" }
   | { slag: "flytt"; instans: string; x: number; y: number }
   | { slag: "mot" }
   | { slag: "spis" }
@@ -120,10 +121,11 @@ function typeLedig(lagret: Lagret, type: Oppgave["type"], iRunden: readonly Oppg
   const telle = (navn: Oppgave["type"]) => (dag?.typeTakt?.[navn] ?? 0) + iRunden.filter((rad) => rad.type === navn).length;
   const antall = telle(type);
   if (antall >= MAKS_PER_DAG) return false;
-  // Avtalene senere i dag kan ikke hoppes over. Butikken lar plass stå igjen til spørsmålene deres.
+  // Avtalene senere i dag kan ikke hoppes over. Butikken lar plass stå igjen til spørsmålene deres,
+  // med én plass ekstra, så avtalene ikke må ta samme type tre ganger på rad.
   if (!avtale && dag && (type === "hvor-lenge" || type === "rekker-jeg")) {
     const igjen = dag.plan.avtaler.filter((rad) => rad.varighet > 0 && rad.slag !== "middag" && !dag.besokt.includes(rad.id) && rad.start + rad.varighet > dag.tid).length;
-    if (telle("hvor-lenge") + telle("rekker-jeg") + 1 + igjen > 2 * MAKS_PER_DAG) return false;
+    if (igjen > 0 && telle("hvor-lenge") + telle("rekker-jeg") + 1 + igjen > 2 * MAKS_PER_DAG - 1) return false;
   }
   const rekke = [...(dag?.typeRekke ?? []), ...iRunden.map((rad) => rad.type)];
   return !(rekke.length >= 2 && rekke[rekke.length - 1] === type && rekke[rekke.length - 2] === type);
@@ -452,6 +454,7 @@ export function utfor(lagret: Lagret, handling: Handling): { lagret: Lagret; mel
   if (handling.slag === "angre") return angre(lagret);
   if (handling.slag === "flytt") return flytt(lagret, handling.instans, handling.x, handling.y);
   if (handling.slag === "ekstra") return ekstraBygg(lagret, handling.ja);
+  if (handling.slag === "forraad") return forraad(lagret);
   if (handling.slag === "mot") return mot(lagret);
   if (handling.slag === "spis") return spis(lagret);
   if (handling.slag === "klokke") {
@@ -1080,6 +1083,7 @@ function svar(lagret: Lagret, gitt: string): { lagret: Lagret; melding: string |
   if (!erAktivitet && !oppgave.ovelse) {
     gittVare = manglendeDeler(neste)[0] ?? oppgave.vare;
     neste = noter(giVare(neste, gittVare), oppgave);
+    if (neste.aktivDag?.forraad === "kjop") neste = { ...neste, aktivDag: { ...neste.aktivDag, forraad: "kjopt" } };
     const maal = maalBygg(neste);
     if (maal && byggDef(maal.id).nivaa >= 3 && neste.aktivDag) {
       neste = { ...neste, aktivDag: { ...neste.aktivDag, kjopIDag: (neste.aktivDag.kjopIDag ?? 0) + 1 } };
@@ -1317,6 +1321,14 @@ function fjernPynt(lagret: Lagret, id: string): { lagret: Lagret; melding: strin
     lagret: { ...lagret, mynter: lagret.mynter + (PYNT_PRIS[rad.vare] ?? 0), by: { ...lagret.by, pynt: (lagret.by.pynt ?? []).filter((pynt) => pynt.id !== id) } },
     melding: si(lagret, "Pynten er tatt bort. Du fikk myntene tilbake.", "Pynten er teken bort. Du fekk myntane tilbake."),
   };
+}
+
+/** Butikken er stengt i morgen: kjøp én del nå og bygg med den i morgen (gj. 10, 7.1.10). */
+function forraad(lagret: Lagret): { lagret: Lagret; melding: string | null } {
+  const dag = lagret.aktivDag;
+  if (!dag || dag.forraad) return { lagret, melding: null };
+  const dagensBygg = maalBygg(lagret) ? dag.dagensBygg : (nesteByggId(lagret.by) ?? dag.dagensBygg);
+  return { lagret: { ...lagret, aktivDag: { ...dag, forraad: "kjop", dagensBygg, ekstraNei: false } }, melding: null };
 }
 
 function ekstraBygg(lagret: Lagret, ja: boolean): { lagret: Lagret; melding: string | null } {

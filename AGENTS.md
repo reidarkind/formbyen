@@ -38,7 +38,7 @@ Formbyen er et norsk byggespill om former og klokka for 1. og 2. klasse. Det er 
 
 - Én by per telefon. Eksport og import flytter den. Import må bekreftes, og en fil uten versjon endrer ikke byen. Ingen flere byer.
 - Kartet er spillet, og det viser alltid hele byen. Hjem, butikk, torg, tårn, pyntebu, tannlege og svømmehall står fast. Tårnet (E3) og pyntebua (F3) står på stien. Skilt som ville dekket hverandre, skjules (`ryddSkilt`). Hvert sted har en trykkflate på minst 44 × 44 px, og navneskiltet kan trykkes. Gange tar 15 minutter, 30 til tannlegen og svømmehallen (30 overalt i 1. klasse). Avtaler lagres som id og vises på språket som er valgt nå.
-- Ett bygg om dagen. Et ekstra bygg er et valg, og det tilbys bare når butikken er åpen minst 30 minutter når barnet kommer fram. «Nei, ikke i dag» er den gule knappen.
+- Ett bygg om dagen. Et ekstra bygg er et valg, og det tilbys bare når butikken er åpen minst 30 minutter når barnet kommer fram. «Nei, ikke i dag» er den gule knappen. Når butikken er stengt i morgen, blir den gule knappen «Kjøp en del til i morgen». Delen bygges dagen etter (`forraad`), så søndagen også gir framgang.
 - Morgendagens plan lages når dagen starter (`aktivDag.morgen`). Tårnuret, skiltet og «åpner i morgen» bruker den.
 - Digital klokke er alltid 24 timer, også i 1. klasse. Ordene står ved siden av. «Halv tre» er 02:30 og 14:30. Når barnet stiller en analog klokke, godtas begge.
 - Avtalene er oppdiktet og følger en fast ukerytme. Voksensiden kan feste ekte avtaler, for eksempel korps tirsdag 18:00. Faste avtaler slås sammen med rytmen, hoppes aldri over og gjelder fra i morgen (`faste-avtaler` i okt.ts). Bare aktiviteter som er låst opp, kan velges.

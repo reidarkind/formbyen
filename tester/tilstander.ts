@@ -141,6 +141,16 @@ export function skjermer(): Tilstand[] {
       },
       skjerm: "verden",
     });
+    // Butikken er stengt i morgen: kjøp en del til i morgen (gj. 10, 7.1.10).
+    const apenPlan = { ...ed.plan, avtaler: [], butikk: { apner, stenger: apner + 180, stengtHele: false } };
+    ut.push({
+      navn: "forraad-valg",
+      lagret: {
+        ...ekstraDag,
+        aktivDag: { ...ed, dagensBygg: "bronn", tid: apner, sted: "byggeplass", fase: "aktivitet", valgtInstans: "b", plan: apenPlan, morgen: [{ ...apenPlan, butikk: { apner, stenger: apner, stengtHele: true } }] },
+      },
+      skjerm: "verden",
+    });
   }
   // Kvelden med mange avtaler.
   const kveld = spillDag(medDag(g)).lagret;

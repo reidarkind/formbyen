@@ -47,6 +47,7 @@ export type Anbefaling =
   | { slag: "klokke" }
   | { slag: "ov" }
   | { slag: "ekstra" }
+  | { slag: "forraad" }
   | { slag: "byplan" }
   | { slag: "se" };
 
@@ -290,7 +291,26 @@ function kjopTak(nivaa: Nivaa, dag: number): number {
   return 5;
 }
 
+/** Delen barnet kan kjøpe i dag og bygge med i morgen, når butikken er stengt i morgen. */
+function forraadDel(lagret: Lagret): VareId | null {
+  const dag = lagret.aktivDag;
+  if (!dag || dag.forraad || !dag.morgen?.[0]?.butikk.stengtHele) return null;
+  if (ferdigDagens(lagret)) {
+    const neste = nesteByggId(lagret.by);
+    const vare = neste ? byggDef(neste).oppskrift[0]?.vare : undefined;
+    return vare && (lagret.kurv[vare] ?? 0) === 0 ? vare : null;
+  }
+  return manglendeDeler(lagret)[0] ?? null;
+}
+
+/** Delen som ligger klar til morgendagens første steg. */
+function morgenDel(lagret: Lagret): VareId | null {
+  const maal = maalBygg(lagret);
+  return maal ? (byggDef(maal.id).oppskrift[maal.steg]?.vare ?? null) : null;
+}
+
 function kjopStans(lagret: Lagret): boolean {
+  if (lagret.aktivDag?.forraad === "kjop") return false;
   const maal = maalBygg(lagret);
   if (!maal || byggDef(maal.id).nivaa < 3) return false;
   return (lagret.aktivDag?.kjopIDag ?? 0) >= kjopTak(lagret.innstillinger.nivaa, lagret.dato.dag);
@@ -372,8 +392,10 @@ export function nesteSteg(lagret: Lagret): NesteSteg {
     return gaaKnapp(lagret, sted, grunn);
   }
 
-  const mangler = manglendeDeler(lagret);
-  const del = delIKurv(lagret);
+  // Delen til i morgen er kjøpt. Den bygges ikke i dag (gj. 10, 7.1.10).
+  const spart = dag.forraad === "kjopt";
+  const mangler = spart ? [] : manglendeDeler(lagret);
+  const del = spart ? null : delIKurv(lagret);
   const apenNaa = butikkVed(lagret, dag.tid);
   const stans = kjopStans(lagret);
 
@@ -481,6 +503,18 @@ export function nesteSteg(lagret: Lagret): NesteSteg {
   const ankomstButikk = dag.tid + gang(lagret, dag.sted, "butikk");
   const rekkerButikken =
     butikkVed(lagret, ankomstButikk) && butikkVed(lagret, ankomstButikk + 29) && rekkerMotFrist(lagret, "butikk", 0);
+  // Butikken er stengt i morgen. Kjøp én del nå, så er det noe å bygge i morgen (gj. 10, 7.1.10).
+  const tilMorgen = !del && rekkerButikken ? forraadDel(lagret) : null;
+  if (tilMorgen) {
+    return {
+      handling: { slag: "forraad" },
+      knapp: si(lagret, "Kjøp en del til i morgen", "Kjøp ein del til i morgon"),
+      grunn: si(lagret, "Butikken er stengt i morgen. Kjøp {del} nå, så kan du bygge i morgen.", "Butikken er stengt i morgon. Kjøp {del} no, så kan du byggje i morgon.", {
+        del: vareMedArtikkel(tilMorgen, spraak),
+      }),
+      puls: "butikk",
+    };
+  }
   if (ferdigDagens(lagret) && nesteBygg && lagret.innstillinger.nivaa !== "utfordrende" && rekkerButikken) {
     const oppskrift = byggDef(nesteBygg).oppskrift;
     const forsteDel = oppskrift[0]?.vare ?? "planke";
@@ -611,8 +645,12 @@ export function nesteSteg(lagret: Lagret): NesteSteg {
   if (krav && igjen > 45) return ovKnapp(lagret, krav);
   if (!dag.klokkeLekt) return klokkeKnapp(lagret);
   const ventTil = dag.plan.leggetid - 30;
-  const kveldTekst =
-    mangler.length > 0
+  const spartDel = spart ? morgenDel(lagret) : null;
+  const kveldTekst = spartDel
+    ? si(lagret, "Vi har {del} til i morgen. Vi venter hjemme til leggetid.", "Vi har {del} til i morgon. Vi ventar heime til leggetid.", {
+        del: vareMedArtikkel(spartDel, spraak),
+      })
+    : mangler.length > 0
       ? si(lagret, "Butikken stenger før vi rekker dit. Vi kjøper {del} i morgen. Vi venter til kl. {tid}.", "Butikken stengjer før vi rekk dit. Vi kjøper {del} i morgon. Vi ventar til kl. {tid}.", {
           del: navnVare(mangler[0] ?? "planke", spraak),
           tid: tidTilDigital24(ventTil),
