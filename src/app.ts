@@ -12,7 +12,7 @@ import { tallPosisjoner, urskive } from "./grafikk/klokke";
 import { ALLE_2D, ALLE_3D, erForm2d, erForm3d, form2d, form3d } from "./former/definisjoner";
 import { importer, lesLagring, skrivLagring, standardLagret } from "./lagring/lagring";
 import { beVarigLagring } from "./pwa/lagring";
-import { oppdateringTekst, sjekkForOppdatering } from "./pwa/oppdatering";
+import { oppdateringTekst, sjekkRegistrering, skalSjekkeIgjen } from "./pwa/oppdatering";
 import { sporsmalViser, svarViser } from "./oppgaver/visning";
 import { anbefalt, gangMinutter, nesteSteg } from "./spill/anbefaling";
 import { aktivOppgave, apningTekst, PYNT_PRIS, utfor, type Handling } from "./spill/okt";
@@ -41,7 +41,9 @@ const lager: NokkelLager = {
 type Skjerm = "intro" | "velg" | "meny" | "pause" | "dagstart" | "verden" | "kart" | "bygg" | "pynt" | "kveld" | "innstillinger" | "voksen" | "dagbok" | "album" | "ur" | "kurv";
 type VoksenFane = "oversikt" | "detalj" | "nivaa" | "avtaler" | "data" | "om";
 
-const VERSJON = "1.1.0";
+const VERSJON = "1.2.0";
+/** Commit og dato for bygget, så det går an å se hvilken versjon som kjører (gj. 10, C3). */
+const BYGG = [String(import.meta.env.VITE_BYGG ?? "").slice(0, 7), typeof __BYGG__ === "string" ? __BYGG__ : ""].filter(Boolean).join(" ") || "utvikling";
 /** Låsen til voksensiden lukkes etter fem minutter uten aktivitet (gj. 9, B4). */
 const VOKSEN_TIDSAVBRUDD = 5 * 60 * 1000;
 
@@ -87,13 +89,30 @@ const rotEl = document.querySelector("#app");
 if (!(rotEl instanceof HTMLElement)) throw new Error("mangler app");
 const rot: HTMLElement = rotEl;
 
+/** Registreringen tas vare på, så knappen og den automatiske sjekken kan spørre serveren (gj. 10, C3). */
+let swReg: ServiceWorkerRegistration | undefined;
+let sistSjekket = Date.now();
 const oppdaterSW = registerSW({
   immediate: true,
   onNeedRefresh() {
     visOppdater = true;
     tegn();
   },
+  onRegisteredSW(_url: string, reg: ServiceWorkerRegistration | undefined) {
+    swReg = reg;
+  },
 });
+
+function sjekkIStillhet(): void {
+  if (!swReg || !navigator.onLine) return;
+  sistSjekket = Date.now();
+  void swReg.update().catch(() => undefined);
+}
+// Nettleseren sjekker selv bare ved kald start. Vi sjekker når appen blir synlig igjen (høyst hvert kvarter) og hver time.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && skalSjekkeIgjen(sistSjekket, Date.now())) sjekkIStillhet();
+});
+window.setInterval(sjekkIStillhet, 60 * 60_000);
 
 void beVarigLagring();
 
@@ -1192,7 +1211,7 @@ function voksenHtml(): string {
       <p><strong>Android:</strong> ${si(spraak(), "Åpne Formbyen i Chrome. Trykk menyen og Installer app.", "Opne Formbyen i Chrome. Trykk menyen og Installer app.")}</p>
       <p>${si(spraak(), "Når du har åpnet appen én gang, kan du spille uten nett.", "Når du har opna appen éin gong, kan du spele utan nett.")}</p>
     </details>
-    <p>${si(spraak(), "Versjon", "Versjon")} ${esc(VERSJON)}</p>
+    <p>${si(spraak(), "Versjon", "Versjon")} ${esc(VERSJON)} · ${esc(BYGG)}</p>
     <button type="button" data-oppdater="1">${si(spraak(), "Sjekk for oppdateringer", "Sjekk for oppdateringar")}</button>
     ${statusOppdater ? `<p>${esc(fraNb(spraak(), statusOppdater))}</p>` : ""}
     <p>${si(spraak(), "Ideen er Reidar Kind sin. Utviklet ved hjelp av AI.", "Ideen er Reidar Kind sin. Utvikla ved hjelp av AI.")}</p>
@@ -1382,7 +1401,7 @@ function tegn(): string {
   // Scrollposisjonen beholdes når samme skjerm tegnes på nytt.
   const rulle = skjerm === forrigeSkjerm ? [...rot.querySelectorAll<HTMLElement>(".side-midt, .verden-midten, .kveld-midt")].map((el) => el.scrollTop) : [];
   forrigeSkjerm = skjerm;
-  rot.innerHTML = `${visOppdater ? `<div class="banner ny-versjon"><p>${si(spraak(), "Ny versjon.", "Ny versjon.")}</p><button type="button" data-last="1">${si(spraak(), "Åpne på nytt", "Opne på nytt")}</button></div>` : ""}<main class="${aapen ? "by" : "kort"} skjerm-${skjerm}">${innhold}</main>`;
+  rot.innerHTML = `${visOppdater ? `<div class="banner ny-versjon" role="status"><p>${si(spraak(), "Ny versjon av Formbyen. Byen din er lagret. Trykk for å åpne den nye versjonen.", "Ny versjon av Formbyen. Byen din er lagra. Trykk for å opne den nye versjonen.")}</p><button type="button" data-last="1">${si(spraak(), "Åpne på nytt", "Opne på nytt")}</button></div>` : ""}<main class="${aapen ? "by" : "kort"} skjerm-${skjerm}">${innhold}</main>`;
   rot.querySelectorAll<HTMLElement>(".side-midt, .verden-midten, .kveld-midt").forEach((el, indeks) => {
     const verdi = rulle[indeks];
     if (verdi) el.scrollTop = verdi;
@@ -2044,18 +2063,20 @@ rot.addEventListener("click", (hendelse) => {
     tegn();
   }
   if (knapp.dataset.oppdater) {
-    void sjekkForOppdatering({
-      online: navigator.onLine,
-      hentNyVersjon: async () => {
-        await oppdaterSW(false);
-        return visOppdater;
-      },
-    }).then((utfall) => {
+    statusOppdater = oppdateringTekst("sjekker");
+    tegn();
+    sistSjekket = Date.now();
+    void sjekkRegistrering(swReg, { online: navigator.onLine }).then((utfall) => {
       statusOppdater = oppdateringTekst(utfall);
+      if (utfall === "ny") visOppdater = true;
       tegn();
     });
   }
-  if (knapp.dataset.last) void oppdaterSW(true);
+  if (knapp.dataset.last) {
+    // Bare denne knappen aktiverer den nye versjonen. Tar den ikke over siden innen to sekunder, laster vi selv.
+    void oppdaterSW(true);
+    window.setTimeout(() => window.location.reload(), 2000);
+  }
   if (knapp.dataset.del) {
     const foto = lagret.album[Number(knapp.dataset.del)];
     if (foto) void delPng(foto.svg);

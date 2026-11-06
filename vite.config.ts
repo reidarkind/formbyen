@@ -3,6 +3,8 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   base: "/formbyen/",
+  // Byggedatoen vises under «Om appen». Commit-en kommer fra VITE_BYGG i GitHub-bygget (gj. 10, C3).
+  define: { __BYGG__: JSON.stringify(new Date().toISOString().slice(0, 10)) },
   build: {
     rollupOptions: {
       input: ["index.html", "dev/galleri.html"],

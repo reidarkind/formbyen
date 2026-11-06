@@ -41,6 +41,8 @@ jobs:
             playwright-report
           retention-days: 14
       - run: npm run build
+        env:
+          VITE_BYGG: ${{ github.sha }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

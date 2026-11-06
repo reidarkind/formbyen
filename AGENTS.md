@@ -46,6 +46,7 @@ Formbyen er et norsk byggespill om former og klokka for 1. og 2. klasse. Det er 
 - Oppgavene i butikken: minst halvparten av formoppgavene handler om delen. Ellers står «Løs oppgaven for å få …» som en liten linje over oppgaven. Måling, kart og kalender kommer per nivå: ukeplan og kalender i 1. klasse, lengde og masse fra 2. klasse, areal, koordinater og likevekt på utfordrende. Ingen oppgavetype mer enn to ganger per ettermiddag så lenge det finnes ledige typer.
 - To feil på en oppgave sender runden videre. En mislykket butikkrunde koster tid, og et oppdrag avsluttes for dagen.
 - Tempo: slottet nås på 25–35 ettermiddager i 1. klasse og 20–25 i 2. klasse når rådet følges.
+- Oppdatering: «Sjekk for oppdateringer» spør serveren (`reg.update()`), og appen sjekker selv når den blir synlig (høyst hvert kvarter) og hver time. Bare «Åpne på nytt» i banneret aktiverer en ny versjon. «Om appen» viser commit og byggedato.
 - Ingen tale i v1. Lyd er av som standard. Språk: bokmål, nynorsk, engelsk, spansk, tysk, portugisisk, svensk, dansk og fransk. Digital klokke er alltid 24 timer. Klokkeordene følger landet: «halv tre» er 14:30 på norsk, svensk, dansk og tysk. «Half past two», «las dos y media», «duas e meia» og «deux heures et demie» er også 14:30. Nynorsk har samme klokkeord som bokmål. Ukedagene er ulike.
 
 ## Regler
