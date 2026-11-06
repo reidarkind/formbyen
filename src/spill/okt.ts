@@ -584,7 +584,7 @@ function gavlOppgave(lagret: Lagret, vare: VareId): Oppgave {
   };
 }
 
-function bakerOppgave(lagret: Lagret): Oppgave {
+export function bakerOppgave(lagret: Lagret): Oppgave {
   const nivaa = lagret.innstillinger.nivaa;
   const steg = nivaa === "forste" ? 30 : nivaa === "andre" ? 15 : 5;
   const steketid = nivaa === "forste" ? 30 : nivaa === "andre" ? 45 : 25;
@@ -622,7 +622,7 @@ function bakerOppgave(lagret: Lagret): Oppgave {
   };
 }
 
-function kasseOppgave(lagret: Lagret): Oppgave {
+export function kasseOppgave(lagret: Lagret): Oppgave {
   const former = ["kule", "kube", "sylinder"] as const;
   const hint = [
     si(lagret, "Den kan trille i alle retninger. Hvilken form er det?", "Han kan trille i alle retningar. Kva for form er det?"),

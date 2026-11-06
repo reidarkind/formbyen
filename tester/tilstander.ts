@@ -4,7 +4,7 @@ import { standardLagret } from "../src/lagring/lagring";
 import { forklaring } from "../src/oppgaver/forklaring";
 import { lagFraMal } from "../src/oppgaver/lag";
 import { MALER } from "../src/oppgaver/maler";
-import { utfor } from "../src/spill/okt";
+import { bakerOppgave, kasseOppgave, utfor } from "../src/spill/okt";
 import { spillDag } from "../src/spill/testbot";
 import type { AktivDag, ByTilstand, DagbokInnslag, Lagret, Nivaa, Oppgave, PlassertBygg } from "../src/typer";
 
@@ -169,6 +169,19 @@ export function oppgaver(): Tilstand[] {
         lagret: { ...dag, aktivDag: { ...iButikken, fase: "forklaring", forklaring: tekst, feil } },
         skjerm: "verden",
       });
+    }
+  }
+  // Bonusoppgavene lages i okt.ts og står ikke i MALER.
+  for (const nivaa of ["forste", "andre", "utfordrende"] as const) {
+    const dag = medDag(grunn(nivaa), { tid: 14 * 60 + 30 });
+    const d = dag.aktivDag;
+    if (!d) continue;
+    for (const [navn, oppgave] of [
+      ["kake", bakerOppgave(dag)],
+      ["kasse", kasseOppgave(dag)],
+    ] as const) {
+      const ko = [oppgave, { ...oppgave, id: `${oppgave.id}-b` }];
+      ut.push({ navn: `oppgave-${navn}-${nivaa}`, lagret: { ...dag, aktivDag: { ...d, sted: "butikk", fase: "handel", dorLest: true, ko, aktiv: 0, forklaring: null, feil: 0 } }, skjerm: "verden" });
     }
   }
   return ut;

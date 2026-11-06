@@ -71,6 +71,17 @@ async function sjekk(page: Page, tillatScroll = false): Promise<string[]> {
       const r = ur.getBoundingClientRect();
       if (r.width > 0 && r.width < 79.5) funn.push(`klokke for liten (${Math.round(r.width)} px)`);
     }
+    // Tallene står som HTML over skiva. Tall-laget må ha samme flate som urskiva, ellers forskyves de.
+    for (const skive of document.querySelectorAll<HTMLElement>(".skive")) {
+      const svg = skive.querySelector(":scope > svg");
+      const lag = skive.querySelector(":scope > .tall-lag");
+      if (!svg || !lag || !lag.children.length) continue;
+      const a = svg.getBoundingClientRect();
+      const b = lag.getBoundingClientRect();
+      if (Math.abs(a.left - b.left) > 1 || Math.abs(a.top - b.top) > 1 || Math.abs(a.width - b.width) > 1 || Math.abs(a.height - b.height) > 1) {
+        funn.push(`tallene er forskjøvet på klokka (${Math.round(a.width)}×${Math.round(a.height)} mot ${Math.round(b.width)}×${Math.round(b.height)})`);
+      }
+    }
     for (const treff of document.querySelectorAll<SVGRectElement>(".verden .kartflate .treff")) {
       const r = treff.getBoundingClientRect();
       if (r.width > 0 && (r.width < 43 || r.height < 43)) {

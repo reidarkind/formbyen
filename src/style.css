@@ -367,6 +367,7 @@ main.by { background: transparent; }
   text-align: center;
 }
 .valg svg { width: clamp(40px, 9dvh, 64px); height: auto; }
+.valg .skive svg { width: 100%; }
 .valg .ur { width: clamp(80px, 16dvh, 110px); margin: 0; }
 .valg:has(.ur) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .figurgrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
