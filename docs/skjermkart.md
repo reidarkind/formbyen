@@ -46,6 +46,17 @@ Ark fra toppfeltet: kurven, dagens plan, pause. Byplanen åpnes fra kartet.
 - Pyntebuen er et hus med navneskilt på kartet når brønnen er ferdig. Pynten koster 2–5 mynter. Barnet velger en ting og setter den på en ledig rute, aldri oppå et bygg. Har barnet for få mynter, står det for eksempel «Du har 3 mynter. Benken koster 5.»
 - Klokketårnet på kartet viser feil tid. Tårnuret sammenligner med armbåndsuret og nevner morgendagens avtale. Kvelden kan sortere dagens hendelser. «God natt» er alltid synlig.
 
+## Klokker som stilles
+
+Gjelder klokkeoppgaven, tårnuret og klokkeleken. Logikken ligger i `src/felles/urInput.ts`.
+
+- Tallene er ikke trykkflater. Trykk og dra på urskiva tolkes som en vinkel fra sentrum.
+- Barnet velger viser med knappene «Lille viser» og «Store viser». Valgt viser er gul og bredere. «−» og «+» flytter den valgte viseren ett trinn: en time, eller minutt-trinnet for nivået (30, 15 eller 5).
+- Et trykk flytter den valgte viseren til nærmeste time eller nærmeste minutt-trinn. Timen endres ikke når barnet trykker.
+- Drar barnet fra en viser, blir den viseren valgt. Minuttviseren følger fingeren, og en hel runde flytter timen én fram (mot klokka: én tilbake).
+- Klokka er minst 180 px, og tallene er minst 14 px.
+- `tester/klokke.spec.ts` trykker midt på hvert tall med berøring og drar minuttviseren gjennom alle trinn.
+
 ## Tekst i butikken
 
 - Når oppgaven handler om delen, sier teksten det: «Døra er et rektangel. Tegn et rektangel.» eller «Sylinderen ligger i hylla med sylindere. Finn alle sylindrene.» Minst halvparten av formoppgavene i butikken handler om delen.

@@ -47,14 +47,16 @@ describe("klokkeleken", () => {
     knapp?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     expect(document.querySelector("h1")?.textContent).toBe("Tårnuret");
     expect(JSON.parse(localStorage.getItem(NOKKEL) ?? "{}").aktivDag.tid).toBe(forTid);
-    const pluss = document.querySelector<HTMLButtonElement>("[data-minutt='30']");
-    expect(pluss?.textContent).toBe("+ 30 min");
-    const forUr = document.querySelector("[data-ur]")?.innerHTML;
-    pluss?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    const etter = document.querySelector("[data-ur]")?.innerHTML;
-    expect(etter).not.toBe(forUr);
-    document.querySelector<HTMLButtonElement>("[data-minutt='-30']")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    expect(document.querySelector("[data-ur]")?.innerHTML).toBe(forUr);
+    // Samme knapper som i klokkeoppgaven: velg viser, og flytt den ett trinn (gj. 10, C1).
+    const klikk = (velger: string) => document.querySelector<HTMLButtonElement>(velger)?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    klikk("[data-viser-valg='minutt']");
+    expect(document.querySelector("[data-viser-valg='minutt']")?.getAttribute("aria-pressed")).toBe("true");
+    expect(document.querySelector("[data-viser-steg='1']")?.getAttribute("aria-label")).toBe("Pluss 30 minutter");
+    const forTidUr = Number(document.querySelector<HTMLElement>("[data-ur]")?.dataset.tid);
+    klikk("[data-viser-steg='1']");
+    expect(Number(document.querySelector<HTMLElement>("[data-ur]")?.dataset.tid)).toBe(forTidUr + 30);
+    klikk("[data-viser-steg='-1']");
+    expect(Number(document.querySelector<HTMLElement>("[data-ur]")?.dataset.tid)).toBe(forTidUr);
     expect(JSON.parse(localStorage.getItem(NOKKEL) ?? "{}").aktivDag.tid).toBe(forTid);
   });
 });

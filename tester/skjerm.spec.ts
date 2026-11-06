@@ -71,6 +71,13 @@ async function sjekk(page: Page, tillatScroll = false): Promise<string[]> {
       const r = ur.getBoundingClientRect();
       if (r.width > 0 && r.width < 79.5) funn.push(`klokke for liten (${Math.round(r.width)} px)`);
     }
+    // Klokker som stilles, er minst 180 px, og tallene er minst 14 px (gj. 10, C1).
+    for (const ur of document.querySelectorAll<HTMLElement>("[data-ur]")) {
+      const r = ur.getBoundingClientRect();
+      if (r.width > 0 && r.width < 179.5) funn.push(`klokka som stilles, er for liten (${Math.round(r.width)} px)`);
+      const tall = ur.querySelector<HTMLElement>(".tall");
+      if (tall && parseFloat(getComputedStyle(tall).fontSize) < 14) funn.push("tallene på klokka er under 14 px");
+    }
     // Tallene står som HTML over skiva. Tall-laget må ha samme flate som urskiva, ellers forskyves de.
     for (const skive of document.querySelectorAll<HTMLElement>(".skive")) {
       const svg = skive.querySelector(":scope > svg");

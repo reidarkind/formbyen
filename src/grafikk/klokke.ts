@@ -41,7 +41,8 @@ export function tallPosisjoner(cx = 120, cy = 120, radius = 96): TallPos[] {
 }
 
 /** Urskive uten <text>. Tallene legges i UI-laget. */
-export function urskive(minutter: number | null): string {
+/** `aktiv` markerer viseren barnet styrer: den blir gul og bredere (gj. 10, C1). */
+export function urskive(minutter: number | null, aktiv?: "time" | "minutt"): string {
   const cx = 120;
   const cy = 120;
   const deler: string[] = [];
@@ -62,10 +63,13 @@ export function urskive(minutter: number | null): string {
     );
   }
   if (minutter !== null) {
-    const time = viserPunkter(cx, cy, 48, 10, timeviserVinkel(minutter));
-    const minutt = viserPunkter(cx, cy, 77, 6, minuttviserVinkel(minutter));
-    deler.push(polygon(time, FARGER.kontur, 2));
-    deler.push(polygon(minutt, FARGER.kontur, 2));
+    const time = viserPunkter(cx, cy, 48, aktiv === "time" ? 16 : 10, timeviserVinkel(minutter));
+    const minutt = viserPunkter(cx, cy, 77, aktiv === "minutt" ? 12 : 6, minuttviserVinkel(minutter));
+    const tegn = (punkter: [number, number][], hvem: "time" | "minutt") =>
+      `<g data-viser="${hvem}">${polygon(punkter, aktiv === hvem ? FARGER.aksentGul : FARGER.kontur, 2)}</g>`;
+    // Den valgte viseren tegnes sist, så den ligger øverst.
+    if (aktiv === "time") deler.push(tegn(minutt, "minutt"), tegn(time, "time"));
+    else deler.push(tegn(time, "time"), tegn(minutt, "minutt"));
   }
   deler.push(`<circle cx="${cx}" cy="${cy}" r="7" fill="${FARGER.kontur}" stroke="${FARGER.kontur}" stroke-width="2"/>`);
   return svgDokument(deler.join(""), 240, 240);

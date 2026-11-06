@@ -183,10 +183,16 @@ main.kort {
   transform: translate(-50%, -50%);
   font-weight: 800;
   font-size: 14px;
-  pointer-events: auto;
+  /* Tallene er ikke trykkflater. Trykk og dra på skiva tolkes som en vinkel (gj. 10, C1). */
+  pointer-events: none;
 }
 .ur-120 .tall, .ur-96 .tall { width: 24px; height: 24px; font-size: 12px; }
-.ur-96 .tall, .valg .tall { pointer-events: none; }
+/* Klokker som kan stilles: minst 180 px (gj. 10, C1). */
+.oppgave > .ur[data-ur] { width: clamp(180px, 32dvh, 240px); }
+.ur[data-ur] .tall { font-size: 16px; width: 26px; height: 26px; }
+.rad.viser-knapper { display: grid; grid-template-columns: 52px 1fr 1fr 52px; gap: 6px; width: 100%; flex-wrap: nowrap; }
+.viser-knapper button { padding: 4px 6px; min-width: 44px; }
+.viser-knapper button.valgt { background: var(--rav); box-shadow: inset 0 0 0 3px var(--kontur); }
 .digital {
   font-weight: 800;
   font-variant-numeric: tabular-nums;
@@ -347,8 +353,6 @@ main.by { background: transparent; }
 .oppgave > .ur { width: clamp(110px, 26dvh, 200px); }
 .oppgave > svg { width: clamp(72px, 18dvh, 120px); height: auto; margin: 0 auto; }
 .klokkemal { text-align: center; font-weight: 800; font-size: 1.1rem; }
-.oppgave-still-klokka .rad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-.oppgave-still-klokka .rad button { padding: 4px; }
 
 .valg { display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); gap: 8px; touch-action: manipulation; }
 .valg button {
@@ -542,7 +546,7 @@ select, input { min-height: 48px; border: 3px solid var(--kontur); border-radius
 .armband { display: flex; align-items: center; }
 .ur-prompt { flex: none; font-size: 1rem; }
 .ur-midten { flex: 1 1 auto; min-height: 170px; container-type: size; display: grid; place-items: center; position: relative; }
-.ur-midten .ur { width: max(160px, min(100cqw, 100cqh)); margin: 0; }
+.ur-midten .ur { width: max(180px, min(100cqw, 100cqh)); margin: 0; }
 .ur-melding {
   position: absolute;
   bottom: 4px;
@@ -558,10 +562,7 @@ select, input { min-height: 48px; border: 3px solid var(--kontur); border-radius
 .ur-melding.riktig { border-color: var(--gronn); }
 .ur-melding.feil { border-color: var(--rav); }
 .ur-bunn { flex-direction: column; align-items: stretch; }
-.ur-knapper { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-.ur-knapper.seks { grid-template-columns: repeat(3, 1fr); }
-.ur-knapper button { padding: 4px; }
-.ur-bunn > .rad { flex-wrap: nowrap; }
+.ur-bunn > .rad:not(.viser-knapper) { flex-wrap: nowrap; }
 .ur-bunn > .rad > .hoved { flex: 1; }
 
 .inn-gruppe { display: flex; flex-direction: column; gap: 8px; }
@@ -598,5 +599,5 @@ select, input { min-height: 48px; border: 3px solid var(--kontur); border-radius
   .ur-skjerm > .ur-prompt { grid-column: 1; grid-row: 2; }
   .ur-skjerm > .ur-midten { grid-column: 2; grid-row: 2 / span 2; min-height: 0; }
   .ur-skjerm > .ur-bunn { grid-column: 1; grid-row: 3; align-self: end; }
-  .ur-midten .ur { width: max(150px, min(100cqw, 100cqh)); }
+  .ur-midten .ur { width: max(180px, min(100cqw, 100cqh)); }
 }

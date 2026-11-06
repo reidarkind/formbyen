@@ -29,6 +29,7 @@ import { erSpraak, SPRAAK, type ByggId, type Ferdighet, type Lagret, type Nivaa,
 import { lagVoksenStykke } from "./voksen";
 import { klikk } from "./lyd/lyd";
 import { bindDra } from "./felles/dra";
+import { draMinutt, gripViser, settMedVinkel, vinkelFra, vinkelSteg, type Viser } from "./felles/urInput";
 import "./style.css";
 
 const lager: NokkelLager = {
@@ -55,6 +56,8 @@ let svarLase = 0;
 let gar: { sted: StedId; x: number; y: number } | null = null;
 let introSide = 0;
 let pekerTid = 12 * 60;
+/** Viseren barnet styrer på klokker som kan stilles (gj. 10, C1). */
+let urViser: Viser = "time";
 let urSteg: UrSteg[] = [];
 let urStegNr = 0;
 let urMelding: { riktig: boolean; tekst: string } | null = null;
@@ -164,14 +167,14 @@ function erUkedag(verdi: string): verdi is Ukedag {
 
 type UrVis = "full" | "analog" | "ord" | "digital" | "hud";
 
-function urIndre(tid: number, lite = false, vis: UrVis = "full", storrelse = lite ? 36 : 160): string {
+function urIndre(tid: number, lite = false, vis: UrVis = "full", storrelse = lite ? 36 : 160, aktiv?: Viser): string {
   const tall =
     storrelse >= 96
       ? tallPosisjoner(120, 120, 108)
           .map((pos) => `<span class="tall" data-tall="${pos.tall}" style="left:${(pos.x / 240) * 100}%;top:${(pos.y / 240) * 100}%">${pos.tall}</span>`)
           .join("")
       : "";
-  const analog = `<div class="skive">${urskive(tid)}<div class="tall-lag">${tall}</div></div>`;
+  const analog = `<div class="skive">${urskive(tid, aktiv)}<div class="tall-lag">${tall}</div></div>`;
   const ord = `<p class="ord">${esc(tidTilOrd(tid, spraak()))}</p>`;
   const digital = `<p class="digital">${tidTilDigital24(tid)}</p>`;
   if (vis === "analog") return analog;
@@ -183,12 +186,13 @@ function urIndre(tid: number, lite = false, vis: UrVis = "full", storrelse = lit
 
 function urHtml(tid: number, lite = false, justerbar = false, vis: UrVis = "full", storrelse?: 36 | 96 | 120 | 160 | 200): string {
   const str = storrelse ?? (lite ? 36 : 160);
-  return `<div class="ur ur-${str} ${lite ? "lite" : ""}" ${justerbar ? "data-ur" : ""}>${urIndre(tid, lite, vis, str)}</div>`;
+  return `<div class="ur ur-${str} ${lite ? "lite" : ""}" ${justerbar ? `data-ur data-tid="${tid}"` : ""}>${urIndre(tid, lite, vis, str, justerbar ? urViser : undefined)}</div>`;
 }
 
 function skrivPeker(): void {
   const boks = document.querySelector("[data-ur]");
-  if (boks) boks.innerHTML = urIndre(pekerTid, boks.classList.contains("lite"), "analog");
+  if (boks instanceof HTMLElement) boks.dataset.tid = String(pekerTid);
+  if (boks) boks.innerHTML = urIndre(pekerTid, boks.classList.contains("lite"), "analog", boks.classList.contains("ur-200") ? 200 : 160, urViser);
 }
 
 function gjor(handling: Handling): void {
@@ -226,7 +230,10 @@ function gjor(handling: Handling): void {
     sorterHake = false;
     ristVarer = new Set();
   }
-  if (ny && ny.id !== forrigeOppgave && ny.maalKlokke !== undefined) pekerTid = 12 * 60;
+  if (ny && ny.id !== forrigeOppgave && ny.maalKlokke !== undefined) {
+    pekerTid = 12 * 60;
+    urViser = "time";
+  }
   if (handling.slag === "svar") svarLase = Date.now();
   if (handling.slag === "svar" && ut.melding && !lagret.aktivDag?.forklaring) {
     klikk(lagret.innstillinger.lydPa, "riktig");
@@ -337,12 +344,7 @@ function oppgaveBilde(oppgave: Oppgave): string {
     const vis = sporsmalViser(oppgave);
     const maal = vis === "digital" ? tidTilDigital24(oppgave.maalKlokke) : tidTilOrd(oppgave.maalKlokke, spraak());
     return `<p class="klokkemal">${esc(maal)}</p>${urHtml(pekerTid, false, true, "analog", 160)}
-      <div class="rad">
-        <button type="button" data-time="-1" aria-label="${si(spraak(), "time minus", "time minus")}">time −</button>
-        <button type="button" data-time="1" aria-label="${si(spraak(), "time pluss", "time pluss")}">time +</button>
-        <button type="button" data-minutt="-${minuttSteg()}">${minuttSteg()} −</button>
-        <button type="button" data-minutt="${minuttSteg()}">${minuttSteg()} +</button>
-      </div>`;
+      ${viserKnapper()}`;
   }
   if (oppgave.type === "hvem-passer-ikke") return "";
   if (oppgave.planke) return plankeBilde(oppgave.planke);
@@ -1315,21 +1317,28 @@ function albumHtml(): string {
   return side(si(spraak(), "Fotoalbum", "Fotoalbum"), midt, tilbakeKnapp("dagbok"));
 }
 
-function urFriHtml(): string {
+/** Samme knapper på alle klokker som kan stilles: velg viser, og flytt den ett trinn (gj. 10, C1). */
+function viserKnapper(): string {
   const steg = minuttSteg();
+  const valgt = (hvem: Viser) => (urViser === hvem ? ` class="valgt" aria-pressed="true"` : ` aria-pressed="false"`);
+  const trinn = urViser === "time" ? si(spraak(), "en time", "ein time") : mal(spraak(), "{n} minutter", "{n} minutt", { n: String(steg) });
+  return `<div class="rad viser-knapper">
+    <button type="button" data-viser-steg="-1" aria-label="${esc(mal(spraak(), "Minus {trinn}", "Minus {trinn}", { trinn }))}">−</button>
+    <button type="button" data-viser-valg="time"${valgt("time")}>${si(spraak(), "Lille viser", "Vesle visaren")}</button>
+    <button type="button" data-viser-valg="minutt"${valgt("minutt")}>${si(spraak(), "Store viser", "Store visaren")}</button>
+    <button type="button" data-viser-steg="1" aria-label="${esc(mal(spraak(), "Pluss {trinn}", "Pluss {trinn}", { trinn }))}">+</button>
+  </div>`;
+}
+
+function urFriHtml(): string {
   const naa = urSteg[urStegNr];
   const prompt = naa?.tekst ?? si(spraak(), "Tårnuret går riktig.", "Tårnuret går rett.");
   const arm = lagret.aktivDag ? `<div class="armband" aria-label="${si(spraak(), "Armbåndsuret", "Armbandsuret")}">${urHtml(lagret.aktivDag.tid, true, false, "hud")}</div>` : "";
-  const knapp = (verdi: number, slag: "minutt" | "time", tekst: string) => `<button type="button" data-${slag}="${verdi}">${tekst}</button>`;
-  const knapper =
-    steg === 5
-      ? [knapp(-1, "time", "− 1 t"), knapp(-30, "minutt", "− 30"), knapp(-5, "minutt", "− 5"), knapp(5, "minutt", "+ 5"), knapp(30, "minutt", "+ 30"), knapp(1, "time", "+ 1 t")]
-      : [knapp(-steg, "minutt", `− ${steg} min`), knapp(steg, "minutt", `+ ${steg} min`), knapp(-1, "time", si(spraak(), "− 1 time", "− 1 time")), knapp(1, "time", si(spraak(), "+ 1 time", "+ 1 time"))];
   return `<div class="ur-skjerm side">
     <div class="side-topp ur-topp"><h1>${si(spraak(), "Tårnuret", "Tårnuret")}</h1><span class="ur-teller">${Math.min(urStegNr + 1, Math.max(urSteg.length, 1))}/${Math.max(urSteg.length, 1)}</span>${arm}</div>
     <p class="ur-prompt">${esc(prompt)}</p>
     <div class="ur-midten">${urHtml(pekerTid, false, true, "analog", 200)}${urMelding ? `<p class="ur-melding ${urMelding.riktig ? "riktig" : "feil"}" role="status">${esc(urMelding.tekst)}</p>` : ""}</div>
-    <div class="side-bunn ur-bunn"><div class="rad ur-knapper${steg === 5 ? " seks" : ""}">${knapper.join("")}</div>
+    <div class="side-bunn ur-bunn">${viserKnapper()}
     <div class="rad">${tilbakeKnapp(lagret.aktivDag ? "verden" : "meny")}<button type="button" class="hoved" data-handling="ur-ferdig">${si(spraak(), "Ferdig", "Ferdig")}</button></div></div></div>`;
 }
 
@@ -1444,18 +1453,24 @@ let drarUr = false;
 let droUr = false;
 let hoppKlikk = false;
 
-function justerUr(ur: Element, hendelse: PointerEvent): void {
+/** Trykk og dra på urskiva tolkes som en vinkel (gj. 10, C1). */
+function urPunkt(ur: Element, hendelse: PointerEvent): { grader: number; avstand: number } | null {
   const svg = ur.querySelector("svg");
-  if (!svg) return;
+  if (!svg) return null;
   const rect = svg.getBoundingClientRect();
   const dx = hendelse.clientX - (rect.left + rect.width / 2);
   const dy = hendelse.clientY - (rect.top + rect.height / 2);
-  let grader = (Math.atan2(dx, -dy) * 180) / Math.PI;
-  if (grader < 0) grader += 360;
-  const steg = minuttSteg();
-  const minutter = (Math.round(grader / (6 * steg)) * steg) % 60;
-  pekerTid = klokke(timer(pekerTid), minutter);
+  // Urskiva har radius 100 i en tegning på 240.
+  return { grader: vinkelFra(dx, dy), avstand: Math.hypot(dx, dy) / ((rect.width * 100) / 240) };
 }
+
+/** Viseren under fingeren når barnet trykker. Den blir valgt bare hvis barnet drar. */
+let urGrep: Viser | null = null;
+/** Et trykk som venter på pointerup fordi barnet kanskje tar tak i den andre viseren. */
+let urUtsatt: number | null = null;
+let urStart = { x: 0, y: 0 };
+/** Dra med minuttviseren: tiden og fingerens vinkel da draget startet, og hvor langt fingeren har gått. */
+let urDra = { tid: 0, grader: 0, forrige: 0, sum: 0 };
 
 rot.addEventListener("pointerdown", (hendelse) => {
   const mal = hendelse.target;
@@ -1467,11 +1482,20 @@ rot.addEventListener("pointerdown", (hendelse) => {
     return;
   }
   const ur = mal.closest("[data-ur]");
-  if (ur instanceof HTMLElement && !mal.closest("button") && !mal.closest("[data-tall]")) {
+  if (ur instanceof HTMLElement && !mal.closest("button")) {
+    const punkt = urPunkt(ur, hendelse);
+    if (!punkt) return;
     drarUr = true;
     droUr = false;
+    urStart = { x: hendelse.clientX, y: hendelse.clientY };
     ur.setPointerCapture(hendelse.pointerId);
-    justerUr(ur, hendelse);
+    urGrep = gripViser(pekerTid, punkt.grader, punkt.avstand);
+    urUtsatt = null;
+    if (urGrep && urGrep !== urViser) {
+      urUtsatt = punkt.grader;
+      return;
+    }
+    pekerTid = settMedVinkel(pekerTid, punkt.grader, urViser, minuttSteg());
     skrivPeker();
   }
 });
@@ -1484,8 +1508,22 @@ rot.addEventListener("pointermove", (hendelse) => {
   if (!drarUr) return;
   const ur = document.querySelector("[data-ur]");
   if (!ur) return;
+  if (!droUr && Math.hypot(hendelse.clientX - urStart.x, hendelse.clientY - urStart.y) < 6) return;
+  const punkt = urPunkt(ur, hendelse);
+  if (!punkt) return;
+  if (!droUr) {
+    if (urGrep) urViser = urGrep;
+    urDra = { tid: pekerTid, grader: punkt.grader, forrige: punkt.grader, sum: 0 };
+  }
   droUr = true;
-  justerUr(ur, hendelse);
+  urUtsatt = null;
+  if (urViser === "minutt") {
+    urDra.sum += vinkelSteg(urDra.forrige, punkt.grader);
+    urDra.forrige = punkt.grader;
+    pekerTid = draMinutt(urDra.tid, urDra.grader, urDra.sum, minuttSteg());
+  } else {
+    pekerTid = settMedVinkel(pekerTid, punkt.grader, "time", minuttSteg());
+  }
   skrivPeker();
 });
 // Et avbrutt trykk skal ikke la tegning eller dra av viseren henge igjen (gj. 9, 6.12).
@@ -1493,11 +1531,14 @@ rot.addEventListener("pointercancel", () => {
   tegner = false;
   drarUr = false;
   droUr = false;
+  urUtsatt = null;
 });
 rot.addEventListener("pointerup", () => {
   tegner = false;
   if (!drarUr) return;
   drarUr = false;
+  if (urUtsatt !== null) pekerTid = settMedVinkel(pekerTid, urUtsatt, urViser, minuttSteg());
+  urUtsatt = null;
   if (droUr) {
     hoppKlikk = true;
     window.setTimeout(() => {
@@ -1543,14 +1584,6 @@ rot.addEventListener("click", (hendelse) => {
   const mal = hendelse.target;
   if (!(mal instanceof Element)) return;
   if (skjerm === "voksen") voksenSist = Date.now();
-  const tallEl = mal.closest("[data-tall]");
-  if (tallEl instanceof HTMLElement && tallEl.closest("[data-ur]") && tallEl.dataset.tall) {
-    const tall = Number(tallEl.dataset.tall);
-    const base = tall === 12 ? 0 : tall;
-    pekerTid = klokke(base + (timer(pekerTid) >= 12 ? 12 : 0), minutt(pekerTid));
-    tegn();
-    return;
-  }
   const stedEl = mal.closest("[data-sted]");
   if (stedEl instanceof Element && skjerm === "verden" && !aktivOppgave(lagret) && lagret.aktivDag) {
     const id = stedEl.getAttribute("data-sted") ?? "";
@@ -1617,8 +1650,15 @@ rot.addEventListener("click", (hendelse) => {
   const ga = knapp.dataset.ga;
   const handling = knapp.dataset.handling;
   const til = knapp.dataset.skjerm as Skjerm | undefined;
-  if (knapp.dataset.time) settPeker(Number(knapp.dataset.time), 0, false);
-  if (knapp.dataset.minutt) settPeker(0, Number(knapp.dataset.minutt), false);
+  if (knapp.dataset.viserValg === "time" || knapp.dataset.viserValg === "minutt") {
+    urViser = knapp.dataset.viserValg;
+    tegn();
+  }
+  if (knapp.dataset.viserSteg) {
+    const retning = Number(knapp.dataset.viserSteg);
+    if (urViser === "time") settPeker(retning, 0, false);
+    else settPeker(0, retning * minuttSteg(), false);
+  }
   if (knapp.dataset.dogn) settPeker(0, 0, true);
   if (knapp.dataset.tom) {
     document.querySelector<HTMLCanvasElement>("#lerret")?.getContext("2d")?.clearRect(0, 0, 240, 240);
