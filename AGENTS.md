@@ -53,6 +53,7 @@ Formbyen er et norsk byggespill om former og klokka for 1. og 2. klasse. Det er 
 - Tekst til barnet er bokmål eller nynorsk, eller andre angitte språk angitt i innstillinger, korte setninger, med Æ Ø Å. Alle tekster hentes fra ordboka (`mal`/`si`). Klokkeslett i ord har «klokka» foran. Deler og bygg bøyes (`vareMedArtikkel`, `byggBestemt`). Rå id-er vises aldri.
 - Tilpass så alt er synlig uten scrolling: fast topp, midtsone som skaleres (`clamp()`, `dvh`, containerenheter) eller deles opp, fast bunn med veien ut. Bare lange lister (dagboka, albumet, voksensiden) kan scrolle, med synlig skygge. Scroll er bedre enn klipp. `overflow: hidden` bare på dekor. Ingenting skjules med `display: none` på grunn av skjermhøyde. Knapper er minst 44 px.
 - Skjermtesten skal være grønn i Chromium og WebKit før publisering. Nye skjermer og maler legges inn i `tester/tilstander.ts`.
+- GitHub-bygget kjører i imaget `mcr.microsoft.com/playwright:v<versjon>-noble`. Når `@playwright/test` oppdateres, må versjonen i `.github/workflows/pages.yml` endres samtidig. Versjonen står uten `^`.
 - Lagre bare på telefonen, nøkkel `formbyen-v1`. Ingen analyse, konto eller tjener.
 - Logikk skal kunne testes uten DOM. `tilfeldig` skal kunne byttes ut.
 - Logikkendringer trenger en Vitest som feiler først.
