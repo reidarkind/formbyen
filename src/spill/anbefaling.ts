@@ -282,7 +282,7 @@ function ferdigDagens(lagret: Lagret): boolean {
 }
 
 function kjopTak(nivaa: Nivaa): number {
-  return nivaa === "utfordrende" ? 4 : 4;
+  return nivaa === "utfordrende" ? 5 : 4;
 }
 
 function kjopStans(lagret: Lagret): boolean {
@@ -503,7 +503,7 @@ export function nesteSteg(lagret: Lagret): NesteSteg {
       const kort = dag.sted === "butikk" ? si(lagret, "butikken åpner", "butikken opnar") : si(lagret, "så går vi", "så går vi");
       return ventHer(lagret, avreise, kort, tekst, dag.sted === "butikk" ? "butikk" : "hjemme");
     }
-    if (dag.sted !== "butikk" && avreise <= dag.tid && apneIgjen > dag.tid && fremme <= fr.tid && hjemmeEtter < dag.plan.leggetid && rekkerMotFrist(lagret, "butikk", 0)) {
+    if (dag.sted !== "butikk" && !dag.dorLest && avreise <= dag.tid && apneIgjen > dag.tid && fremme <= fr.tid && hjemmeEtter < dag.plan.leggetid && rekkerMotFrist(lagret, "butikk", 0)) {
       // Tiden for å gå er kommet. Vi er tidlig ute og leser skiltet når vi kommer fram.
       return gaaKnapp(
         lagret,

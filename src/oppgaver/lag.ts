@@ -145,10 +145,15 @@ function klokkeValg(
 }
 
 function tallValg(riktig: number, tilfeldig: Tilfeldig): { valg: Valg[]; fasit: string } {
-  const under = riktig > 1 ? riktig - 1 : riktig + 3;
-  const over = riktig + 2;
-  const andre = [under, over].filter((tall, indeks, liste) => tall !== riktig && tall >= 0 && liste.indexOf(tall) === indeks);
-  while (andre.length < 2) andre.push(riktig + andre.length + 4);
+  // Riktig svar skal like ofte være minst, i midten og størst (gj. 9, 4.4).
+  const monstre = [
+    [-2, -1],
+    [-1, 1],
+    [1, 2],
+  ];
+  const lovlige = monstre.filter((par) => par.every((d) => riktig + d >= 1));
+  const par = trekk(tilfeldig, lovlige.length ? lovlige : [[1, 2]]);
+  const andre = (par ?? [1, 2]).map((d) => riktig + d);
   const tallene = stokk(tilfeldig, [riktig, andre[0] ?? 0, andre[1] ?? 1]);
   return {
     valg: tallene.map((tall) => ({ id: `t${tall}`, tall, tekst: String(tall) })),
@@ -202,17 +207,17 @@ function lagStill(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   };
   const maler: [string, string][] = [
     ["Still klokka til {ord}.", "Still klokka til {ord}."],
-    ["Butikken åpner {ord}. Vis det.", "Butikken opnar {ord}. Vis det."],
-    ["Middagen er {ord}. Still klokka.", "Middagen er {ord}. Still klokka."],
-    ["Leggetid er {ord}. Vis det.", "Leggetid er {ord}. Vis det."],
-    ["Avtalen starter {ord}. Still viserne.", "Avtala startar {ord}. Still visarane."],
-    ["Vis {ord}. Den er halvveis til {neste}.", "Vis {ord}. Den er halvveis til {neste}."],
-    ["Vis {ord}.", "Vis {ord}."],
-    ["Vis {ord}.", "Vis {ord}."],
+    ["Butikken åpner klokka {ord}. Vis det.", "Butikken opnar klokka {ord}. Vis det."],
+    ["Middagen er klokka {ord}. Still klokka.", "Middagen er klokka {ord}. Still klokka."],
+    ["Leggetid er klokka {ord}. Vis det.", "Leggetid er klokka {ord}. Vis det."],
+    ["Avtalen starter klokka {ord}. Still viserne.", "Avtala startar klokka {ord}. Still visarane."],
+    ["Vis klokka {ord}. Den er halvveis til {neste}.", "Vis klokka {ord}. Den er halvveis til {neste}."],
+    ["Vis klokka {ord}.", "Vis klokka {ord}."],
+    ["Vis klokka {ord}.", "Vis klokka {ord}."],
     ["Still klokka til {ord}.", "Still klokka til {ord}."],
-    ["{hvem} sier {ord}. Still klokka.", "{hvem} seier {ord}. Still klokka."],
-    ["Tårnuret har stoppet. Still det til {ord}.", "Tårnuret har stoppa. Still det til {ord}."],
-    ["Lappen sier {ord}. Still klokka.", "Lappen seier {ord}. Still klokka."],
+    ["{hvem} sier klokka {ord}. Still klokka.", "{hvem} seier klokka {ord}. Still klokka."],
+    ["Tårnuret har stoppet. Still det til klokka {ord}.", "Tårnuret har stoppa. Still det til klokka {ord}."],
+    ["Lappen sier klokka {ord}. Still klokka.", "Lappen seier klokka {ord}. Still klokka."],
   ];
   const valgt = maler[v - 1] ?? maler[0]!;
   const oppgave = basis(mal, ctx, si(ctx.spraak, valgt[0], valgt[1], felt), `klokke:${tid}`, String(tid), "vindu-sirkel");
@@ -232,7 +237,7 @@ function lagLes(mal: Mal, ctx: OppgaveKontekst): Oppgave {
     ["Hvilken digital tid passer?", "Kva for digital tid passar?"],
     ["Hva viser denne klokka?", "Kva viser denne klokka?"],
     ["Stemmer det at klokka er {ord}?", "Stemmer det at klokka er {ord}?"],
-    ["Hvilken merkelapp er feil?", "Kva for merkelapp er feil?"],
+    ["Hvilken tid passer ikke til klokka?", "Kva for tid passar ikkje til klokka?"],
     ["Hva viser klokka?", "Kva viser klokka?"],
     ["Hva er klokka om en halvtime?", "Kva er klokka om ein halvtime?"],
     ["Hva er klokka om en time?", "Kva er klokka om ein time?"],
@@ -295,6 +300,8 @@ function lagLes(mal: Mal, ctx: OppgaveKontekst): Oppgave {
     );
   }
   if (v === 12) {
+    // En analog skive viser ikke forskjell på morgen og kveld. Vis digital tid (gj. 9, B7).
+    oppgave.digital = true;
     const time = [9, 14, 19][heltall(ctx.tilfeldig, 0, 2)] ?? 14;
     const vist = klokke(time, 0);
     const periode = time < 11 ? "formiddag" : time < 17 ? "ettermiddag" : "kveld";
@@ -319,7 +326,7 @@ function lagKoble(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const oppgave = basis(
     mal,
     ctx,
-    si(ctx.spraak, "Koble klokka med riktig tid.", "Kopla klokka med rett tid."),
+    si(ctx.spraak, "Hvilken tid viser klokka?", "Kva for tid viser klokka?"),
     `klokke:${tid}`,
     pakke.fasit,
     "vindu-rektangel",
@@ -331,19 +338,28 @@ function lagKoble(mal: Mal, ctx: OppgaveKontekst): Oppgave {
 
 function lagRekker(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const v = variant(mal.id);
-  const naa = ctx.naa ?? ctx.plan?.start ?? klokke(14, 0);
+  const forste = nivaTall(ctx.nivaa) === 0;
+  // I 1. klasse bare hele og halve timer (gj. 9, B7).
+  const halv = (tid: number) => (forste ? Math.ceil(tid / 30) * 30 : tid);
+  const naa = halv(ctx.naa ?? ctx.plan?.start ?? klokke(14, 0));
   const avtale = ctx.plan?.avtaler.find((rad) => rad.varighet > 0 && rad.start > naa);
-  const handling = v % 2 === 0 ? 30 : 15;
-  const kandidat = v % 3 === 0 ? normaliser(naa + 10) : (avtale?.start ?? normaliser(naa + 120));
-  const frist = kandidat > naa ? kandidat : normaliser(naa + 120);
+  const handling = forste ? (v % 2 === 0 ? 30 : 60) : v % 2 === 0 ? 30 : 15;
+  const kandidat = v % 3 === 0 ? normaliser(naa + (forste ? 30 : 10)) : (avtale?.start ?? normaliser(naa + 120));
+  const frist = halv(kandidat > naa ? kandidat : normaliser(naa + 120));
   const rekker = naa + handling <= frist;
+  const varighet = forste ? (handling === 60 ? si(ctx.spraak, "en time", "ein time") : si(ctx.spraak, "en halvtime", "ein halvtime")) : "";
   const oppgave = basis(
     mal,
     ctx,
-    si(ctx.spraak, "Du bruker {min} minutter. Rekker du det før kl. {tid}?", "Du brukar {min} minutt. Rekk du det før kl. {tid}?", {
-      min: String(handling),
-      tid: tidTilDigital24(frist),
-    }),
+    forste
+      ? si(ctx.spraak, "Du bruker {varighet}. Rekker du det før kl. {tid}?", "Du brukar {varighet}. Rekk du det før kl. {tid}?", {
+          varighet,
+          tid: tidTilDigital24(frist),
+        })
+      : si(ctx.spraak, "Du bruker {min} minutter. Rekker du det før kl. {tid}?", "Du brukar {min} minutt. Rekk du det før kl. {tid}?", {
+          min: String(handling),
+          tid: tidTilDigital24(frist),
+        }),
     `klokke:${frist}`,
     rekker ? "ja" : "nei",
     "planke",
@@ -370,8 +386,8 @@ function lagLenge(mal: Mal, ctx: OppgaveKontekst): Oppgave {
     ctx,
     si(
       ctx.spraak,
-      enhetHalv ? "Fra {fra} til {til}. Hvor mange halvtimer?" : "Fra {fra} til {til}. Hvor mange timer?",
-      enhetHalv ? "Frå {fra} til {til}. Kor mange halvtimar?" : "Frå {fra} til {til}. Kor mange timar?",
+      enhetHalv ? "Fra {fra} til {til}. Hvor mange halve timer?" : "Fra {fra} til {til}. Hvor mange timer?",
+      enhetHalv ? "Frå {fra} til {til}. Kor mange halve timar?" : "Frå {fra} til {til}. Kor mange timar?",
       { fra: tidTilOrd(fra, ctx.spraak), til: tidTilOrd(til, ctx.spraak) },
     ),
     `klokke:${fra}-${til}`,
@@ -529,10 +545,6 @@ function lagFinn(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const prompt = (id: string) => {
     const navn = formFlertall(id, ctx.spraak);
     const setning = si(ctx.spraak, "Finn alle {navn}.", "Finn alle {navn}.", { navn });
-    const forsok = ctx.mestring["former-3d"]?.forsok ?? 0;
-    if (id === "kule" && forsok < 2 && !(ctx.kjente3d ?? []).includes("kule")) {
-      return `${setning} ${si(ctx.spraak, "Kule = rund som en ball.", "Kule = rund som ein ball.")}`;
-    }
     return setning;
   };
   if (mal.ferdighet === "former-3d") {
@@ -547,6 +559,9 @@ function lagFinn(mal: Mal, ctx: OppgaveKontekst): Oppgave {
     const oppgave = basis(mal, ctx, prompt(maal), `form3d:${maal}`, blandet.fasit, vare);
     oppgave.form = maal;
     oppgave.form3d = maal;
+    const forsok = ctx.mestring["former-3d"]?.forsok ?? 0;
+    // Forklaringen er en hjelpelinje, ikke en del av oppgaven. Bare de tre første gangene (gj. 9, B5).
+    if (maal === "kule" && forsok < 3) oppgave.hjelp = si(ctx.spraak, "Kule = rund som en ball.", "Kule = rund som ein ball.");
     oppgave.varer = blandet.figurer;
     return oppgave;
   }
@@ -654,7 +669,7 @@ function artikkel(form: string): { nb: string; nn: string } {
 }
 
 function lagTegn(mal: Mal, ctx: OppgaveKontekst): Oppgave {
-  const lov = nivaTall(ctx.nivaa) === 0 ? (["sirkel", "trekant", "kvadrat"] as Form2dId[]) : formerFor(ctx);
+  const lov = nivaTall(ctx.nivaa) === 0 ? (["sirkel", "trekant", "kvadrat", "rektangel"] as Form2dId[]) : formerFor(ctx);
   const onsket = ctx.maalForm && lov.includes(ctx.maalForm as Form2dId) ? (ctx.maalForm as Form2dId) : undefined;
   const form = onsket ?? formUnnga(ctx, lov);
   const ledd = artikkel(form);
@@ -673,7 +688,8 @@ function lagTegn(mal: Mal, ctx: OppgaveKontekst): Oppgave {
 function lagTell(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const v = variant(mal.id);
   if (v === 3 || v === 4 || v === 11) {
-    const id = trekk(ctx.tilfeldig, ALLE_3D);
+    const onsket3d = ctx.maalForm && (ALLE_3D as readonly string[]).includes(ctx.maalForm) ? (ctx.maalForm as Form3dId) : undefined;
+    const id = onsket3d ?? trekk(ctx.tilfeldig, ALLE_3D);
     const form = form3d(id);
     const tall = v === 4 ? form.flater : v === 11 ? form.hjorner : form.kanter;
     const pakke = tallValg(tall, ctx.tilfeldig);
@@ -682,8 +698,8 @@ function lagTell(mal: Mal, ctx: OppgaveKontekst): Oppgave {
       ctx,
       si(
         ctx.spraak,
-        v === 4 ? "Tell flatene." : v === 11 ? "Tell hjørnene." : "Tell kantene.",
-        v === 4 ? "Tel flatene." : v === 11 ? "Tel hjørna." : "Tel kantane.",
+        v === 4 ? "Hvor mange flate sider har klossen?" : v === 11 ? "Tell hjørnene." : "Hvor mange kanter har klossen?",
+        v === 4 ? "Kor mange flate sider har klossen?" : v === 11 ? "Tel hjørna." : "Kor mange kantar har klossen?",
       ),
       `form:${id}`,
       pakke.fasit,
@@ -695,12 +711,14 @@ function lagTell(mal: Mal, ctx: OppgaveKontekst): Oppgave {
     oppgave.ferdighet = "telle-3d";
     return oppgave;
   }
-  const id = formUnnga(ctx, formerFor(ctx).filter((form) => form2d(form).sider > 0)) as Form2dId;
+  const med2d = formerFor(ctx).filter((form) => form2d(form).sider > 0);
+  const onsket2d = ctx.maalForm && (med2d as readonly string[]).includes(ctx.maalForm) ? (ctx.maalForm as Form2dId) : undefined;
+  const id = onsket2d ?? (formUnnga(ctx, med2d) as Form2dId);
   const form = form2d(id);
   const tall = v === 6 ? form.retteVinkler : v % 2 === 0 ? form.hjorner : form.sider;
   const pakke = tallValg(tall, ctx.tilfeldig);
-  const prompt = v === 6 ? "Tell de rette hjørnene." : v % 2 === 0 ? "Tell hjørnene." : "Tell sidene.";
-  const promptNn = v === 6 ? "Tel dei rette hjørna." : v % 2 === 0 ? "Tel hjørna." : "Tel sidene.";
+  const prompt = v === 6 ? "Hvor mange hjørner er helt rette, som hjørnet på en bok?" : v % 2 === 0 ? "Tell hjørnene." : "Tell sidene.";
+  const promptNn = v === 6 ? "Kor mange hjørne er heilt rette, som hjørnet på ei bok?" : v % 2 === 0 ? "Tel hjørna." : "Tel sidene.";
   const oppgave = basis(mal, ctx, si(ctx.spraak, prompt, promptNn), `form:${id}`, pakke.fasit, vareForForm(id));
   oppgave.form = id;
   oppgave.tall = tall;
@@ -769,7 +787,8 @@ function lagMonster(mal: Mal, ctx: OppgaveKontekst): Oppgave {
 }
 
 function lagStempel(mal: Mal, ctx: OppgaveKontekst): Oppgave {
-  const id = formUnnga(ctx, ALLE_3D) as Form3dId;
+  const onsket = ctx.maalForm && (ALLE_3D as readonly string[]).includes(ctx.maalForm) ? (ctx.maalForm as Form3dId) : undefined;
+  const id = onsket ?? (formUnnga(ctx, ALLE_3D) as Form3dId);
   const stempel = form3d(id).stempel;
   const flater = id === "pyramide" ? (["kvadrat", "trekant"] as Form2dId[]) : [stempel];
   const andre = ALLE_2D.filter((form) => !flater.includes(form)).slice(0, 2);
@@ -777,7 +796,7 @@ function lagStempel(mal: Mal, ctx: OppgaveKontekst): Oppgave {
   const oppgave = basis(
     mal,
     ctx,
-    si(ctx.spraak, "Hvilken form får du når du stempler?", "Kva for form får du når du stemplar?"),
+    si(ctx.spraak, "Klossen trykkes ned i sanden. Hvilken form får merket?", "Klossen vert trykt ned i sanden. Kva for form får merket?"),
     `form:${id}`,
     stempel,
     vareForForm(id),

@@ -12,6 +12,7 @@ export function sporsmalViser(oppgave: Oppgave): Representasjon {
     if (oppgave.digital) return "digital";
     return erDigital(oppgave.prompt) ? "digital" : "ord";
   }
+  if (oppgave.type === "les-klokka" && oppgave.digital) return "digital";
   if (
     oppgave.type === "les-klokka" ||
     oppgave.type === "hvor-lenge" ||

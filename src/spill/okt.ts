@@ -2,7 +2,7 @@ import { maalBygg, manglendeDeler } from "../bygg/handleliste";
 import { ferdigeBygg, kanPlassere, ledigPyntRute, nesteByggId, nesteHjem, omraderForNivaa } from "../bygg/kart";
 import { byggDef } from "../bygg/katalog";
 import { lagDagsplan, morgendagensApning, morgendagensButikk, nesteDato, utvidRytme, type PlanInn } from "../dag/plan";
-import { froTilfeldig, stokk } from "../felles/tilfeldig";
+import { froTilfeldig, spredt, stokk } from "../felles/tilfeldig";
 import { forklaring } from "../oppgaver/forklaring";
 import { trekkOppgave, type OppgaveKontekst } from "../oppgaver/lag";
 import { sjekkSvar } from "../oppgaver/sjekk";
@@ -10,7 +10,7 @@ import { registrerSvar } from "../tilpasning/mestring";
 import { erApen, leggTil, nesteApning, tidTilDigital24, tidTilOrd } from "../tid/tid";
 import { aktivitetSporsmal, visNavn } from "../dag/aktiviteter";
 import { tegnKart } from "../grafikk/bygg-svg";
-import { formNavn, mal, navnVare, vareBestemt } from "../tekst/ordbok";
+import { formMedArtikkel, formNavn, mal, navnVare, smaForbokstav, vareBestemt, vareFlertall } from "../tekst/ordbok";
 import { ukedagTekst } from "../tekst/spraak";
 import type { AktivDag, ByggId, Dagsplan, Ferdighet, Hylle, Lagret, Nivaa, Oppgave, SkiltTid, StedId, Valg, VareId } from "../typer";
 import { avtaleHer, gangMinutter, nesteSteg, startTidFor } from "./anbefaling";
@@ -258,10 +258,6 @@ function formForVare(vare: string): string | undefined {
   return undefined;
 }
 
-function maalFormFor(_lagret: Lagret, vare: string): string | undefined {
-  return formForVare(vare);
-}
-
 function giVare(lagret: Lagret, vare: VareId, antall = 1): Lagret {
   const har = lagret.kurv[vare] ?? 0;
   return { ...lagret, kurv: { ...lagret.kurv, [vare]: har + antall }, mynter: lagret.mynter + 1 };
@@ -470,32 +466,45 @@ function handle(lagret: Lagret): { lagret: Lagret; melding: string | null } {
   const klokkeTyper = ["les-klokka", "still-klokka", "koble", "hvor-lenge", "rekker-jeg", "apningstider"] as const;
   const formTyper = ["finn-formen", "hvem-passer-ikke", "sorter", "tell", "tegn", "monster"] as const;
   const form = formForVare(vare);
-  const vilKlokke = (lagret.fro * 17) % 2 === 1 || !form;
-  const formType = velgType(lagret, formTyper[lagret.fro % formTyper.length] ?? "finn-formen", formTyper, []);
+  // Fordelingen trekkes med frøet, så den ikke henger fast i samme rytme hver dag. Minst halvparten av formoppgavene handler om delen (gj. 9, B5).
+  const trekk = froTilfeldig(lagret.fro * 31 + 7);
+  const vilKlokke = spredt(trekk()) < 0.5 || !form;
+  const x = spredt(trekk());
   const manglerRom = ROMFORMER.find((rom) => !lagret.by.kjente3d.includes(rom));
-  const monster = !vilKlokke && lagret.by.monsterFullfort < 1 && lagret.fro % 4 === 0;
-  const laerRom = !vilKlokke && !monster && Boolean(manglerRom);
-  const brukGavl = !vilKlokke && !monster && !laerRom && Boolean(form) && lagret.fro % 4 === 1;
-  const hylle = vilKlokke || laerRom ? undefined : kloss ? "kloss" : "form";
+  const monster = !vilKlokke && lagret.by.monsterFullfort < 1 && x < 0.2;
+  const laerRom = !vilKlokke && !monster && Boolean(manglerRom) && manglerRom !== form && x >= 0.2 && x < 0.35;
+  const brukGavl = !vilKlokke && !monster && !laerRom && Boolean(form) && !kloss && x >= 0.35 && x < 0.45;
+  const variasjonTyper = ["sorter", "hvem-passer-ikke", "monster"] as const;
+  const variasjon = !vilKlokke && !monster && !laerRom && !brukGavl && x >= 0.45 && x < 0.5;
+  void formTyper;
   const trukket = brukGavl
     ? gavlOppgave(lagret, vare)
-    : trekkOppgave({
-        ...kontekst(lagret),
-        hylle,
-        type: vilKlokke
-          ? velgType(lagret, klokkeTyper[lagret.fro % klokkeTyper.length] ?? "les-klokka", klokkeTyper, [])
-          : monster
-            ? "monster"
-            : laerRom
-              ? "finn-formen"
-              : formType,
-        maalForm: laerRom && manglerRom ? manglerRom : maalFormFor(lagret, vare),
-        kjente3d: lagret.by.kjente3d,
-      });
-  const delNavn = navnVare(vare, lagret.innstillinger.spraak);
-  const ledd = vare.startsWith("tak") || vare.startsWith("vindu") || vare === "jord" ? "et" : "en";
-  const prompt = vilKlokke || brukGavl ? trukket.prompt : `${si(lagret, "Vi trenger {del}.", "Vi treng {del}.", { del: `${ledd} ${delNavn}` })} ${trukket.prompt}`;
-  const oppgave: Oppgave = { ...trukket, prompt, hvem: brukGavl ? trukket.hvem : si(lagret, "ekspeditøren", "ekspeditøren"), vare };
+    : vilKlokke
+      ? trekkOppgave({ ...kontekst(lagret), type: velgType(lagret, klokkeTyper[lagret.fro % klokkeTyper.length] ?? "les-klokka", klokkeTyper, []) })
+      : monster
+        ? trekkOppgave({ ...kontekst(lagret), hylle: "form", type: "monster" })
+        : laerRom
+          ? trekkOppgave({ ...kontekst(lagret), type: "finn-formen", maalForm: manglerRom, kjente3d: lagret.by.kjente3d })
+          : variasjon
+            ? trekkOppgave({ ...kontekst(lagret), hylle: "form", type: velgType(lagret, variasjonTyper[lagret.fro % variasjonTyper.length] ?? "sorter", variasjonTyper, []) })
+            : delOppgave(lagret, form ?? "rektangel", kloss);
+  const spraak = lagret.innstillinger.spraak;
+  const oppgaveForm = trukket.form3d ?? trukket.form;
+  const omDelen = !vilKlokke && form !== undefined && oppgaveForm === form && DEL_TYPER.includes(trukket.type);
+  let prompt = trukket.prompt;
+  let delKontekst: string | undefined;
+  if (brukGavl) {
+    delKontekst = undefined;
+  } else if (omDelen && form) {
+    // Oppgaven handler om delen, og teksten sier det (gj. 9, B5).
+    const intro = kloss
+      ? si(lagret, "{del} ligger i hylla med {flertall}.", "{del} ligg i hylla med {flertall}.", { del: vareBestemt(vare, spraak), flertall: vareFlertall(vare, spraak) })
+      : si(lagret, "{del} er {form}.", "{del} er {form}.", { del: vareBestemt(vare, spraak), form: formMedArtikkel(form, spraak) });
+    prompt = `${intro} ${trukket.prompt}`;
+  } else {
+    delKontekst = si(lagret, "Løs oppgaven for å få {del}.", "Løys oppgåva for å få {del}.", { del: smaForbokstav(vareBestemt(vare, spraak)) });
+  }
+  const oppgave: Oppgave = { ...trukket, prompt, kontekst: delKontekst, hvem: brukGavl ? trukket.hvem : si(lagret, "ekspeditøren", "ekspeditøren"), vare };
   const lengde = lagret.innstillinger.nivaa === "forste" ? 3 : lagret.innstillinger.nivaa === "utfordrende" ? 5 : 4;
   const bonus = bonusOppgaver(lagret, oppgave, lengde - 1);
   const ko = [oppgave, ...bonus];
@@ -503,6 +512,19 @@ function handle(lagret: Lagret): { lagret: Lagret; melding: string | null } {
     lagret: medTakt(huskOppgave({ ...lagret, aktivDag: { ...dag, fase: "handel", ko, aktiv: 0, forklaring: null, melding: null, feil: 0 } }, oppgave), ko),
     melding: null,
   };
+}
+
+/** Oppgavetyper som kan handle om formen til delen. */
+const DEL_TYPER: Oppgave["type"][] = ["finn-formen", "tegn", "tell", "stempel"];
+
+/** En formoppgave om delens egen form. Faller tilbake til «finn formen», som alltid kan lages. */
+function delOppgave(lagret: Lagret, form: string, kloss: boolean): Oppgave {
+  const typer = (kloss ? ["finn-formen", "stempel", "tell"] : ["finn-formen", "tegn", "tell"]) as Oppgave["type"][];
+  const type = velgType(lagret, typer[lagret.fro % typer.length] ?? "finn-formen", typer, []);
+  const grunn = { ...kontekst(lagret), hylle: (kloss ? "kloss" : "form") as Hylle, maalForm: form, kjente3d: lagret.by.kjente3d };
+  const forsok = trekkOppgave({ ...grunn, type });
+  if ((forsok.form3d ?? forsok.form) === form && DEL_TYPER.includes(forsok.type)) return forsok;
+  return trekkOppgave({ ...grunn, type: "finn-formen" });
 }
 
 function velgType(lagret: Lagret, onsket: Oppgave["type"], familie: readonly Oppgave["type"][], brukt: Oppgave[]): Oppgave["type"] {
@@ -546,12 +568,20 @@ function gavlOppgave(lagret: Lagret, vare: VareId): Oppgave {
 }
 
 function bakerOppgave(lagret: Lagret): Oppgave {
-  const steg = lagret.innstillinger.nivaa === "forste" ? 30 : lagret.innstillinger.nivaa === "andre" ? 15 : 5;
+  const nivaa = lagret.innstillinger.nivaa;
+  const steg = nivaa === "forste" ? 30 : nivaa === "andre" ? 15 : 5;
+  const steketid = nivaa === "forste" ? 30 : nivaa === "andre" ? 45 : 25;
   const fra = lagret.aktivDag?.tid ?? 14 * 60;
-  const til = (fra + steg) % (24 * 60);
+  const til = (fra + steketid) % (24 * 60);
   const feilA = (til + steg) % (24 * 60);
   const feilB = (til - steg + 24 * 60) % (24 * 60);
   const spraak = lagret.innstillinger.spraak;
+  const varighet =
+    steketid === 30
+      ? si(lagret, "en halvtime", "ein halvtime")
+      : steketid === 45
+        ? si(lagret, "tre kvarter", "tre kvarter")
+        : si(lagret, "{min} minutter", "{min} minutt", { min: String(steketid) });
   const valg = [til, feilA, feilB]
     .filter((tid, indeks, liste) => liste.indexOf(tid) === indeks)
     .map((tid) => ({ id: String(tid), klokke: tid, tekst: tidTilOrd(tid, spraak) }));
@@ -560,7 +590,10 @@ function bakerOppgave(lagret: Lagret): Oppgave {
     type: "hvor-lenge",
     mal: "kake-1",
     ferdighet: "tidsrom",
-    prompt: si(lagret, "Kaken står i ovnen. Når tar vi den ut?", "Kaka står i omnen. Når tek vi ho ut?"),
+    prompt: si(lagret, "Kaka skal stekes i {varighet}. Den kom inn klokka {inn}. Når tar vi den ut?", "Kaka skal stekast i {varighet}. Ho kom inn klokka {inn}. Når tek vi ho ut?", {
+      varighet,
+      inn: tidTilOrd(fra, spraak),
+    }),
     nokkel: `klokke:${til}`,
     valg,
     fasit: String(til),
@@ -569,16 +602,15 @@ function bakerOppgave(lagret: Lagret): Oppgave {
     overraskelse: false,
     ovelse: true,
     maalKlokke: fra,
-    tall: til,
   };
 }
 
 function kasseOppgave(lagret: Lagret): Oppgave {
   const former = ["kule", "kube", "sylinder"] as const;
   const hint = [
-    si(lagret, "Den har ingen hjørner.", "Han har ingen hjørne."),
-    si(lagret, "Den kan trille.", "Han kan trille."),
-    si(lagret, "Den kan ikke stå.", "Han kan ikkje stå."),
+    si(lagret, "Den kan trille i alle retninger. Hvilken form er det?", "Han kan trille i alle retningar. Kva for form er det?"),
+    si(lagret, "Den har ingen hjørner og ingen flate sider.", "Han har ingen hjørne og ingen flate sider."),
+    si(lagret, "Den er rund som en ball.", "Han er rund som ein ball."),
   ];
   return {
     id: `kasse-${lagret.fro}`,
@@ -641,9 +673,13 @@ function bonusOppgaver(lagret: Lagret, forste: Oppgave, antall: number): Oppgave
     const erDel = i === 1 && lagret.innstillinger.nivaa === "andre";
     try {
       const kake = klokke && !erDel && (lagret.fro + i) % 5 === 0;
+      const manglerRom = ROMFORMER.find((rom) => !lagret.by.kjente3d.includes(rom) && rom !== forste.form3d);
+      const laerRom = !klokke && manglerRom !== undefined && !ut.some((rad) => rad.form3d);
       const trukket = kake
         ? bakerOppgave(lagret)
-        : trekkOppgave({
+        : laerRom
+          ? trekkOppgave({ ...kontekst(lagret), tilfeldig: froTilfeldig(lagret.fro + 17 * (i + 1)), type: "finn-formen", maalForm: manglerRom, kjente3d: lagret.by.kjente3d })
+          : trekkOppgave({
             ...kontekst(lagret),
             tilfeldig: froTilfeldig(lagret.fro + 17 * (i + 1)),
             hylle: klokke ? undefined : "form",
@@ -1006,13 +1042,17 @@ function mot(lagret: Lagret): { lagret: Lagret; melding: string | null } {
   const ferdig = avtale.start + avtale.varighet;
   const spraak = lagret.innstillinger.spraak;
   const riktig = { id: "rett", klokke: ferdig, tekst: tidTilOrd(ferdig, spraak) };
-  const andre = [
-    { id: "tidlig", klokke: avtale.start, tekst: tidTilOrd(avtale.start, spraak) },
-    { id: "sent", klokke: leggTil(ferdig, 60), tekst: tidTilOrd(leggTil(ferdig, 60), spraak) },
-  ];
-  const plass = (lagret.fro + dag.tid) % 3;
-  const valg = [...andre];
-  valg.splice(plass, 0, riktig);
+  // Riktig tid skal ikke alltid være den midterste (gj. 8, 4.4).
+  const steg = lagret.innstillinger.nivaa === "forste" ? 30 : 15;
+  const variant = (lagret.fro + Math.floor(dag.tid / 15)) % 3;
+  const tider =
+    variant === 0
+      ? [avtale.start, leggTil(ferdig, 60)]
+      : variant === 1
+        ? [leggTil(ferdig, steg), leggTil(ferdig, 60)]
+        : [avtale.start, ferdig - steg > avtale.start ? ferdig - steg : leggTil(avtale.start, -steg)];
+  const andre = tider.map((tid, indeks) => ({ id: `feil-${indeks}`, klokke: tid, tekst: tidTilOrd(tid, spraak) }));
+  const valg = stokk(froTilfeldig(lagret.fro * 13 + dag.tid), [riktig, ...andre]);
   const oppgave: Oppgave = {
     id: `avtale-${avtale.id}`,
     type: "hvor-lenge",

@@ -201,6 +201,10 @@ export interface Oppgave {
   hintVist?: number;
   ruter?: { id: string; ruter: number }[];
   koordinat?: string;
+  /** Liten grå linje over oppgaven når oppgaven ikke handler om delen: «Løs oppgaven for å få sylinderen». */
+  kontekst?: string;
+  /** Liten hjelpelinje under bildet, for eksempel «Kule = rund som en ball.». */
+  hjelp?: string;
 }
 
 export interface FastAvtale {
