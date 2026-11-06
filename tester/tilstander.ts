@@ -12,7 +12,7 @@ export interface Tilstand {
   navn: string;
   lagret: Lagret;
   skjerm?: string;
-  ekstra?: { voksenInne?: boolean; voksenFane?: string; visPlan?: boolean; kveldApne?: boolean; nullSteg?: number };
+  ekstra?: { voksenInne?: boolean; voksenFane?: string; visPlan?: boolean; kveldApne?: boolean; kveldPanel?: "kart" | "avtaler" | "rekkefolge"; nullSteg?: number };
 }
 
 function grunn(nivaa: Nivaa = "forste"): Lagret {
@@ -119,6 +119,7 @@ export function skjermer(): Tilstand[] {
   const kveld = spillDag(medDag(g)).lagret;
   ut.push({ navn: "kveld", lagret: { ...kveld, dagbok: [...kveld.dagbok.slice(0, -1), ...langDagbok(1)] }, skjerm: "kveld" });
   ut.push({ navn: "kveld-apen", lagret: { ...kveld, dagbok: [...kveld.dagbok.slice(0, -1), ...langDagbok(1)] }, skjerm: "kveld", ekstra: { kveldApne: true } });
+  ut.push({ navn: "kveld-rekkefolge", lagret: { ...kveld, dagbok: [...kveld.dagbok.slice(0, -1), ...langDagbok(1)] }, skjerm: "kveld", ekstra: { kveldPanel: "rekkefolge" } });
   // Skiltet på døra.
   const skilt = medDag(g);
   const sd = skilt.aktivDag;

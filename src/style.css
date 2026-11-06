@@ -151,9 +151,9 @@ main.kort {
 .liste { display: flex; flex-direction: column; gap: 8px; }
 .liste > button { text-align: left; }
 .ikonrad { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
-.figurer { display: flex; flex-wrap: wrap; gap: 8px; }
-.figurer button { border-radius: 12px; padding: 4px; }
-.figurer svg { width: clamp(44px, 9dvh, 64px); height: auto; }
+.figurer { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.figurer button { border-radius: 12px; padding: 4px; display: grid; place-items: center; }
+.figurer svg { width: clamp(36px, 8dvh, 60px); height: auto; }
 .banner {
   flex: none;
   background: var(--rav);
@@ -274,15 +274,20 @@ main.by { background: transparent; }
 }
 .oppdrag-ikon { font-size: 1.2rem; line-height: 1; }
 
-.scene { flex: 1 0 auto; display: flex; flex-direction: column; gap: 6px; align-items: center; background: var(--papir); border: 3px solid var(--kontur); border-radius: 12px; padding: 10px; }
-.scene > svg { max-height: 28dvh; width: auto; max-width: 100%; }
+/* Scenen skaleres til plassen som er igjen, så den aldri må scrolles. */
+.verden-midten > .scene { flex: 1 1 0; min-height: 0; }
+.scene { display: flex; flex-direction: column; gap: 6px; align-items: center; background: var(--papir); border: 3px solid var(--kontur); border-radius: 12px; padding: 8px 10px; }
+.scene > h1 { font-size: clamp(1.05rem, 3.2dvh, 1.4rem); }
+.scene > svg { flex: 1 1 0; min-height: 40px; width: 100%; height: auto; max-height: 30dvh; }
+.scene > .ur { flex: 1 1 0; min-height: 0; width: auto; max-width: min(100%, 30dvh); }
 .hyller { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 100%; }
 .kurv-rad { display: flex; gap: 8px; align-items: center; }
 .kurv-rad svg { width: 40px; height: 40px; flex: none; }
 .kurv-rad.har { opacity: 0.55; }
 .ekspeditor svg { max-height: 56px; width: auto; }
+.verden-midten > .silhuett { flex: 0 1 auto; min-height: 0; }
 .silhuett { display: flex; flex-direction: column; align-items: center; }
-.silhuett svg { max-height: 96px; width: auto; opacity: 0.55; }
+.silhuett svg { height: clamp(36px, 12dvh, 96px); width: auto; opacity: 0.55; }
 .stor-klokke { display: grid; place-items: center; }
 .innflytting svg { animation: innflytting 1.2s ease-out; }
 @keyframes innflytting { from { transform: translateX(-40px); } to { transform: translateX(0); } }
@@ -315,6 +320,7 @@ main.by { background: transparent; }
   z-index: 1;
 }
 .kartflate .skilt::after { content: ""; position: absolute; inset: -12px -6px; }
+.kartflate .skilt.nederst::after { inset: -16px -6px 0; }
 .kartflate .skilt.venstre { transform: translate(-20%, -25%); }
 .kartflate .skilt.hoyre { transform: translate(-80%, -25%); }
 .kartflate .skilt.nederst { transform: translate(-50%, -110%); }
@@ -427,11 +433,12 @@ main.by { background: transparent; }
 
 /* Plan og dagstart */
 .planliste, .dagliste { display: flex; flex-direction: column; gap: 2px; }
-.dagrad { display: grid; grid-template-columns: 24px 48px 1fr; gap: 6px; align-items: center; min-height: 36px; }
+.dagrad { display: grid; grid-template-columns: 24px 48px 1fr; gap: 6px; align-items: center; min-height: clamp(26px, 5dvh, 36px); font-size: clamp(0.85rem, 2.6dvh, 1rem); }
+.dagrad p { line-height: 1.15; }
 .dagrad svg { width: 22px; height: 22px; }
 .dagtid { font-variant-numeric: tabular-nums; font-weight: 800; }
 .bygg-start { display: flex; gap: 10px; align-items: center; }
-.bygg-lite svg { width: 56px; height: auto; max-height: 72px; }
+.bygg-lite svg { height: clamp(40px, 9dvh, 72px); width: auto; }
 .delrad { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 4px; }
 .del { display: inline-flex; align-items: center; gap: 4px; font-size: 0.95rem; }
 .del svg { width: 28px; height: 28px; }
@@ -450,11 +457,15 @@ main.by { background: transparent; }
 
 /* Kvelden */
 .kveld { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; background: var(--papir); border: 3px solid var(--kontur); border-radius: 12px; padding: 8px 10px; --flate: var(--papir); }
-.kveld-kart { flex: 0 0 42%; min-height: 150px; }
-.kveld-midt { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+.kveld-topp { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.kveld-flate { flex: 1 1 auto; min-height: 40%; display: flex; flex-direction: column; justify-content: center; }
+.kveld-flate > .kartboks { flex: 1 1 auto; min-height: 0; }
+.kveld-midt { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 4px; font-size: clamp(0.85rem, 2.6dvh, 1rem); }
 .kveld-midt > * { flex: none; }
+.kveld-knapper > button { flex: 1 1 auto; }
 .stjerner { font-size: 1.5rem; letter-spacing: 4px; color: var(--rav); }
 .stjernelinjer, .kveld-liste { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 2px; }
+.kveld-liste { font-size: 1.05rem; gap: 6px; }
 .rekkefolge { display: flex; flex-direction: column; gap: 6px; }
 .rekkefolge ol { margin: 0; padding-left: 1.4em; }
 
@@ -468,7 +479,9 @@ main.by { background: transparent; }
 .formkort svg { width: 48px; height: 48px; }
 .foto { display: flex; flex-direction: column; gap: 6px; }
 .foto svg { width: 100%; height: auto; }
+.pynt-liste { display: grid; grid-template-columns: 1fr 1fr; }
 .pynt-liste button { display: flex; justify-content: space-between; align-items: center; }
+.kurv-liste { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; }
 .pris { font-weight: 800; }
 .ruter { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); }
 .mynter { display: flex; align-items: center; gap: 8px; font-weight: 800; }
@@ -550,6 +563,8 @@ select, input { min-height: 48px; border: 3px solid var(--kontur); border-radius
 .ur-bunn > .rad { flex-wrap: nowrap; }
 .ur-bunn > .rad > .hoved { flex: 1; }
 
+.inn-gruppe { display: flex; flex-direction: column; gap: 8px; }
+
 /* Smale telefoner */
 @media (max-width: 360px) {
   .valg button { font-size: 14px; }
@@ -560,6 +575,7 @@ select, input { min-height: 48px; border: 3px solid var(--kontur); border-radius
 /* Liggende telefon: to kolonner. */
 @media (orientation: landscape) and (max-height: 520px) {
   #app { max-width: none; }
+  .skjerm-innstillinger .side-midt { display: grid; grid-template-columns: 1.4fr 1fr; gap: 12px; align-items: start; }
   .verden { display: grid; grid-template-columns: minmax(240px, 40%) 1fr; grid-template-rows: auto auto auto 1fr; column-gap: 10px; }
   .verden > .hud { grid-column: 1; grid-row: 1; }
   .verden > .stripe { grid-column: 1; grid-row: 2; }
@@ -572,8 +588,8 @@ select, input { min-height: 48px; border: 3px solid var(--kontur); border-radius
   .forside > .kartboks, .forside > .intro-bilde, .forside > .intro-valg { grid-column: 2; grid-row: 1 / span 3; height: 100%; }
   .forside-bunn { grid-column: 1; grid-row: 2; }
   .kveld { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr auto; column-gap: 10px; }
-  .kveld > .side-topp { grid-column: 1 / -1; }
-  .kveld > .kveld-kart { grid-column: 1; grid-row: 2 / span 2; height: 100%; min-height: 0; }
+  .kveld > .kveld-topp { grid-column: 1 / -1; }
+  .kveld > .kveld-flate { grid-column: 1; grid-row: 2 / span 2; min-height: 0; }
   .kveld > .kveld-midt { grid-column: 2; grid-row: 2; }
   .kveld > .side-bunn { grid-column: 2; grid-row: 3; }
   .ur-skjerm { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto auto 1fr; column-gap: 10px; }

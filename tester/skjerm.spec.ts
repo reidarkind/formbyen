@@ -18,9 +18,18 @@ async function sett(page: Page, tilstand: Tilstand): Promise<void> {
   );
 }
 
-async function sjekk(page: Page): Promise<string[]> {
-  return page.evaluate(() => {
+/** Skjermer der lange lister får scrolle. Alle andre skal passe uten scrolling. */
+const LANGE_LISTER = /^(voksen-(oversikt|detalj|avtaler|data|om|slett|nivaa)|dagbok-lang|album)/;
+
+async function sjekk(page: Page, tillatScroll = false): Promise<string[]> {
+  return page.evaluate((tillatScroll) => {
     const funn: string[] = [];
+    if (!tillatScroll) {
+      for (const el of document.querySelectorAll<HTMLElement>(".side-midt, .verden-midten, .kveld-midt, .intro-valg")) {
+        const over = el.scrollHeight - el.clientHeight;
+        if (over > 2) funn.push(`må scrolle ${over} px: ${el.className}`);
+      }
+    }
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const navn = (el: Element) => ((el as HTMLElement).innerText || el.getAttribute("aria-label") || el.getAttribute("data-sted") || el.className.toString() || el.tagName).trim().replace(/\s+/g, " ").slice(0, 32);
@@ -73,7 +82,7 @@ async function sjekk(page: Page): Promise<string[]> {
       el.scrollTop = 0;
     });
     return [...new Set(funn)];
-  });
+  }, tillatScroll);
 }
 
 async function apne(page: Page): Promise<void> {
@@ -94,7 +103,7 @@ test("alle skjermer får plass uten klipping", async ({ page }, info) => {
   for (const tilstand of skjermer()) {
     await sett(page, tilstand);
     await page.waitForTimeout(30);
-    const funn = await sjekk(page);
+    const funn = await sjekk(page, LANGE_LISTER.test(tilstand.navn));
     await bilde(page, info, tilstand.navn);
     for (const rad of funn) brudd.push(`${tilstand.navn}: ${rad}`);
   }
