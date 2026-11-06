@@ -327,6 +327,14 @@ export interface AktivDag {
   oppdragFerdig?: boolean;
   /** Oppdraget var riktig på første forsøk. */
   oppdragForste?: boolean;
+  /** Oppdraget ble løst, også på andre forsøk. */
+  oppdragGjort?: boolean;
+  /** Fasen barnet var i før oppdraget. Barnet går tilbake dit etterpå. */
+  oppdragFra?: Fase;
+  /** Tårnuret har gitt mynter i dag. Bare én runde gir mynter. */
+  urBetalt?: boolean;
+  /** Morgendagens plan, og dagene etter til butikken er åpen. Laget da dagen startet. */
+  morgen?: Dagsplan[];
   /** Bygget dagen startet med. Neste bygg krever et ja. */
   dagensBygg?: ByggId;
   ekstraNei?: boolean;
@@ -393,6 +401,8 @@ export interface Lagret {
   aktivDag: AktivDag | null;
   /** Planen som ble lagret da forrige dag sluttet. */
   nestePlan?: Dagsplan | null;
+  /** Planer for dagene etter neste dag, når butikken er stengt i helgen. */
+  senerePlaner?: Dagsplan[];
   startet: boolean;
   fro: number;
 }

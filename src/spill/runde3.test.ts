@@ -26,7 +26,7 @@ describe("runde 3", () => {
     lagret.by.bygg.push(plassert({ instans: "hytte-2", bygg: "hytte", x: 0, y: 4, steg: 1, ferdig: false }));
     const kart = tegnKart(lagret.by, 15 * 60, 20 * 60, { figur: { x: 2, y: 4 } });
     expect(kart).toContain('data-sted="bygg:hytte-2"');
-    expect(kart.match(/data-sted="hjemme"/g)?.length).toBe(1);
+    expect(kart.match(/<g data-sted="hjemme"/g)?.length).toBe(1);
     expect(kart).toContain(">A<");
     expect(kart).toContain(">1<");
     expect(kart).not.toContain(FARGER.aksentGul);

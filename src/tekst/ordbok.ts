@@ -209,8 +209,30 @@ const BESTEMT_NB: Record<string, string> = {
   "kloss-kjegle": "Kjeglen",
   "kloss-pyramide": "Pyramiden",
   "kloss-prisme": "Prismet",
+  jord: "Jorda",
+  sand: "Sanden",
+  grus: "Grusen",
+  sement: "Sementen",
+  maling: "Malingen",
+  fliselim: "Fliselimet",
+  spiker: "Spikeren",
+  "pynt-blomst": "Blomsten",
+  "pynt-flagg": "Flagget",
+  "pynt-benk": "Benken",
+  "pynt-lykt": "Lykta",
 };
 const BESTEMT_NN: Record<string, string> = {
+  jord: "Jorda",
+  sand: "Sanden",
+  grus: "Grusen",
+  sement: "Sementen",
+  maling: "Målinga",
+  fliselim: "Fliselimet",
+  spiker: "Spikaren",
+  "pynt-blomst": "Blomen",
+  "pynt-flagg": "Flagget",
+  "pynt-benk": "Benken",
+  "pynt-lykt": "Lykta",
   planke: "Planken",
   "vegg-tre": "Treveggen",
   "vegg-mur": "Murveggen",
@@ -277,15 +299,87 @@ const FLERTALL_VARE_NN: Record<string, string> = {
   "kloss-prisme": "prismar",
 };
 
+/** Stor forbokstav, for setninger som starter med et navn. */
+export function storForbokstav(tekst: string): string {
+  return tekst.charAt(0).toUpperCase() + tekst.slice(1);
+}
+
 export function vareBestemt(id: string, spraak: Spraak): string {
-  if (spraak === "nn") return BESTEMT_NN[id] ?? navnVare(id, spraak);
-  return BESTEMT_NB[id] ?? navnVare(id, spraak);
+  if (spraak === "nn") return BESTEMT_NN[id] ?? storForbokstav(navnVare(id, spraak));
+  if (spraak === "nb") return BESTEMT_NB[id] ?? storForbokstav(navnVare(id, spraak));
+  return storForbokstav(navnVare(id, spraak));
+}
+
+/** Stoffer uten artikkel: «Vi trenger jord.» */
+const UTEN_ARTIKKEL = new Set(["jord", "sand", "grus", "sement", "maling", "fliselim", "spiker"]);
+
+function intetkjonn(id: string): boolean {
+  return id.startsWith("tak-") || id.startsWith("vindu-") || id === "kloss-prisme" || id === "pynt-flagg";
+}
+
+/** «en planke», «et rødt tak», «jord». Andre språk får navnet uten artikkel. */
+export function vareMedArtikkel(id: string, spraak: Spraak): string {
+  const navn = navnVare(id, spraak);
+  if (UTEN_ARTIKKEL.has(id) || (spraak !== "nb" && spraak !== "nn")) return navn;
+  if (spraak === "nn") {
+    const ei = id.startsWith("dor-") || id === "kloss-kule" || id === "pynt-lykt";
+    return `${intetkjonn(id) ? "eit" : ei ? "ei" : "ein"} ${navn}`;
+  }
+  return `${intetkjonn(id) ? "et" : "en"} ${navn}`;
+}
+
+/** «klar» eller «klart» etter delen. */
+export function klarFor(id: string, spraak: Spraak): string {
+  const nn = spraak === "nn";
+  if (intetkjonn(id) || id === "fliselim") return nn ? "klart" : "klart";
+  return "klar";
+}
+
+/** Antall av en vare: «1 planke», «3 planker». */
+export function vareAntall(id: string, antall: number, spraak: Spraak): string {
+  return antall === 1 ? `1 ${navnVare(id, spraak)}` : `${antall} ${vareFlertall(id, spraak)}`;
 }
 
 export function vareFlertall(id: string, spraak: Spraak): string {
   if (spraak === "nn") return FLERTALL_VARE_NN[id] ?? navnVare(id, spraak);
   if (spraak === "nb") return FLERTALL_VARE_NB[id] ?? navnVare(id, spraak);
   return navnVare(id, spraak);
+}
+
+const BYGG_BESTEMT: Record<string, [string, string]> = {
+  ronne: ["rønna", "rønna"],
+  hytte: ["hytta", "hytta"],
+  hus: ["huset", "huset"],
+  villa: ["villaen", "villaen"],
+  borg: ["borgen", "borga"],
+  slott: ["slottet", "slottet"],
+  bronn: ["brønnen", "brunnen"],
+  gjerde: ["gjerdet", "gjerdet"],
+  vedskjul: ["vedskjulet", "vedskjulet"],
+  bakeri: ["bakeriet", "bakeriet"],
+  lekeplass: ["lekeplassen", "leikeplassen"],
+  bro: ["broa", "brua"],
+  skole: ["skolen", "skulen"],
+  idrettshall: ["idrettshallen", "idrettshallen"],
+  korpslokale: ["korpslokalet", "korpslokalet"],
+  musikkskole: ["musikkskolen", "musikkskulen"],
+  bibliotek: ["biblioteket", "biblioteket"],
+  togstasjon: ["togstasjonen", "togstasjonen"],
+  kirke: ["kirken", "kyrkja"],
+  vanntaarn: ["vanntårnet", "vasstårnet"],
+  fyrtarn: ["fyrtårnet", "fyrtårnet"],
+  ringmur: ["ringmuren", "ringmuren"],
+  park: ["parken", "parken"],
+  festplass: ["festplassen", "festplassen"],
+  klokketarn: ["klokketårnet", "klokketårnet"],
+};
+
+/** «brønnen», «vanntårnet». Aldri rå id. Andre språk får byggnavnet. */
+export function byggBestemt(id: string, spraak: Spraak, stor = false): string {
+  const rad = BYGG_BESTEMT[id];
+  const tekst = spraak === "nb" ? rad?.[0] : spraak === "nn" ? rad?.[1] : BYGG[id]?.[spraak]?.toLowerCase();
+  const ut = tekst ?? id;
+  return stor ? storForbokstav(ut) : ut;
 }
 
 const FORM_NB: Record<string, string> = {

@@ -715,6 +715,19 @@ function pulsSted(): string | null {
   return nesteSteg(lagret).puls;
 }
 
+function kartNavn(): Record<string, string> {
+  return {
+    butikk: si(spraak(), "Butikk", "Butikk"),
+    torg: si(spraak(), "Torget", "Torget"),
+    tannlege: si(spraak(), "Tannlege", "Tannlækjar"),
+    svommehall: si(spraak(), "Svømmehall", "Symjehall"),
+    barnehage: si(spraak(), "Barnehage", "Barnehage"),
+    hjemme: si(spraak(), "Hjem", "Heim"),
+    pynt: si(spraak(), "Pyntebu", "Pyntebu"),
+    taarn: si(spraak(), "Tårnet", "Tårnet"),
+  };
+}
+
 function bybilde(tid = lagret.aktivDag?.tid ?? 15 * 60): string {
   const dag = lagret.aktivDag;
   const valg = anbefalt(lagret);
@@ -727,6 +740,7 @@ function bybilde(tid = lagret.aktivDag?.tid ?? 15 * 60): string {
     puls: pulsSted(),
     aktivitet: avtaleSted,
     tomter,
+    navn: kartNavn(),
   })}</div>`;
 }
 
@@ -851,7 +865,7 @@ function kartHtml(): string {
   const vinkel = lagret.by.rotasjon * 90;
   return `<button type="button" data-skjerm="verden">${si(spraak(), "Tilbake", "Tilbake")}</button>
     <h1>${si(spraak(), "Byen", "Byen")}</h1>
-    <div class="kart-bilde"><div style="transform:translate(${lagret.by.panX}px, ${lagret.by.panY}px) rotate(${vinkel}deg) scale(${lagret.by.skala})">${tegnKart(lagret.by, lagret.aktivDag?.tid ?? 15 * 60, lagret.aktivDag?.plan.leggetid ?? 20 * 60)}</div></div>
+    <div class="kart-bilde"><div style="transform:translate(${lagret.by.panX}px, ${lagret.by.panY}px) rotate(${vinkel}deg) scale(${lagret.by.skala})">${tegnKart(lagret.by, lagret.aktivDag?.tid ?? 15 * 60, lagret.aktivDag?.plan.leggetid ?? 20 * 60, { navn: kartNavn() })}</div></div>
     <div class="rad">
       <button type="button" data-kart="roter">${si(spraak(), "Snu", "Snu")}</button>
       <button type="button" data-kart="inn" aria-label="${si(spraak(), "Større", "Større")}">+</button>
@@ -1038,7 +1052,7 @@ function introHtml(): string {
   const bilder = [
     bybilde(10 * 60),
     tegnBygg("ronne"),
-    tegnKart(lagret.by, 16 * 60),
+    tegnKart(lagret.by, 16 * 60, 20 * 60, { navn: kartNavn() }),
     urHtml(14 * 60 + 30),
   ];
   const figur = introSide === 4
@@ -1281,7 +1295,7 @@ function kveldHtml(): string {
         .join("")}${valgt.map((indeks) => `<p>${tidTilDigital24(hendelser[indeks]?.start ?? 0)}</p>`).join("")}</div>`
     : "";
   return `<div class="kveld"><div class="kveld-midt"><h1>${si(spraak(), "Kvelden kommer", "Kvelden kjem")}</h1>
-    <div class="kveld-kart">${tegnKart(lagret.by, 20 * 60, 20 * 60, { hele: true })}</div>
+    <div class="kveld-kart">${tegnKart(lagret.by, 20 * 60, 20 * 60, { hele: true, navn: kartNavn() })}</div>
     <p class="stjerner">${"★".repeat(antall) || "·"}</p>
     ${stjerneLinjer.map((linje) => `<p>${esc(linje)}</p>`).join("")}
     ${fest}

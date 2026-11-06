@@ -152,7 +152,13 @@ export function heleByen(by: ByTilstand): { x0: number; y0: number; x1: number; 
   };
 }
 
+/** Hele byen vises alltid (gj. 9, B3). Faste steder skal aldri falle utenfor kartet. */
 export function kartUtsnitt(by: ByTilstand): { x0: number; y0: number; x1: number; y1: number } {
+  return heleByen(by);
+}
+
+/** Bydelen nye bygg settes i. Holder bygg innenfor én bydel, så det blir plass til slottet. */
+function byggeOmrade(by: ByTilstand): { x0: number; y0: number; x1: number; y1: number } {
   if (by.nivaa <= 2) return { ...DALEN };
   const uferdig = by.bygg.find((bygg) => !bygg.ferdig && !bygg.uthus);
   if (uferdig) return utsnittForPunkt(uferdig.x, uferdig.y);
@@ -171,7 +177,7 @@ export function kartUtsnitt(by: ByTilstand): { x0: number; y0: number; x1: numbe
 
 export function ledigeTomter(by: ByTilstand, id: ByggId): { x: number; y: number; areal: number }[] {
   const def = byggDef(id);
-  const ramme = kartUtsnitt(by);
+  const ramme = byggeOmrade(by);
   return alleTomter(by, id).filter((tomt) => innenRamme(ramme, tomt.x, tomt.y, def.bredde, def.dybde));
 }
 
@@ -205,6 +211,31 @@ export function tomterMedPlass(by: ByTilstand, ruter: number): { id: string; x: 
     }
   }
   return svar.filter((tomt) => tomt.areal >= ruter).slice(0, 12);
+}
+
+/** En rute pynt kan stå på: innenfor byen, ikke vann, ikke sti, ikke under et bygg eller annen pynt. */
+export function ledigPyntRute(by: ByTilstand, x: number, y: number): boolean {
+  if (!innenfor(by, x, y) || erSti(x, y) || opptatt(by, x, y)) return false;
+  if (x === 4 && y === 1) return false;
+  return !(by.pynt ?? []).some((pynt) => pynt.x === x && pynt.y === y);
+}
+
+/** Ledige ruter ved siden av ferdige bygg, der barnet kan sette pynt. */
+export function pyntRuter(by: ByTilstand, antall = 6): [number, number][] {
+  const ut: [number, number][] = [];
+  for (const bygg of by.bygg.filter((rad) => rad.ferdig)) {
+    const def = byggDef(bygg.bygg);
+    for (let dy = -1; dy <= def.dybde; dy++) {
+      for (let dx = -1; dx <= def.bredde; dx++) {
+        const x = bygg.x + dx;
+        const y = bygg.y + dy;
+        if (!ledigPyntRute(by, x, y) || ut.some((rad) => rad[0] === x && rad[1] === y)) continue;
+        ut.push([x, y]);
+        if (ut.length >= antall) return ut;
+      }
+    }
+  }
+  return ut;
 }
 
 export function ferdigeBygg(by: ByTilstand): ByggId[] {

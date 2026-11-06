@@ -96,7 +96,7 @@ function sjekkSteg(lagret: Lagret, steg: NesteSteg): string | null {
   if (steg.handling.slag === "handle" && dag.dorLest && !erApen(dag.tid, dag.plan.butikk)) return "handler når butikken er stengt";
   if (steg.handling.slag === "vent") {
     const klokke = steg.knapp.match(/\d{2}:\d{2}/)?.[0];
-    if (klokke && !steg.grunn.includes(klokke) && !steg.grunn.toLowerCase().includes("venter her")) {
+    if (klokke && !steg.grunn.includes(klokke) && !steg.grunn.toLowerCase().includes("venter her") && !steg.grunn.includes("til leggetid")) {
       return `tiden ${klokke} står på knappen, men ikke i teksten: ${steg.grunn}`;
     }
   }
