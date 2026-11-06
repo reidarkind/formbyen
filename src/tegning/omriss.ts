@@ -69,3 +69,22 @@ export function omrissForForm(form: Form2dId, bredde = 48, hoyde = 48): Raster {
   }
   return { bredde, hoyde, maske };
 }
+
+/**
+ * Prikker barnet tegner mellom, når omrisset ikke vises (2. klasse og utfordrende, gj. 10, 7.3.2).
+ * Hjørnene for mangekanter. For runde former: fire punkter på kanten.
+ */
+export function hjornerForForm(form: Form2dId, bredde = 48, hoyde = 48): [number, number][] {
+  const cx = (bredde - 1) / 2;
+  const cy = (hoyde - 1) / 2;
+  const r = bredde * 0.34;
+  if (form === "kvadrat") return [[cx - r * 0.8, cy - r * 0.8], [cx + r * 0.8, cy - r * 0.8], [cx + r * 0.8, cy + r * 0.8], [cx - r * 0.8, cy + r * 0.8]];
+  if (form === "rektangel") return [[cx - r, cy - r * 0.62], [cx + r, cy - r * 0.62], [cx + r, cy + r * 0.62], [cx - r, cy + r * 0.62]];
+  if (form === "trekant") return mangekant(3, cx, cy, r);
+  if (form === "femkant") return mangekant(5, cx, cy, r);
+  if (form === "sekskant") return mangekant(6, cx, cy, r);
+  if (form === "halvsirkel") return [[cx - r, cy + 1], [cx, cy - r], [cx + r, cy + 1]];
+  const ry = form === "oval" ? r * 0.72 : r;
+  const rx = form === "oval" ? r * 1.15 : r;
+  return [[cx, cy - ry], [cx + rx, cy], [cx, cy + ry], [cx - rx, cy]];
+}

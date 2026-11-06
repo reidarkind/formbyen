@@ -612,6 +612,15 @@ select, input { min-height: 48px; border: 3px solid var(--kontur); border-radius
   .verden > .banner { grid-column: 1; grid-row: 3; }
   .verden > .verden-midten { grid-column: 2; grid-row: 1 / -1; }
   .verden > .verden-bunn { grid-column: 1; grid-row: 4; align-self: end; overflow-y: auto; max-height: 100%; }
+  /* Med oppgave står «Ferdig» og kassene under oppgaven i høyre kolonne (gj. 10, 7.3.4). */
+  .verden.med-oppgave > .verden-midten { grid-row: 1 / 4; min-height: 0; }
+  .verden.med-oppgave > .verden-bunn { grid-column: 2; grid-row: 4; }
+  .verden.med-oppgave > .banner { grid-row: 3 / 5; align-self: start; }
+  /* «Still klokka» i liggende: klokka til venstre i kortet, tekst og knapper til høyre. */
+  .oppgave-still-klokka { display: grid; grid-template-columns: auto 1fr; grid-auto-rows: min-content; column-gap: 12px; align-content: start; }
+  .oppgave-still-klokka > .ur[data-ur] { grid-column: 1; grid-row: 1 / span 6; width: clamp(180px, 62dvh, 220px); align-self: center; }
+  .oppgave-still-klokka > :not(.ur) { grid-column: 2; }
+  .oppgave-still-klokka .rad.viser-knapper { grid-template-columns: 1fr 1fr; }
   .kasser { flex-basis: 100%; }
   .forside { display: grid; grid-template-columns: 1fr 1.2fr; grid-template-rows: auto 1fr; align-items: center; }
   .forside > h1, .forside > p { grid-column: 1; }

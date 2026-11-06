@@ -66,6 +66,19 @@ test("tårnuret åpnes fra kartet, og planen har Lukk", async ({ page }) => {
   await page.locator("button.stripe").click();
   await expect(page.locator(".planliste")).toBeVisible();
   await page.getByRole("button", { name: "Lukk" }).click();
+  // Klokkeleken tilbys når det ikke er noe annet å gjøre. Ellers går tårnuret riktig (gj. 10, 7.1.7).
+  await page.evaluate(() => {
+    const test = (window as unknown as { formbyenTest: { lagret: () => { aktivDag: Record<string, unknown> }; sett: (l: unknown, s: string) => void } }).formbyenTest;
+    const lagret = test.lagret();
+    test.sett({ ...lagret, aktivDag: { ...lagret.aktivDag, klokkeLekt: false, sted: "butikk", dorLest: false } }, "verden");
+  });
+  await page.locator(".kartflate .skilt[data-sted='taarn']").click();
+  await expect(page.getByText("Tårnuret går riktig. Vi stiller det når vi har tid.")).toBeVisible();
+  await page.evaluate(() => {
+    const test = (window as unknown as { formbyenTest: { lagret: () => { aktivDag: Record<string, unknown> }; sett: (l: unknown, s: string) => void } }).formbyenTest;
+    const lagret = test.lagret();
+    test.sett({ ...lagret, aktivDag: { ...lagret.aktivDag, klokkeLekt: true } }, "verden");
+  });
   await page.locator(".kartflate .skilt[data-sted='taarn']").click();
   await expect(page.locator(".ur-skjerm")).toBeVisible();
   await expect(page.locator(".ur-prompt")).toContainText("klokka");
@@ -88,5 +101,7 @@ test("klokkeleken fra menyen kan vinnes og ender i menyen", async ({ page }) => 
     expect(tekst).toContain("klokka");
     await page.getByRole("button", { name: "Ferdig" }).click();
   }
+  // Barnet får vite at runden ga en mynt før menyen kommer (gj. 10, 7.1.12).
+  await expect(page.locator(".ur-melding")).toHaveText("Riktig! Du fikk 1 mynt.");
   await expect(page.locator(".forside")).toBeVisible();
 });

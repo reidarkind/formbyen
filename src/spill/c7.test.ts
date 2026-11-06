@@ -62,3 +62,12 @@ describe("import med urimelige verdier (gj. 10, 7.1.5)", () => {
     expect(bygg?.steg).toBeLessThanOrEqual(10);
   });
 });
+
+describe("klokkeleken fra menyen (gj. 10, 7.1.12)", () => {
+  it("gir én mynt og sier det", () => {
+    const lagret = { ...standardLagret(), startet: true, mynter: 2 };
+    const ut = utfor(lagret, { slag: "ur-runde", riktige: 5 });
+    expect(ut.lagret.mynter).toBe(3);
+    expect(ut.melding).toBe("Riktig! Du fikk 1 mynt.");
+  });
+});

@@ -42,3 +42,17 @@ describe("tegning av former", () => {
     expect(vurderTegning(kruss, kvadrat)).toBe(false);
   });
 });
+
+describe("prikker i stedet for omriss (gj. 10, 7.3.2)", () => {
+  it("gir hjørnene til mangekanter og fire punkter på runde former", async () => {
+    const { hjornerForForm } = await import("./omriss");
+    expect(hjornerForForm("trekant", 240, 240)).toHaveLength(3);
+    expect(hjornerForForm("kvadrat", 240, 240)).toHaveLength(4);
+    expect(hjornerForForm("sekskant", 240, 240)).toHaveLength(6);
+    expect(hjornerForForm("sirkel", 240, 240)).toHaveLength(4);
+    for (const [x, y] of hjornerForForm("rektangel", 240, 240)) {
+      expect(x).toBeGreaterThan(0);
+      expect(y).toBeLessThan(240);
+    }
+  });
+});

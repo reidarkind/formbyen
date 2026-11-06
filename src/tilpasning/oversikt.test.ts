@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Ferdighet, FerdighetsTilstand } from "../typer";
 import { registrerSvar } from "./mestring";
-import { ferdighetStatus, oversiktLinjer, OMRADER, ovesISpillet } from "./oversikt";
+import { ferdigheterForNivaa, ferdighetStatus, oversiktLinjer, OMRADER, ovesISpillet } from "./oversikt";
 
 function svar(antallRiktige: number, antallFeil: number, dager: string[]): Partial<Record<Ferdighet, FerdighetsTilstand>> {
   let mestring: Partial<Record<Ferdighet, FerdighetsTilstand>> = {};
@@ -37,5 +37,16 @@ describe("mestring på voksensiden (gj. 9, B4)", () => {
     expect(alle).toContain("hele-timer");
     expect(alle).toContain("former-3d");
     expect(alle).toContain("lengde");
+  });
+
+  it("viser to linjer i klartekst, og bare ferdigheter nivået øver på (gj. 10, 7.2.1 og 7.2.2)", () => {
+    const linjer = oversiktLinjer({}, "nb", "forste");
+    expect(Object.keys(linjer).sort()).toEqual(["former", "klokke"]);
+    expect(linjer.klokke).not.toContain("fem minutter");
+    expect(linjer.former).not.toMatch(/areal|koordinater|likevekt/);
+    const forste = ferdigheterForNivaa("forste");
+    for (const id of ["areal", "koordinater", "likevekt", "fem-minutter", "lengde"] as const) expect(forste.has(id), id).toBe(false);
+    expect(forste.has("hele-timer")).toBe(true);
+    expect(ferdigheterForNivaa("utfordrende").has("areal")).toBe(true);
   });
 });

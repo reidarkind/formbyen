@@ -1,6 +1,6 @@
 import { MALER, malFerdighet } from "../oppgaver/maler";
 import { mal } from "../tekst/ordbok";
-import type { Ferdighet, FerdighetsTilstand, OppgaveType, Spraak } from "../typer";
+import type { Ferdighet, FerdighetsTilstand, Nivaa, OppgaveType, Spraak } from "../typer";
 
 /** Oppgavetypene spillet faktisk gir i butikken, i oppdrag og ved avtaler. */
 const TYPER_I_SPILLET: OppgaveType[] = [
@@ -118,17 +118,34 @@ function linje(spraak: Spraak, omrade: Omrade, mestring: Partial<Record<Ferdighe
   return `${tittel}: ${deler.join(", ")}.`;
 }
 
-/** To linjer i klartekst øverst på voksensiden. */
-export function oversiktLinjer(mestring: Partial<Record<Ferdighet, FerdighetsTilstand>>, spraak: Spraak): { klokke: string; former: string; tid: string; maling: string } {
-  const finn = (id: Omrade["id"]) => OMRADER.find((omrade) => omrade.id === id);
-  const klokke = finn("klokke");
-  const former = finn("former");
-  const tid = finn("tid");
-  const maling = finn("maling");
+/** Ferdighetene spillet øver på på et nivå (gj. 10, 7.2.2). Blandet gir alle. */
+export function ferdigheterForNivaa(nivaa: Nivaa): Set<Ferdighet> {
+  const tak = nivaa === "forste" ? 0 : nivaa === "andre" ? 1 : 2;
+  const ut = new Set<Ferdighet>(["sortere", "tidsrom", "former-3d"]);
+  for (const rad of MALER) {
+    if (!TYPER_I_SPILLET.includes(rad.type)) continue;
+    const justert = malFerdighet(rad);
+    if (nivaa === "blandet" || justert.niva <= tak) ut.add(justert.ferdighet);
+  }
+  return new Set([...ut].filter(ovesISpillet));
+}
+
+/** Områdene med bare ferdighetene nivået øver på. */
+export function omraderForNivaa(nivaa: Nivaa): Omrade[] {
+  const lov = ferdigheterForNivaa(nivaa);
+  return OMRADER.map((omrade) => ({ ...omrade, ferdigheter: omrade.ferdigheter.filter((id) => lov.has(id)) })).filter((omrade) => omrade.ferdigheter.length > 0);
+}
+
+/** To linjer i klartekst øverst på voksensiden: klokka (med tid og kalender) og former (med måling) (gj. 10, 7.2.1). */
+export function oversiktLinjer(mestring: Partial<Record<Ferdighet, FerdighetsTilstand>>, spraak: Spraak, nivaa: Nivaa = "blandet"): { klokke: string; former: string } {
+  const omrader = omraderForNivaa(nivaa);
+  const samle = (ider: Omrade["id"][], navn: [string, string]): Omrade => ({
+    id: ider[0] ?? "klokke",
+    navn,
+    ferdigheter: omrader.filter((omrade) => ider.includes(omrade.id)).flatMap((omrade) => omrade.ferdigheter),
+  });
   return {
-    maling: maling ? linje(spraak, maling, mestring) : "",
-    klokke: klokke ? linje(spraak, klokke, mestring) : "",
-    former: former ? linje(spraak, former, mestring) : "",
-    tid: tid ? linje(spraak, tid, mestring) : "",
+    klokke: linje(spraak, samle(["klokke", "tid"], ["Klokka", "Klokka"]), mestring),
+    former: linje(spraak, samle(["former", "maling"], ["Former og måling", "Former og måling"]), mestring),
   };
 }

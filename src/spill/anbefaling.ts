@@ -56,6 +56,8 @@ export interface NesteSteg {
   grunn: string;
   puls: string | null;
   nei?: string;
+  /** Fri tid: appen viser «Pynt byen» og «Klokkeleken» ved siden av den gule knappen (gj. 10, 7.1.9). */
+  fri?: boolean;
 }
 
 export function anbefalt(lagret: Lagret): Anbefaling {
@@ -620,11 +622,11 @@ export function nesteSteg(lagret: Lagret): NesteSteg {
             neste: byggBestemtOrd(nesteBygg, spraak, true),
           })
         : si(lagret, "Vi har gjort alt vi rakk i dag. Vi venter hjemme til leggetid.", "Vi har gjort alt vi rakk i dag. Vi ventar heime til leggetid.");
-  return ventHer(
-    lagret,
-    ventTil,
-    si(lagret, "leggetid", "leggetid"),
-    kveldTekst,
-    "hjemme",
-  );
+  // God tid igjen: tilby pynt eller tårnuret i stedet for bare å vente (gj. 10, 7.1.9).
+  const friTid = mangler.length === 0 && ventTil - dag.tid >= 60;
+  const tekst = friTid
+    ? `${kveldTekst.split(". ")[0]}. ${si(lagret, "Vil du pynte byen eller stille tårnuret?", "Vil du pynte byen eller stille tårnuret?")}`
+    : kveldTekst;
+  const steg = ventHer(lagret, ventTil, si(lagret, "leggetid", "leggetid"), tekst, "hjemme");
+  return friTid ? { ...steg, fri: true } : steg;
 }

@@ -432,6 +432,11 @@ export function utfor(lagret: Lagret, handling: Handling): { lagret: Lagret; mel
   if (handling.slag === "pynt") return pynt(lagret, handling.vare, handling.plass);
   if (handling.slag === "pynt-flytt") return flyttPynt(lagret, handling.id, handling.plass);
   if (handling.slag === "pynt-fjern") return fjernPynt(lagret, handling.id);
+  // Klokkeleken fra menyen: én mynt for en hel runde, og barnet får vite det (gj. 10, 7.1.12).
+  if (handling.slag === "ur-runde" && !lagret.aktivDag) {
+    if (handling.riktige <= 0) return { lagret, melding: null };
+    return { lagret: { ...lagret, mynter: lagret.mynter + 1 }, melding: si(lagret, "Riktig! Du fikk 1 mynt.", "Rett! Du fekk 1 mynt.") };
+  }
   if (!lagret.aktivDag) return { lagret, melding: null };
   if (handling.slag === "ga") return gaa(lagret, handling.sted);
   if (handling.slag === "vent") return vent(lagret, handling.tid);
